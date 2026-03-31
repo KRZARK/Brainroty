@@ -11,23 +11,33 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local BrainrotEvents = ReplicatedStorage:WaitForChild("BrainrotEvents")
 local CoinRainTrigger = BrainrotEvents:WaitForChild("CoinRainTrigger")
+local PoolUpdated = BrainrotEvents:WaitForChild("PoolUpdated") -- NOWE
 
 -- === KONFIGURACJA ===
 local COIN_ASSET = "rbxassetid://11520144151"
 local SPECIAL_2D_ASSET = "rbxassetid://15993201893" -- NOWY ASSET 2D
 local MUSIC_ASSET = "rbxassetid://140383003026220" -- NOWA MUZYKA
-local RAIN_DURATION = 115 -- 1 minuta 55 sekund
-local NOTIFY_DURATION = 115
-local COLLECT_SOUND_ID = "rbxassetid://99636386529233" -- TWÓJ DŹWIĘK KOLEKCJI
-
-local isEventActive = false -- NOWE: Flaga dla kamery
+local GameConfig = require(ReplicatedStorage:WaitForChild("FolderReplicatedStorage"):WaitForChild("GameConfig"))
+local CoinGrabSound = SoundService:WaitForChild("CoinGrab", 5)
+local RAIN_DURATION = GameConfig.CoinRainDuration
+local activeRainCount = 0 -- NOWE: Licznik aktywnych deszczów (zapobiega konfliktom flag)
+local isEventActive = false -- Widoczne dla RenderStepped
+local currentQueued = 0 -- NOWE: Liczba zakolejkowanych deszczów
+local activeEventRoutine = nil -- NOWE: Korutyna odliczania
+local coinsCollectedThisRain = 0
 
 -- Tworzymy ScreenGui dla efektów
 local rainGui = Instance.new("ScreenGui")
 rainGui.Name = "CoinRainEffects"
+rainGui.ResetOnSpawn = false -- KLUCZOWE: GUI nie znika po śmierci
 rainGui.DisplayOrder = 100 -- Najwyższa warstwa
 rainGui.IgnoreGuiInset = true
 rainGui.Parent = playerGui
+
+-- NOWE: Pasek aktualizujący stan kolejki w tle
+PoolUpdated.OnClientEvent:Connect(function(pool, queued)
+	currentQueued = queued or 0
+end)
 
 -- Funkcja tworząca spadającą monetę
 local function createFallingCoin()
@@ -87,9 +97,47 @@ end
 
 -- Obsługa zdarzenia
 CoinRainTrigger.OnClientEvent:Connect(function(sponsors)
-	print("!!! CLIENT: OTRZYMANO SYGNAŁ COIN RAIN !!!")
+	print("!!! CLIENT: OTRZYMANO SYGNAŁ COIN RAIN !!! (Count: " .. activeRainCount + 1 .. ")")
+	activeRainCount += 1
+	isEventActive = true
+	coinsCollectedThisRain = 0 -- Resetujemy licznik na start eventu
 	
-	-- 1. Powiadomienie o sponsorach (PRZYWRÓCONY STARY STYL - PRZENIESIONY NA DÓŁ)
+	local sponsorListString = "ANONYMOUS"
+	if type(sponsors) == "table" and #sponsors > 0 then
+		sponsorListString = table.concat(sponsors, ", ")
+	elseif type(sponsors) == "string" then
+		sponsorListString = sponsors
+	end
+
+	-- 1. LICZNIK CZASU (GÓRA NAD SPONSORAMI) - NOWE
+	local timerLabel = Instance.new("TextLabel")
+	timerLabel.Name = "EventTimerLabel"
+	timerLabel.Size = UDim2.new(0.5, 0, 0, 30)
+	timerLabel.Position = UDim2.new(0.5, 0, 0.91, 0) -- Tuż nad marquee (który jest na 0.95)
+	timerLabel.AnchorPoint = Vector2.new(0.5, 1)
+	timerLabel.BackgroundTransparency = 1
+	timerLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Złoty (Gold)
+	timerLabel.Font = Enum.Font.FredokaOne
+	timerLabel.TextScaled = true
+	timerLabel.TextStrokeTransparency = 0
+	timerLabel.ZIndex = 110
+	timerLabel.Parent = rainGui
+	
+	if activeEventRoutine then coroutine.close(activeEventRoutine) end
+	
+	activeEventRoutine = coroutine.create(function()
+		local timeLeft = RAIN_DURATION
+		while timeLeft > 0 do
+            local queueText = (currentQueued > 0) and (" (QUEUED: " .. currentQueued .. ")") or ""
+			timerLabel.Text = "⌛ TIME LEFT: " .. timeLeft .. "s" .. queueText .. " ⌛"
+			task.wait(1)
+			timeLeft -= 1
+		end
+		if timerLabel then timerLabel:Destroy() end
+	end)
+	coroutine.resume(activeEventRoutine)
+
+	-- 2. Pasek przewijany na dole (Marquee)
 	local sponsorContainer = Instance.new("Frame")
 	sponsorContainer.Name = "SponsorContainer"
 	sponsorContainer.Size = UDim2.new(0.6, 0, 0, 40)
@@ -109,7 +157,7 @@ CoinRainTrigger.OnClientEvent:Connect(function(sponsors)
 	sponsorText.Size = UDim2.new(2, 0, 1, 0)
 	sponsorText.Position = UDim2.new(1.1, 0, 0, 0)
 	sponsorText.BackgroundTransparency = 1
-	sponsorText.Text = "💸 COIN RAIN SPONSORS: " .. sponsors .. " 💸"
+	sponsorText.Text = "💸 COIN RAIN SPONSORS: " .. sponsorListString .. " 💸"
 	sponsorText.TextColor3 = Color3.fromRGB(255, 215, 0)
 	sponsorText.Font = Enum.Font.FredokaOne
 	sponsorText.TextSize = 24
@@ -136,10 +184,121 @@ CoinRainTrigger.OnClientEvent:Connect(function(sponsors)
 	
 	-- Usuwamy efekty wizualne (GUI i muzykę) po czasie trwania
 	task.delay(RAIN_DURATION, function()
-		isEventActive = false -- KONIEC TAŃCA KAMERY
+		
+		-- === NOWE: EKRAN PODSUMOWANIA (TĘCZOWE GREENSTUDS) ===
+		if coinsCollectedThisRain > 0 then
+			-- Używamy ImageLabel zamiast Frame, żeby dodać teksturę
+			local summaryFrame = Instance.new("ImageLabel")
+			summaryFrame.Size = UDim2.fromOffset(400, 150)
+			summaryFrame.Position = UDim2.new(0.5, 0, 0.4, 0) -- Lekko powyżej środka
+			summaryFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+			summaryFrame.BackgroundTransparency = 1 -- Przezroczyste tło frame'a
+			
+			-- Dynamiczne pobieranie ID GreenStuds z ReplicatedStorage
+			local GreenStudsObj = ReplicatedStorage:FindFirstChild("GreenStuds")
+			if GreenStudsObj then
+				summaryFrame.Image = GreenStudsObj:IsA("Decal") and GreenStudsObj.Texture or GreenStudsObj.Image
+			else
+				summaryFrame.Image = "rbxassetid://13008436034" -- Fallback (Paski)
+			end
+			
+			summaryFrame.ImageTransparency = 1 -- Start przezroczysty dla animacji
+			
+			-- Kafelkowanie tekstury (Tiling)
+			summaryFrame.ScaleType = Enum.ScaleType.Tile
+			summaryFrame.TileSize = UDim2.fromOffset(50, 50) -- Rozmiar klocków
+			
+			summaryFrame.ZIndex = 250
+			summaryFrame.Parent = rainGui
+			
+			Instance.new("UICorner", summaryFrame).CornerRadius = UDim.new(0, 15)
+			local summaryStroke = Instance.new("UIStroke", summaryFrame)
+			summaryStroke.Thickness = 4
+			summaryStroke.Color = Color3.fromRGB(255, 215, 0)
+			summaryStroke.Transparency = 1
+			
+			-- Dzieci (tytuł i monety)
+			local titleLbl = Instance.new("TextLabel")
+			titleLbl.Size = UDim2.new(1, 0, 0, 50)
+			titleLbl.Position = UDim2.new(0, 0, 0, 15)
+			titleLbl.BackgroundTransparency = 1
+			titleLbl.Text = "🎉 COIN RAIN ENDED! 🎉"
+			titleLbl.TextColor3 = Color3.new(1, 1, 1)
+			titleLbl.Font = Enum.Font.LuckiestGuy
+			titleLbl.TextSize = 35
+			titleLbl.TextTransparency = 1
+			titleLbl.ZIndex = 251
+			titleLbl.Parent = summaryFrame
+			local titleStroke = Instance.new("UIStroke", titleLbl)
+			titleStroke.Thickness = 2
+			titleStroke.Transparency = 1
+			
+			local coinsLbl = Instance.new("TextLabel")
+			coinsLbl.Size = UDim2.new(1, 0, 0, 60)
+			coinsLbl.Position = UDim2.new(0, 0, 0, 70)
+			coinsLbl.BackgroundTransparency = 1
+			coinsLbl.Text = "YOU COLLECTED: " .. coinsCollectedThisRain .. " 💰"
+			coinsLbl.TextColor3 = Color3.fromRGB(255, 215, 0)
+			coinsLbl.Font = Enum.Font.FredokaOne
+			coinsLbl.TextSize = 30
+			coinsLbl.TextTransparency = 1
+			coinsLbl.ZIndex = 251
+			coinsLbl.Parent = summaryFrame
+			local coinsStroke = Instance.new("UIStroke", coinsLbl)
+			coinsStroke.Thickness = 2
+			coinsStroke.Transparency = 1
+			
+			-- === NOWE: TĘCZOWA ANIMACJA (RenderStepped) ===
+			local rainbowConnection
+			rainbowConnection = game:GetService("RunService").RenderStepped:Connect(function()
+				if summaryFrame and summaryFrame.Parent then
+					-- tick() % 3 / 3 oznacza pełny cykl koloru (0 -> 1) w 3 sekundy
+					summaryFrame.ImageColor3 = Color3.fromHSV(tick() % 3 / 3, 0.7, 1) -- Set color
+				else
+					if rainbowConnection then rainbowConnection:Disconnect() end
+				end
+			end)
+			
+			-- Sprzątanie połączenia przy niszczeniu obiektu
+			summaryFrame.Destroying:Connect(function()
+				if rainbowConnection then rainbowConnection:Disconnect() end
+			end)
+			-- === KONIEC TĘCZOWEJ ANIMACJI ===
+			
+			-- Animacja wjazdu (teraz animujemy ImageTransparency zamiast BackgroundTransparency)
+			TweenService:Create(summaryFrame, TweenInfo.new(0.5), {ImageTransparency = 0.1}):Play()
+			TweenService:Create(summaryStroke, TweenInfo.new(0.5), {Transparency = 0}):Play()
+			TweenService:Create(titleLbl, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
+			TweenService:Create(titleStroke, TweenInfo.new(0.5), {Transparency = 0}):Play()
+			TweenService:Create(coinsLbl, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
+			TweenService:Create(coinsStroke, TweenInfo.new(0.5), {Transparency = 0}):Play()
+			
+			-- Niszczenie po 4 sekundach
+			task.delay(4, function()
+				if summaryFrame then
+					-- Animacja wyjazdu (ImageTransparency)
+					TweenService:Create(summaryFrame, TweenInfo.new(0.5), {ImageTransparency = 1}):Play()
+					TweenService:Create(summaryStroke, TweenInfo.new(0.5), {Transparency = 1}):Play()
+					TweenService:Create(titleLbl, TweenInfo.new(0.5), {TextTransparency = 1}):Play()
+					TweenService:Create(titleStroke, TweenInfo.new(0.5), {Transparency = 1}):Play()
+					TweenService:Create(coinsLbl, TweenInfo.new(0.5), {TextTransparency = 1}):Play()
+					TweenService:Create(coinsStroke, TweenInfo.new(0.5), {Transparency = 1}):Play()
+					task.delay(0.5, function() summaryFrame:Destroy() end) -- rainbowConnection posprząta się samo
+				end
+			end)
+		end
+		-- === KONIEC EKRANU PODSUMOWANIA ===
+
+		activeRainCount -= 1
+		if activeRainCount <= 0 then
+			isEventActive = false -- KONIEC TAŃCA KAMERY tylko gdy to był ostatni deszcz
+			activeRainCount = 0
+		end
+		
 		if char and char:FindFirstChild("Humanoid") then
 			char.Humanoid.CameraOffset = Vector3.new(0, 0, 0)
 		end
+		if timerLabel then timerLabel:Destroy() end
 		if sponsorContainer then sponsorContainer:Destroy() end
 		if sound then sound:Stop(); sound:Destroy() end
 	end)
@@ -198,7 +357,6 @@ CoinRainTrigger.OnClientEvent:Connect(function(sponsors)
 	
 	-- Przywracamy statystyki po wydarzeniu
 	task.delay(RAIN_DURATION, function()
-		isEventActive = false -- Koniec flaki
 		if charAddedConn then charAddedConn:Disconnect() end
 		
 		-- Przywrócenie balansu jest obsługiwane przez ServerCaseLogic (CharacterAdded)
@@ -262,16 +420,19 @@ local function onCoinTouched(coin)
 			local p = Players:GetPlayerFromCharacter(char)
 			if p == player then
 				debounce = true
+				if isEventActive then
+					coinsCollectedThisRain += 1
+				end
 				-- 1. Sygnał do serwera (ZAKOMENTOWANY - serwer sam to teraz robi)
 				-- CoinCollected:FireServer()
 				
 				-- 2. Efekt lokalny (Dźwięk + Popup)
-				local s = Instance.new("Sound")
-				s.SoundId = COLLECT_SOUND_ID
-				s.Volume = 1
-				s.Parent = SoundService
-				s:Play()
-				game:GetService("Debris"):AddItem(s, 2)
+				if CoinGrabSound then
+					local s = CoinGrabSound:Clone()
+					s.Parent = SoundService
+					s:Play()
+					game:GetService("Debris"):AddItem(s, 2)
+				end
 				
 				local popup = Instance.new("TextLabel")
 				popup.Name = "RewardPopup"
@@ -295,8 +456,14 @@ local function onCoinTouched(coin)
 					if popup then popup:Destroy() end
 				end)
 
-				-- 3. Usunięcie monety
-				coin:Destroy()
+				-- 3. Ukrycie monety (ZMIANA: Nie używamy Destroy() natychmiast, by serwer mógł zarejestrować Touched)
+				coin.Transparency = 1
+				coin.CanCollide = false
+				task.delay(1, function()
+					if coin and coin.Parent then
+						coin:Destroy()
+					end
+				end)
 			end
 		end)
 	end

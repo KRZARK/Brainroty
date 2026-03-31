@@ -25,11 +25,7 @@ local buyHintEvent = brainrotEvents and brainrotEvents:WaitForChild("BuyHintEven
 local brainrotyFolder = workspace:WaitForChild("Brainroty", 10)
 
 -- KONFIGURACJA
-local RarityOrder = {"Common", "Rare", "Epic", "Legendary", "Mythic", "Brainrot God", "Secret", "OG"}
-local RarityPrices = {
-	["Common"] = 50, ["Rare"] = 150, ["Epic"] = 400, ["Legendary"] = 800,
-	["Mythic"] = 1500, ["Brainrot God"] = 5000, ["Secret"] = 10000, ["OG"] = 99999
-}
+local GameConfig = require(ReplicatedStorage:WaitForChild("FolderReplicatedStorage"):WaitForChild("GameConfig"))
 
 local activeHighlight = nil
 local activeBeamRoot = nil
@@ -247,7 +243,8 @@ end
 -- SZUKANIE NAJNIŻSZEJ RANGI
 local function getLowestRarityMissing()
 	if not _G.CollectedBrainrotsTable then return nil, nil end
-	for _, rarityName in ipairs(RarityOrder) do
+	local rarities = {"Common", "Rare", "Epic", "Legendary", "Mythic", "Brainrot God", "Secret", "OG"}
+	for _, rarityName in ipairs(rarities) do
 		local missing = {}
 		for _, model in ipairs(brainrotyFolder:GetChildren()) do
 			if model:IsA("Model") and not _G.CollectedBrainrotsTable[model.Name] then
@@ -320,9 +317,25 @@ RunService.RenderStepped:Connect(function()
 
 	if not activeHighlight then
 		local target, rarity = currentTarget, currentRarity
+		
+		-- NOWE: Automatyczna aktywacja, jeśli podpowiedź jest zapisana w DataStore
+		local hintsFolder = player:FindFirstChild("BoughtHints")
+		if target and hintsFolder and hintsFolder:FindFirstChild(rarity) then
+			local high = Instance.new("Highlight")
+			high.Name = "ActiveFinder"
+			high.Adornee = target
+			high.FillColor = Color3.fromRGB(255, 255, 0)
+			high.OutlineColor = Color3.new(1, 1, 1)
+			high.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+			high.Parent = target
+			activeHighlight = high
+			createWayfinder(target)
+		end
+		
 		if target then
 			buyBtn.Visible = true
-			buyBtn.Text = "REVEAL " .. rarity:upper() .. " (" .. (RarityPrices[rarity] or 100) .. ")"
+			local price = GameConfig.Rarities[rarity] and GameConfig.Rarities[rarity].Price or 100
+			buyBtn.Text = "REVEAL " .. rarity:upper() .. " (" .. price .. ")"
 			if not isStatusOverridden then
 				statusLabel.Text = "STUCK?"
 				-- STYL DLA STUCK (Biały, Duży, Wyżej)

@@ -3,6 +3,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
+local GameConfig = require(ReplicatedStorage:WaitForChild("FolderReplicatedStorage"):WaitForChild("GameConfig"))
+
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local BrainrotEvents = ReplicatedStorage:WaitForChild("BrainrotEvents")
@@ -79,7 +81,7 @@ uiGradient.Color = ColorSequence.new({
 uiGradient.Rotation = 90
 
 -- LOGIKA SPRAWDZANIA POSTĘPU Z UŻYCIEM EVENTÓW (Zamiast niepraktycznej pętli While)
-local TARGET_COUNT = 143
+local TARGET_COUNT = GameConfig.TotalBrainrots
 local isReady = false
 
 local function updateButtonDisplay(collection)
@@ -140,23 +142,22 @@ end)
 
 local debounce = false
 rebirthBtn.MouseButton1Click:Connect(function()
-	if not isReady or debounce then return end
+    if debounce then return end
 	debounce = true
 	
-	-- Natychmiastowe zerowanie UI (Błyskawiczna responsywność)
-	isReady = false
-	rebirthBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-	rebirthBtn.BackgroundTransparency = 0.2
-	stroke.Color = Color3.fromRGB(70, 70, 70)
-	icon.ImageColor3 = Color3.fromRGB(255, 255, 255)
-	icon.Rotation = 0
-	icon.Position = UDim2.fromScale(0.5, 0.45)
-	stroke.Thickness = 4
+	-- ZAWSZE OTWIERAMY PROMPT (Służy teraz jako pasek postępu)
+    if _G.OpenRebirthPrompt then
+        _G.OpenRebirthPrompt()
+    else
+        -- Fallback jeśli skrypt promptu jeszcze się nie załadował
+        local collection = player:FindFirstChild("BrainrotCollection")
+        local count = collection and #collection:GetChildren() or 0
+        if count >= TARGET_COUNT then
+            RebirthEvent:FireServer()
+        end
+    end
 	
-	-- Wywołanie zdarzenia resetującego gracza
-	RebirthEvent:FireServer()
-	
-	task.wait(2) -- Krótki cooldown przed kolejnym cyklem kliknięcia
+	task.wait(0.5)
 	debounce = false
 end)
 

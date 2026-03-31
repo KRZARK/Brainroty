@@ -39,6 +39,7 @@ player.CharacterAdded:Connect(function(newChar)
 end)
 
 local BrainrotEvents = ReplicatedStorage:WaitForChild("BrainrotEvents")
+local GameConfig = require(ReplicatedStorage:WaitForChild("FolderReplicatedStorage"):WaitForChild("GameConfig"))
 local BrainrotCollectedEvent = BrainrotEvents:WaitForChild("BrainrotCollected")
 local TogglePetEvent = BrainrotEvents:WaitForChild("TogglePetEvent")
 local BrainrotStorage = ReplicatedStorage:WaitForChild("BrainrotStorage") 
@@ -678,9 +679,9 @@ local function refreshIndex()
 						task.wait(0.2)
 						refreshIndex()
 					else
-						-- Błąd lub za mały Rebirth (Pełne słowa)
+						-- Błąd (Teraz czyta PRAWIDŁOWY powód z serwera!)
 						equipBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-						equipBtn.Text = "REQUIRES REBIRTH " .. (reqLvl or "?")
+						equipBtn.Text = string.upper(response) -- Używamy prawdziwego powodu
 						task.wait(2)
 						equipBtn.BackgroundColor3 = (getActivePetName() == wzorzec.Name) and Color3.fromRGB(150, 0, 0) or Color3.fromRGB(0, 100, 200)
 						equipBtn.Text = (getActivePetName() == wzorzec.Name) and "UNEQUIP PET" or "EQUIP PET"
@@ -853,6 +854,23 @@ RunService.RenderStepped:Connect(function()
 			end
 		end
 	end
+	-- === KROK 4: PŁYNNE PODĄŻANIE PETÓW (ZOPTYMALIZOWANE) ===
+	local activePetsFolder = Workspace:FindFirstChild("ActivePets")
+	if activePetsFolder then
+		for _, pet in ipairs(activePetsFolder:GetChildren()) do
+			local ownerId = pet:GetAttribute("OwnerUserId")
+			if ownerId then
+				local owner = Players:GetPlayerByUserId(ownerId)
+				if owner and owner.Character and owner.Character:FindFirstChild("HumanoidRootPart") then
+					local hrp = owner.Character.HumanoidRootPart
+					local targetCF = hrp.CFrame * CFrame.new(2.5, -1.8, 7.0)
+					
+					-- Lerp na kliencie
+					pet:PivotTo(pet:GetPivot():Lerp(targetCF, 0.15))
+				end
+			end
+		end
+	end
 end)
 
 -- === DODANE NASŁUCHIWANIE NA RESET (REBIRTH) ===
@@ -982,40 +1000,13 @@ robuxLabel.Font = Enum.Font.SourceSansBold
 robuxLabel.TextSize = 20
 robuxLabel.ZIndex = 5
 
--- 3. Podepnij nasłuchiwanie na sygnały z serwera:
 local PoolUpdated = BrainrotEvents:WaitForChild("PoolUpdated")
-local CoinRainTrigger = BrainrotEvents:WaitForChild("CoinRainTrigger")
-local activeEventRoutine = nil
 
-PoolUpdated.OnClientEvent:Connect(function(currentPool)
-    -- Ustaw na 1000 lub tyle, ile jest w ServerCaseLogic! (Na testy było 50)
-    local maxPool = 1000 
+PoolUpdated.OnClientEvent:Connect(function(currentPool, queuedCount)
+    local maxPool = GameConfig.CoinRainTriggerAmount or 1000 
     local percentage = math.clamp(currentPool / maxPool, 0, 1)
     
+    -- ZAWSZE AKTUALIZUJEMY (Zgodnie z życzeniem: "ma się pasek aktualizować ciągle")
     robuxLabel.Text = "COIN RAIN PROGRESS: " .. currentPool .. " / " .. maxPool .. " R$"
     TweenService:Create(robuxFill, TweenInfo.new(0.3), {Size = UDim2.fromScale(percentage, 1)}):Play()
-end)
-
-CoinRainTrigger.OnClientEvent:Connect(function()
-    if activeEventRoutine then coroutine.close(activeEventRoutine) end
-    
-    robuxFill.Size = UDim2.fromScale(1, 1)
-    robuxFill.BackgroundColor3 = Color3.fromRGB(0, 255, 0) -- Zielony w trakcie
-    robuxStroke.Color = Color3.fromRGB(0, 255, 0)
-
-    activeEventRoutine = coroutine.create(function()
-        local timeLeft = 115 -- RAIN_DURATION z CoinRainVisuals.local.luau
-        while timeLeft > 0 do
-            robuxLabel.Text = "💸 COIN RAIN ACTIVE! " .. timeLeft .. "s LEFT 💸"
-            task.wait(1)
-            timeLeft -= 1
-        end
-        
-        -- Reset po evencie
-        robuxFill.BackgroundColor3 = Color3.fromRGB(255, 180, 0)
-        robuxStroke.Color = Color3.fromRGB(255, 215, 0)
-        robuxLabel.Text = "COIN RAIN PROGRESS: 0 / 1000 R$"
-        robuxFill.Size = UDim2.fromScale(0, 1)
-    end)
-    coroutine.resume(activeEventRoutine)
 end)

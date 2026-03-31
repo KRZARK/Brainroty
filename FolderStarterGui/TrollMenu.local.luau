@@ -2,6 +2,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local MarketplaceService = game:GetService("MarketplaceService")
 local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
@@ -9,13 +10,8 @@ local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local BrainrotEvents = ReplicatedStorage:WaitForChild("BrainrotEvents")
 local TrollSpectateTarget = BrainrotEvents:WaitForChild("TrollSpectateTarget")
 
--- Troll Product IDs (Replace with actual ones if known, using placeholder IDs for now)
-local TROLL_PRODUCTS = {
-    Bomb = 100000001,
-    Lava = 100000002,
-    Tornado = 100000003,
-    Fart = 100000004
-}
+local GameConfig = require(ReplicatedStorage:WaitForChild("FolderReplicatedStorage"):WaitForChild("GameConfig"))
+local BrainrotUtils = require(ReplicatedStorage:WaitForChild("FolderReplicatedStorage"):WaitForChild("BrainrotUtils"))
 
 -- Create UI
 local ScreenGui = Instance.new("ScreenGui")
@@ -23,108 +19,291 @@ ScreenGui.Name = "TrollMenu"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = PlayerGui
 
+-- Toggle Button
+local DevilEmoji = ReplicatedStorage:WaitForChild("DevilEmoji", 5)
+local ToggleBtn = Instance.new("ImageButton")
+ToggleBtn.Name = "ToggleTrollMenu"
+ToggleBtn.Size = UDim2.fromOffset(65, 65)
+ToggleBtn.Position = UDim2.new(1, -15, 0.85, 0) -- Dużo niżej w prawym dolnym rogu
+ToggleBtn.AnchorPoint = Vector2.new(1, 0.5)
+ToggleBtn.BackgroundTransparency = 1
+ToggleBtn.Image = DevilEmoji and (DevilEmoji:IsA("Decal") and DevilEmoji.Texture or DevilEmoji.Image) or "rbxassetid://164479326"
+ToggleBtn.ZIndex = 50
+ToggleBtn.Parent = ScreenGui
+
+local btnLabel = Instance.new("TextLabel")
+btnLabel.Size = UDim2.new(1.5, 0, 0, 20)
+btnLabel.Position = UDim2.new(-0.25, 0, 1, -5)
+btnLabel.BackgroundTransparency = 1
+btnLabel.Text = "TROLL"
+btnLabel.TextColor3 = Color3.fromRGB(220, 20, 20)
+btnLabel.Font = Enum.Font.LuckiestGuy
+btnLabel.TextSize = 22
+btnLabel.ZIndex = 51
+btnLabel.Parent = ToggleBtn
+local btnStroke = Instance.new("UIStroke", btnLabel)
+btnStroke.Thickness = 2
+btnStroke.Color = Color3.new(0, 0, 0)
+
+-- Panel Główny
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 200, 0, 300)
-MainFrame.Position = UDim2.new(1, -220, 0.5, -150)
+MainFrame.Size = UDim2.new(0, 400, 0, 600)
+
+-- Prawy dolny róg (otwarte) i zjazd poza prawą dolną krawędź (zamknięte)
+local openPos = UDim2.new(1, -420, 1, -620)
+local closedPos = UDim2.new(1, 20, 1, -620)
+
+MainFrame.Position = closedPos
+MainFrame.Visible = false
 MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MainFrame.BorderSizePixel = 0
 MainFrame.Parent = ScreenGui
 
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 8)
-UICorner.Parent = MainFrame
+local UICornerMain = Instance.new("UICorner")
+UICornerMain.CornerRadius = UDim.new(0, 15)
+UICornerMain.Parent = MainFrame
 
-local Title = Instance.new("TextLabel")
-Title.Name = "Title"
-Title.Size = UDim2.new(1, 0, 0, 40)
-Title.BackgroundTransparency = 1
-Title.Text = "Troll Menu"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 20
-Title.Parent = MainFrame
+-- Tytuł Menu
+local TitleFrame = Instance.new("TextLabel")
+TitleFrame.Name = "TitleFrame"
+TitleFrame.Size = UDim2.new(1, -60, 0, 50)
+TitleFrame.Position = UDim2.new(0, 20, 0, 10)
+TitleFrame.BackgroundTransparency = 1
+TitleFrame.Font = Enum.Font.LuckiestGuy
+TitleFrame.Text = "TROLL MENU"
+TitleFrame.TextColor3 = Color3.fromRGB(200, 40, 40)
+TitleFrame.TextSize = 45
+TitleFrame.Parent = MainFrame
 
--- Spectate functionality
+-- Przycisk Zamknięcia X
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Name = "CloseBtn"
+CloseBtn.Size = UDim2.new(0, 40, 0, 40)
+CloseBtn.Position = UDim2.new(1, -50, 0, 15)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.TextSize = 24
+CloseBtn.Parent = MainFrame
+Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 8)
+
+-- Kontener do podglądania (Ze strzałkami)
+local SpectateContainer = Instance.new("Frame")
+SpectateContainer.Name = "SpectateContainer"
+SpectateContainer.Size = UDim2.new(1, -40, 0, 70)
+SpectateContainer.Position = UDim2.new(0, 20, 0, 80)
+SpectateContainer.BackgroundTransparency = 1
+SpectateContainer.Parent = MainFrame
+
+local PrevBtn = Instance.new("TextButton")
+PrevBtn.Name = "PrevBtn"
+PrevBtn.Size = UDim2.new(0, 60, 1, 0)
+PrevBtn.Position = UDim2.new(0, 0, 0, 0)
+PrevBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+PrevBtn.Text = "<"
+PrevBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+PrevBtn.Font = Enum.Font.GothamBold
+PrevBtn.TextSize = 35
+PrevBtn.Parent = SpectateContainer
+Instance.new("UICorner", PrevBtn).CornerRadius = UDim.new(0, 8)
+
+local NextBtn = Instance.new("TextButton")
+NextBtn.Name = "NextBtn"
+NextBtn.Size = UDim2.new(0, 60, 1, 0)
+NextBtn.Position = UDim2.new(1, -60, 0, 0)
+NextBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+NextBtn.Text = ">"
+NextBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+NextBtn.Font = Enum.Font.GothamBold
+NextBtn.TextSize = 35
+NextBtn.Parent = SpectateContainer
+Instance.new("UICorner", NextBtn).CornerRadius = UDim.new(0, 8)
+
+local SpectateLabel = Instance.new("TextLabel")
+SpectateLabel.Name = "SpectateLabel"
+SpectateLabel.Size = UDim2.new(1, -140, 1, 0)
+SpectateLabel.Position = UDim2.new(0, 70, 0, 0)
+SpectateLabel.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+SpectateLabel.Text = "Spectate: None"
+SpectateLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpectateLabel.Font = Enum.Font.Gotham
+SpectateLabel.TextSize = 20
+SpectateLabel.TextWrapped = true
+SpectateLabel.Parent = SpectateContainer
+Instance.new("UICorner", SpectateLabel).CornerRadius = UDim.new(0, 8)
+
 local spectateIndex = 0
 local spectateTarget = nil
 
-local SpectateButton = Instance.new("TextButton")
-SpectateButton.Name = "SpectateButton"
-SpectateButton.Size = UDim2.new(1, -20, 0, 40)
-SpectateButton.Position = UDim2.new(0, 10, 0, 50)
-SpectateButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-SpectateButton.Text = "Spectate: None"
-SpectateButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpectateButton.Font = Enum.Font.Gotham
-SpectateButton.TextSize = 16
-SpectateButton.Parent = MainFrame
+local function stopSpectating()
+    Workspace.CurrentCamera.CameraSubject = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+    SpectateLabel.Text = "Spectate: None"
+    spectateTarget = nil
+    
+    -- Zabezpieczające odblokowanie przycisków trolli
+    for _, child in ipairs(MainFrame:GetChildren()) do
+        if child:IsA("TextButton") then
+            child.Active = true
+            child.AutoButtonColor = true
+            child.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+            child.TextColor3 = Color3.fromRGB(255, 255, 255)
+        end
+    end
+end
 
-local UICornerSpectate = Instance.new("UICorner")
-UICornerSpectate.CornerRadius = UDim.new(0, 6)
-UICornerSpectate.Parent = SpectateButton
-
-SpectateButton.MouseButton1Click:Connect(function()
+local function updateSpectateTarget(dir)
     local players = Players:GetPlayers()
-    -- filter out local player if we want, but letting them spectate themselves is fine
-    -- Actually let's keep all players
-
-    spectateIndex = spectateIndex + 1
-    if spectateIndex > #players then
-        spectateIndex = 1
+    local others = {}
+    for _, p in ipairs(players) do
+        -- [TUTAJ ZMIENIĆ PRZED WYDANIEM GRY]
+        -- Aby wyłączyć podglądanie samego siebie, usuń komentarze z poniższych dwóch linii:
+        -- if p ~= LocalPlayer then
+            table.insert(others, p)
+        -- end
+    end
+    
+    if #others == 0 then
+        SpectateLabel.Text = "No one else to spectate"
+        stopSpectating()
+        return
     end
 
-    local target = players[spectateIndex]
+    spectateIndex = spectateIndex + dir
+    if spectateIndex > #others then spectateIndex = 1 end
+    if spectateIndex < 1 then spectateIndex = #others end
+
+    local target = others[spectateIndex]
 
     if target and target.Character and target.Character:FindFirstChild("Humanoid") then
         Workspace.CurrentCamera.CameraSubject = target.Character.Humanoid
-        SpectateButton.Text = "Spectating: " .. target.Name
+        
+        local isImmune = BrainrotUtils.hasCompletedRarity(target, "Secret")
+        if isImmune then
+            SpectateLabel.Text = "Spectating: " .. target.Name .. "\n(OG SEARCHER - IMMUNE)"
+            -- Zablokuj przyciski (trolle to dzieci MainFrame)
+            for _, child in ipairs(MainFrame:GetChildren()) do
+                if child:IsA("TextButton") then
+                    child.Active = false
+                    child.AutoButtonColor = false
+                    child.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+                    child.TextColor3 = Color3.fromRGB(100, 100, 100)
+                end
+            end
+        else
+            SpectateLabel.Text = "Spectating: " .. target.Name
+            -- Odblokuj przyciski
+            for _, child in ipairs(MainFrame:GetChildren()) do
+                if child:IsA("TextButton") then
+                    child.Active = true
+                    child.AutoButtonColor = true
+                    child.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+                    child.TextColor3 = Color3.fromRGB(255, 255, 255)
+                end
+            end
+        end
+        
         spectateTarget = target
-        -- Send target to server for future troll actions
         TrollSpectateTarget:FireServer(target)
     else
-        Workspace.CurrentCamera.CameraSubject = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
-        SpectateButton.Text = "Spectate: None"
-        spectateTarget = nil
+        stopSpectating()
     end
-end)
+end
+
+PrevBtn.MouseButton1Click:Connect(function() updateSpectateTarget(-1) end)
+NextBtn.MouseButton1Click:Connect(function() updateSpectateTarget(1) end)
+
+-- Logika animacji i auto-włączania podglądania
+local menuOpen = false
+
+local function toggleMenu()
+    menuOpen = not menuOpen
+    if menuOpen then
+        MainFrame.Visible = true
+        local tweenInfo = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        TweenService:Create(MainFrame, tweenInfo, {Position = openPos}):Play()
+        TweenService:Create(ToggleBtn, TweenInfo.new(0.2), {Rotation = 15}):Play()
+        
+        -- Auto-start spektowania przy otwarciu (wymuś +1)
+        if not spectateTarget then
+            updateSpectateTarget(1)
+        end
+    else
+        -- Zatrzymujemy spektowanie przy ukryciu menu
+        stopSpectating()
+        
+        local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+        local tween = TweenService:Create(MainFrame, tweenInfo, {Position = closedPos})
+        tween:Play()
+        tween.Completed:Connect(function()
+            if not menuOpen then
+                MainFrame.Visible = false
+            end
+        end)
+        TweenService:Create(ToggleBtn, TweenInfo.new(0.2), {Rotation = 0}):Play()
+    end
+end
+
+ToggleBtn.MouseButton1Click:Connect(toggleMenu)
+CloseBtn.MouseButton1Click:Connect(toggleMenu)
 
 local function createTrollButton(name, yPos, productId)
     local Button = Instance.new("TextButton")
     Button.Name = name .. "Button"
-    Button.Size = UDim2.new(1, -20, 0, 40)
-    Button.Position = UDim2.new(0, 10, 0, yPos)
+    Button.Size = UDim2.new(1, -60, 0, 70)
+    Button.Position = UDim2.new(0, 30, 0, yPos)
     Button.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
     Button.Text = name .. " Troll"
     Button.TextColor3 = Color3.fromRGB(255, 255, 255)
     Button.Font = Enum.Font.Gotham
-    Button.TextSize = 16
+    Button.TextSize = 25
     Button.Parent = MainFrame
 
     local UICornerBtn = Instance.new("UICorner")
-    UICornerBtn.CornerRadius = UDim.new(0, 6)
+    UICornerBtn.CornerRadius = UDim.new(0, 10)
     UICornerBtn.Parent = Button
 
     Button.MouseButton1Click:Connect(function()
         if spectateTarget then
+            -- Pre-flight check before prompting purchase! (Wysyłamy też nazwę trolla!)
+            local CheckValidityRF = BrainrotEvents:FindFirstChild("CheckTrollValidity")
+            if CheckValidityRF then
+                local isValid, errMessage = CheckValidityRF:InvokeServer(spectateTarget, name)
+                if not isValid then
+                    SpectateLabel.Text = "BLOCKED: " .. errMessage
+                    task.delay(2, function()
+                        if spectateTarget then
+                            local isImmune = BrainrotUtils.hasCompletedRarity(spectateTarget, "Secret")
+                            SpectateLabel.Text = "Spectating: " .. spectateTarget.Name .. (isImmune and "\n(OG SEARCHER - IMMUNE)" or "")
+                        else
+                            SpectateLabel.Text = "Spectate: None"
+                        end
+                    end)
+                    return
+                end
+            end
+            
             MarketplaceService:PromptProductPurchase(LocalPlayer, productId)
         else
-            SpectateButton.Text = "Select Target First!"
+            SpectateLabel.Text = "Select Target First!"
             task.delay(1.5, function()
                 if spectateTarget then
-                    SpectateButton.Text = "Spectating: " .. spectateTarget.Name
+                    local isImmune = BrainrotUtils.hasCompletedRarity(spectateTarget, "Secret")
+                    SpectateLabel.Text = "Spectating: " .. spectateTarget.Name .. (isImmune and "\n(OG SEARCHER - IMMUNE)" or "")
                 else
-                    SpectateButton.Text = "Spectate: None"
+                    SpectateLabel.Text = "Spectate: None"
                 end
             end)
         end
     end)
 end
 
-createTrollButton("Bomb", 100, TROLL_PRODUCTS.Bomb)
-createTrollButton("Lava", 150, TROLL_PRODUCTS.Lava)
-createTrollButton("Tornado", 200, TROLL_PRODUCTS.Tornado)
-createTrollButton("Fart", 250, TROLL_PRODUCTS.Fart)
+local yOffset = 180
+for name, id in pairs(GameConfig.TrollProducts) do
+    createTrollButton(name, yOffset, id)
+    yOffset = yOffset + 90
+end
 
 -- Clean up camera when character dies/respawns
 LocalPlayer.CharacterAdded:Connect(function(char)

@@ -3,7 +3,7 @@ local InsertService = game:GetService("InsertService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
-local MAX_COLLECT_DISTANCE = 15
+local GameConfig = require(ReplicatedStorage:WaitForChild("FolderReplicatedStorage"):WaitForChild("GameConfig"))
 
 local BrainrotStorage = ReplicatedStorage:WaitForChild("BrainrotStorage")
 local BrainrotEvents = ReplicatedStorage:WaitForChild("BrainrotEvents")
@@ -17,98 +17,102 @@ if not PhysicalCoinsFolder then
 	PhysicalCoinsFolder.Name = "PhysicalCoins"
 end
 
- 
- -- NOWE: System Coin Rain (Krok 1)
- local CoinRainTrigger = BrainrotEvents:FindFirstChild("CoinRainTrigger") or Instance.new("RemoteEvent", BrainrotEvents)
- CoinRainTrigger.Name = "CoinRainTrigger"
- 
- local CoinCollected = BrainrotEvents:FindFirstChild("CoinCollected") or Instance.new("RemoteEvent", BrainrotEvents)
- CoinCollected.Name = "CoinCollected"
- 
- local PoolUpdated = BrainrotEvents:FindFirstChild("PoolUpdated") or Instance.new("RemoteEvent", BrainrotEvents)
- PoolUpdated.Name = "PoolUpdated"
- 
- local RebirthEvent = BrainrotEvents:FindFirstChild("RebirthEvent") or Instance.new("RemoteEvent", BrainrotEvents)
- RebirthEvent.Name = "RebirthEvent"
- 
- local RebirthEffect = BrainrotEvents:FindFirstChild("RebirthEffect") or Instance.new("RemoteEvent", BrainrotEvents)
- RebirthEffect.Name = "RebirthEffect"
- 
- local RebirthPositions = {} -- [UserId] = CFrame
- 
- local GlobalRobuxPool = 0
- local Sponsors = {}
- local isEventActive = false -- Blokada na nakładanie się eventów
- local EVENT_DURATION = 115 
- 
- -- === KONFIGURACJA MONET NA MAPIE ===
- local PHYSICAL_COIN_MESH = "rbxassetid://4937522724"
- local SPAWN_RANGE = 600 -- Zasięg 2x większy (600 studs)
- local COIN_REWARD = 1 -- Zmiana z 10 na 1
- 
- local function spawnPhysicalCoins(count)
- 	local folder = PhysicalCoinsFolder
- 	folder:ClearAllChildren()
- 	
- 	-- NOWE: Priorytet dla modelu w ReplicatedStorage
- 	local coinTemplate = ReplicatedStorage:FindFirstChild("EventCoin")
- 	
- 	if not coinTemplate then
- 		-- Fallback: Próba pobrania z neta
- 		local success, model = pcall(function()
- 			return InsertService:LoadAsset(4937522724)
- 		end)
- 		
- 		if success and model then
- 			coinTemplate = model:FindFirstChildWhichIsA("BasePart") or model:FindFirstChildWhichIsA("MeshPart") or model:FindFirstChildWhichIsA("Model")
- 			if coinTemplate then 
- 				coinTemplate = coinTemplate:Clone()
- 				if coinTemplate:IsA("Model") then
- 					coinTemplate:SetPrimaryPartCFrame(CFrame.new(0,0,0))
- 				end
- 			end
- 			model:Destroy()
- 		end
- 	end
- 	
- 	print("!!! SPAWNING " .. count .. " PHYSICAL COINS !!! (Source: " .. (coinTemplate and coinTemplate.Name or "FALLBACK") .. ")")
- 	
- 	for i = 1, count do
- 		local coin
- 		if coinTemplate then
- 			coin = coinTemplate:Clone()
- 			if coin:IsA("Model") then
- 				local root = coin.PrimaryPart or coin:FindFirstChildWhichIsA("BasePart")
- 				if not root then coin = Instance.new("Part") -- Fallback dla pustego modelu
- 				else coin = root end
- 			end
- 		else
- 			-- CAŁKOWITY FALLBACK: Złota kulka
- 			coin = Instance.new("Part")
- 			coin.Shape = Enum.PartType.Ball
- 			coin.Material = Enum.Material.Neon
- 			coin.Color = Color3.fromRGB(255, 215, 0)
- 		end
- 		
- 		coin.Name = "CollectibleCoin"
- 		coin.Size = Vector3.new(3, 3, 3)
- 		coin.Position = Vector3.new(
- 			math.random(-SPAWN_RANGE, SPAWN_RANGE),
- 			100,
- 			math.random(-SPAWN_RANGE, SPAWN_RANGE)
- 		)
- 		coin.CanCollide = false
- 		coin.Anchored = true
- 		coin.Parent = folder
- 		
- 		-- Raycast na ziemię
- 		local ray = Ray.new(coin.Position, Vector3.new(0, -200, 0))
- 		local hit, pos = Workspace:FindPartOnRay(ray, coin)
- 		if hit then
- 			coin.Position = pos + Vector3.new(0, 2, 0)
- 		end
- 
- 
+-- NOWE: System Coin Rain (Krok 1)
+local CoinRainTrigger = BrainrotEvents:FindFirstChild("CoinRainTrigger") or Instance.new("RemoteEvent", BrainrotEvents)
+CoinRainTrigger.Name = "CoinRainTrigger"
+
+local CoinCollected = BrainrotEvents:FindFirstChild("CoinCollected") or Instance.new("RemoteEvent", BrainrotEvents)
+CoinCollected.Name = "CoinCollected"
+
+local PoolUpdated = BrainrotEvents:FindFirstChild("PoolUpdated") or Instance.new("RemoteEvent", BrainrotEvents)
+PoolUpdated.Name = "PoolUpdated"
+
+local RebirthEvent = BrainrotEvents:FindFirstChild("RebirthEvent") or Instance.new("RemoteEvent", BrainrotEvents)
+RebirthEvent.Name = "RebirthEvent"
+
+local RebirthEffect = BrainrotEvents:FindFirstChild("RebirthEffect") or Instance.new("RemoteEvent", BrainrotEvents)
+RebirthEffect.Name = "RebirthEffect"
+
+local RebirthPositions = {} -- [UserId] = CFrame
+
+local GlobalRobuxPool = 0
+local Sponsors = {} -- Zachowujemy dla kompatybilności paska (opcjonalnie)
+local isEventActive = false -- STARY FLAG (Zostawiam dla kompatybilności paska, ale użyjemy IsRainActive do kolejki)
+
+-- NOWE: Kolejkowanie
+local QueuedRains = 0
+local IsRainActive = false
+local CurrentSponsors = {} -- Tabela nicków dla obecnej puli
+local SponsorQueue = {} -- Kolejka tabel sponsorów
+
+
+-- === KONFIGURACJA MONET NA MAPIE ===
+local PHYSICAL_COIN_MESH = "rbxassetid://4937522724"
+local SPAWN_RANGE = 600 -- Zasięg 2x większy (600 studs)
+local COIN_REWARD = 1 -- Zmiana z 10 na 1
+
+local function spawnPhysicalCoins(count)
+	local folder = PhysicalCoinsFolder
+	folder:ClearAllChildren()
+
+	-- NOWE: Priorytet dla modelu w ReplicatedStorage
+	local coinTemplate = ReplicatedStorage:FindFirstChild("EventCoin")
+
+	if not coinTemplate then
+		-- Fallback: Próba pobrania z neta
+		local success, model = pcall(function()
+			return InsertService:LoadAsset(4937522724)
+		end)
+
+		if success and model then
+			coinTemplate = model:FindFirstChildWhichIsA("BasePart") or model:FindFirstChildWhichIsA("MeshPart") or model:FindFirstChildWhichIsA("Model")
+			if coinTemplate then 
+				coinTemplate = coinTemplate:Clone()
+				if coinTemplate:IsA("Model") then
+					coinTemplate:SetPrimaryPartCFrame(CFrame.new(0,0,0))
+				end
+			end
+			model:Destroy()
+		end
+	end
+
+	print("!!! SPAWNING " .. count .. " PHYSICAL COINS !!! (Source: " .. (coinTemplate and coinTemplate.Name or "FALLBACK") .. ")")
+
+	for i = 1, count do
+		local coin
+		if coinTemplate then
+			coin = coinTemplate:Clone()
+			if coin:IsA("Model") then
+				local root = coin.PrimaryPart or coin:FindFirstChildWhichIsA("BasePart")
+				if not root then coin = Instance.new("Part") -- Fallback dla pustego modelu
+				else coin = root end
+			end
+		else
+			-- CAŁKOWITY FALLBACK: Złota kulka
+			coin = Instance.new("Part")
+			coin.Shape = Enum.PartType.Ball
+			coin.Material = Enum.Material.Neon
+			coin.Color = Color3.fromRGB(255, 215, 0)
+		end
+
+		coin.Name = "CollectibleCoin"
+		coin.Size = Vector3.new(3, 3, 3)
+		coin.Position = Vector3.new(
+			math.random(-SPAWN_RANGE, SPAWN_RANGE),
+			100,
+			math.random(-SPAWN_RANGE, SPAWN_RANGE)
+		)
+		coin.CanCollide = false
+		coin.Anchored = true
+		coin.Parent = folder
+
+		-- Raycast na ziemię
+		local ray = Ray.new(coin.Position, Vector3.new(0, -200, 0))
+		local hit, pos = Workspace:FindPartOnRay(ray, coin)
+		if hit then
+			coin.Position = pos + Vector3.new(0, 2, 0)
+		end
+
 		local debounce = false
 		coin.Touched:Connect(function(hit)
 			if debounce then return end
@@ -118,30 +122,53 @@ end
 				debounce = true
 				local stats = p:FindFirstChild("leaderstats")
 				if stats and stats:FindFirstChild("Coins") then
-					stats.Coins.Value += 1 -- Dodaje monetę bezpiecznie na serwerze
+					local multi = p:GetAttribute("CoinMultiplier") or 1
+					stats.Coins.Value += (1 * multi)
 				end
 				coin:Destroy()
 			end
 		end)
- 	end
- 	
- 	-- Usuwamy niezebrane monety po 2 minutach
- 	task.delay(120, function()
- 		if folder then folder:ClearAllChildren() end
- 	end)
- end
+	end
 
--- Twoje ID produktów (Rarity)
-local CaseSettings = {
-	[3558948736] = "Common", 
-	[3558948814] = "Rare", 
-	[3558949097] = "Epic",
-	[3558949533] = "Legendary", 
-	[3558950075] = "Mythic", 
-	[3558950464] = "Brainrot God",
-	[3558950670] = "Secret", 
-	[3558951376] = "OG"
-}
+	-- Usuwamy niezebrane monety po 2 minutach (Fallback)
+	task.delay(120, function()
+		if folder then folder:ClearAllChildren() end
+	end)
+end
+
+-- NOWE: Funkcja zarządzająca kolejką
+local function checkRainQueue()
+	if IsRainActive then return end
+	
+	if QueuedRains > 0 then
+		IsRainActive = true
+		task.spawn(function()
+			while QueuedRains > 0 do
+				QueuedRains -= 1
+				PoolUpdated:FireAllClients(GlobalRobuxPool, QueuedRains) -- Synchronizacja kolejki
+				
+				local activeSponsors = table.remove(SponsorQueue, 1) or {"ANONYMOUS"}
+				
+				print("!!! STARTING QUEUED COIN RAIN !!! Remaining: " .. QueuedRains)
+				CoinRainTrigger:FireAllClients(activeSponsors)
+				spawnPhysicalCoins(400)
+				
+				task.wait(GameConfig.CoinRainDuration)
+				
+				-- Sprzątanie monet
+				if PhysicalCoinsFolder then
+					PhysicalCoinsFolder:ClearAllChildren()
+				end
+				
+				-- Bufor między deszczami
+				task.wait(5)
+			end
+			IsRainActive = false
+		end)
+	end
+end
+
+
 
 -- Funkcja pomocnicza do tworzenia/pobierania folderu kolekcji
 local function getCollection(player)
@@ -172,12 +199,89 @@ local function getMissingItems(player, targetRarity)
 	return missing
 end
 
--- 1. OBSŁUGA ZAKUPÓW W SKLEPIE
+-- 1. OBSŁUGA ZAKUPÓW W SKLEPIE (Centralna Kasa Fiskalna)
 MarketplaceService.ProcessReceipt = function(receiptInfo)
 	local player = game.Players:GetPlayerByUserId(receiptInfo.PlayerId)
 	if not player then return Enum.ProductPurchaseDecision.NotProcessedYet end
 
-	local requestedRarity = CaseSettings[receiptInfo.ProductId]
+	-- SPRAWDZENIE A: CZY TO JEST TROLL?
+	local trollType = nil
+	for name, id in pairs(GameConfig.TrollProducts) do
+		if id == receiptInfo.ProductId then
+			trollType = name
+			break
+		end
+	end
+
+	if trollType then
+		local TrollExecuteEvent = BrainrotEvents:FindFirstChild("TrollExecuteLogic")
+		if TrollExecuteEvent then
+			local success = TrollExecuteEvent:Invoke(player, trollType)
+			if success then
+				-- DODAJEMY DO PULI COINRAIN (dla wszystkich trolli, w tym Fart)
+				local ok, pInfo = pcall(function()
+					return MarketplaceService:GetProductInfo(receiptInfo.ProductId, Enum.InfoType.Product)
+				end)
+				
+				if ok and pInfo then
+					local price = pInfo.PriceInRobux or 0
+					GlobalRobuxPool += price
+					-- DODAWANIE SPONSORA (Bez duplikacji)
+					if not table.find(CurrentSponsors, player.Name) then
+						table.insert(CurrentSponsors, player.Name)
+					end
+					
+					Sponsors[player.Name] = true -- Dla starszych systemów
+					print("[COINRAIN DEBUG] " .. player.Name .. " kupił trolla " .. (trollType or "???") .. " za " .. price .. " R$. Nowa pula: " .. GlobalRobuxPool)
+
+					if GlobalRobuxPool >= GameConfig.CoinRainTriggerAmount then
+						while GlobalRobuxPool >= GameConfig.CoinRainTriggerAmount do
+							GlobalRobuxPool -= GameConfig.CoinRainTriggerAmount
+							QueuedRains += 1
+							table.insert(SponsorQueue, table.clone(CurrentSponsors))
+						end
+						
+						CurrentSponsors = {} -- Reset dla następnej puli
+						Sponsors = {} -- Reset starych sponsorów
+						PoolUpdated:FireAllClients(GlobalRobuxPool, QueuedRains)
+						checkRainQueue()
+					else
+						PoolUpdated:FireAllClients(GlobalRobuxPool, QueuedRains)
+					end
+				else
+					warn("[COINRAIN ERROR] Nie udało się pobrać ceny produktu: " .. tostring(receiptInfo.ProductId))
+					-- Bonus: Jeśli GetProductInfo zawiedzie, spróbujmy chociaż dodać 1 R$ (albo po prostu logować)
+				end
+				return Enum.ProductPurchaseDecision.PurchaseGranted
+			else
+				warn("Nie udalo sie wykonac Trolla (Brak celu lub blad)")
+				return Enum.ProductPurchaseDecision.NotProcessedYet
+			end
+		end
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+
+	-- SPRAWDZENIE C: CZY TO JEST PACZKA MONET?
+	for packName, packData in pairs(GameConfig.CoinPacks) do
+		if packData.ID == receiptInfo.ProductId then
+			local stats = player:FindFirstChild("leaderstats")
+			if stats and stats:FindFirstChild("Coins") then
+				stats.Coins.Value += packData.Amount
+				print(player.Name .. " kupił paczkę " .. packName .. " otrzymując " .. packData.Amount .. " monet!")
+				return Enum.ProductPurchaseDecision.PurchaseGranted
+			end
+		end
+	end
+
+	-- SPRAWDZENIE B: CZY TO JEST SKRZYNKA BRAINROT?
+	local requestedRarity = nil
+	for rarity, id in pairs(GameConfig.CaseProducts) do
+		if id == receiptInfo.ProductId then
+			requestedRarity = rarity
+			break
+		end
+	end
+
 	if not requestedRarity then return Enum.ProductPurchaseDecision.NotProcessedYet end
 
 	local missingItems = getMissingItems(player, requestedRarity)
@@ -187,45 +291,36 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
 		return Enum.ProductPurchaseDecision.PurchaseGranted 
 	end
 
-	-- === DODAWANIE DO GLOBALNEJ PULI ROBUX ===
+	-- === DODAWANIE DO GLOBALNEJ PULI ROBUX (Działa tylko dla skrzynek) ===
 	local success, pInfo = pcall(function()
 		return MarketplaceService:GetProductInfo(receiptInfo.ProductId, Enum.InfoType.Product)
 	end)
-	
+
 	if success and pInfo then
 		local robuxPrice = pInfo.PriceInRobux or 0
 		GlobalRobuxPool += robuxPrice
+		-- DODAWANIE SPONSORA (Bez duplikacji)
+		if not table.find(CurrentSponsors, player.Name) then
+			table.insert(CurrentSponsors, player.Name)
+		end
+		
 		Sponsors[player.Name] = true
 		print("Aktualna pula Robux: " .. GlobalRobuxPool .. " (Ostatni zakup: " .. player.Name .. " za " .. robuxPrice .. " R$)")
 
-		if GlobalRobuxPool >= 1000 and not isEventActive then
-			isEventActive = true
-			local sponsorNames = {}
-			for name, _ in pairs(Sponsors) do table.insert(sponsorNames, name) end
-			local sponsorList = table.concat(sponsorNames, ", ")
-			
-			print("!!! TRIGERING COIN RAIN !!! Sponsorzy: " .. sponsorList)
-			CoinRainTrigger:FireAllClients(sponsorList)
-			
-			-- NOWE: Spawn fizycznych monet na mapie (DOCELOWO 400)
-			spawnPhysicalCoins(400)
-			
-			-- Reset puli i sponsorów (Pieniądze "zużyte" na ten event)
-			GlobalRobuxPool = 0
+		if GlobalRobuxPool >= GameConfig.CoinRainTriggerAmount then
+			while GlobalRobuxPool >= GameConfig.CoinRainTriggerAmount do
+				GlobalRobuxPool -= GameConfig.CoinRainTriggerAmount
+				QueuedRains += 1
+				table.insert(SponsorQueue, table.clone(CurrentSponsors))
+			end
+
+			CurrentSponsors = {}
 			Sponsors = {}
-			
-			-- Synchronizacja (Reset)
-			PoolUpdated:FireAllClients(0)
-			
-			-- Odblokowanie po czasie trwania
-			task.delay(EVENT_DURATION, function()
-				isEventActive = false
-				-- Jeśli w międzyczasie nazbierało się kolejne 1000 R$ (bo np. ktoś kupił droższy item), 
-				-- to pool zostanie obsłużony przy kolejnym zakupie.
-			end)
+			PoolUpdated:FireAllClients(GlobalRobuxPool, QueuedRains)
+			checkRainQueue()
 		else
 			-- Postęp w puli
-			PoolUpdated:FireAllClients(GlobalRobuxPool)
+			PoolUpdated:FireAllClients(GlobalRobuxPool, QueuedRains)
 		end
 	end
 
@@ -237,6 +332,13 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
 		local marker = Instance.new("BoolValue")
 		marker.Name = wonModel.Name
 		marker.Parent = collection
+		
+		-- NOWE: Konsumpcja wskazówki (usunięcie z DataStore/folderu)
+		local hints = player:FindFirstChild("BoughtHints")
+		local rarity = wonModel:GetAttribute("Rarity") or "Common"
+		if hints and hints:FindFirstChild(rarity) then
+			hints[rarity]:Destroy()
+		end
 	end
 
 	-- Efekt otwierania skrzyni
@@ -261,6 +363,9 @@ BrainrotCollectedEvent.OnServerEvent:Connect(function(player, brainrotName)
 	local character = player.Character
 	local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
 	local brainrotModel = BrainrotyFolder:FindFirstChild(brainrotName)
+	
+	-- Pobieramy wzorzec ze storage, aby znać rzadkość
+	local modelTemplate = BrainrotStorage:FindFirstChild(brainrotName)
 
 	if not humanoidRootPart or not brainrotModel then
 		warn("[Sanity Check] Nieprawidłowe żądanie od gracza " .. player.Name .. " dla: " .. tostring(brainrotName))
@@ -269,7 +374,7 @@ BrainrotCollectedEvent.OnServerEvent:Connect(function(player, brainrotName)
 
 	local targetPosition = nil
 	local primaryPart = brainrotModel.PrimaryPart or brainrotModel:FindFirstChild("Hitbox") or brainrotModel:FindFirstChild("RootPart") or brainrotModel:FindFirstChildWhichIsA("BasePart")
-	
+
 	if primaryPart then
 		targetPosition = primaryPart.Position
 	else
@@ -279,8 +384,8 @@ BrainrotCollectedEvent.OnServerEvent:Connect(function(player, brainrotName)
 
 	if targetPosition then
 		local distance = (humanoidRootPart.Position - targetPosition).Magnitude
-		if distance > MAX_COLLECT_DISTANCE then
-			warn("[Anti-Cheat] Gracz " .. player.Name .. " odrzucony. Odległość " .. math.floor(distance) .. " jest większa niż max " .. MAX_COLLECT_DISTANCE)
+		if distance > GameConfig.MaxCollectDistance then
+			warn("[Anti-Cheat] Gracz " .. player.Name .. " odrzucony. Odległość " .. math.floor(distance) .. " jest większa niż max " .. GameConfig.MaxCollectDistance)
 			return
 		end
 	end
@@ -289,33 +394,39 @@ BrainrotCollectedEvent.OnServerEvent:Connect(function(player, brainrotName)
 	local marker = Instance.new("BoolValue")
 	marker.Name = brainrotName
 	marker.Parent = collection
-	
+
+	-- NOWE: Konsumpcja wskazówki przy zebraniu z mapy
+	local hints = player:FindFirstChild("BoughtHints")
+	local rarity = modelTemplate and (modelTemplate:GetAttribute("Rarity") or "Common") or "Common"
+	if hints and hints:FindFirstChild(rarity) then
+		hints[rarity]:Destroy()
+	end
+
 	local safeAttributeName = string.gsub(brainrotName, " ", "_")
 	safeAttributeName = string.gsub(safeAttributeName, "[^%w_]", "")
 	player:SetAttribute("Collected_" .. safeAttributeName, true)
-	-- print("Serwer zapisał zebranie z mapy: " .. brainrotName)
 end)
 
 -- Synchronizacja Robuxów przy wejściu gracza
 game.Players.PlayerAdded:Connect(function(player)
-	PoolUpdated:FireClient(player, GlobalRobuxPool)
+	PoolUpdated:FireClient(player, GlobalRobuxPool, QueuedRains)
 end)
 
 -- OBSŁUGA REBIRTH (Logika Kasowania i Fizyka)
 RebirthEvent.OnServerEvent:Connect(function(player)
 	local collection = player:FindFirstChild("BrainrotCollection")
-	
-	-- Sprawdza, czy liczba elementów w folderze BrainrotCollection gracza wynosi 143.
-	if collection and #collection:GetChildren() >= 143 then
-		
+
+	-- Sprawdza, czy liczba elementów w folderze BrainrotCollection gracza wynosi GameConfig.TotalBrainrots.
+	if collection and #collection:GetChildren() >= GameConfig.TotalBrainrots then
+
 		-- Zapisujemy pozycję gracza
 		if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
 			RebirthPositions[player.UserId] = player.Character.HumanoidRootPart.CFrame
 		end
-		
+
 		-- Wysyłanie efektu do klienta
 		RebirthEffect:FireClient(player)
-		
+
 		-- Dłuższe opóźnienie na animację (1.5 sekundy na trzęsienie i zoom)
 		task.delay(1.5, function()
 			-- Ustawia wartość Coins gracza twardo na 0.
@@ -323,21 +434,21 @@ RebirthEvent.OnServerEvent:Connect(function(player)
 			if stats then
 				local coins = stats:FindFirstChild("Coins")
 				if coins then coins.Value = 0 end
-				
+
 				local rebirths = stats:FindFirstChild("Rebirths")
 				if rebirths then rebirths.Value = rebirths.Value + 1 end
 			end
 
 			-- Reset kolekcji
 			if collection then collection:ClearAllChildren() end
-			
+
 			-- Reset atrybutów
 			for attrName, _ in pairs(player:GetAttributes()) do
 				if string.match(attrName, "^Collected_") then
 					player:SetAttribute(attrName, nil)
 				end
 			end
-			
+
 			-- Odświeżenie postaci (bez zabijania)
 			player:LoadCharacter()
 		end)
@@ -349,17 +460,17 @@ game.Players.PlayerAdded:Connect(function(player)
 	player.CharacterAdded:Connect(function(character)
 		local humanoid = character:WaitForChild("Humanoid")
 		local hrp = character:WaitForChild("HumanoidRootPart")
-		
+
 		-- Teleportacja powrotna jeśli to był Rebirth
 		if RebirthPositions[player.UserId] then
 			hrp.CFrame = RebirthPositions[player.UserId]
 			RebirthPositions[player.UserId] = nil
 		end
-		
+
 		-- Pobieranie Rebirths
 		local stats = player:WaitForChild("leaderstats")
 		local rebirths = stats:WaitForChild("Rebirths")
-		
+
 		-- Obliczanie zredukowanych buffów (Zredukowane o połowę)
 		local multiplier = 1
 		if rebirths.Value == 1 then
@@ -369,12 +480,23 @@ game.Players.PlayerAdded:Connect(function(player)
 		elseif rebirths.Value >= 3 then
 			multiplier = 2 -- Było 3.0
 		end
+
+		local baseSpeed = 16
+		local baseJump = 50
 		
+		if player:GetAttribute("HasVIP") then
+			baseSpeed = 32
+			baseJump = 100
+		else
+			if player:GetAttribute("HasSpeedBoost") then baseSpeed = 32 end
+			if player:GetAttribute("HasJumpBoost") then baseJump = 100 end
+		end
+
 		-- Modifikacja statystyk
-		humanoid.WalkSpeed = math.floor(16 * multiplier)
-		humanoid.JumpPower = math.floor(50 * multiplier)
+		humanoid.WalkSpeed = math.floor(baseSpeed * multiplier)
+		humanoid.JumpPower = math.floor(baseJump * multiplier)
 		humanoid.UseJumpPower = true 
-		
+
 		-- Napis PRESTIŻ nad głową (jeśli gracz ma powyżej 0 Rebirths)
 		if rebirths.Value > 0 then
 			local head = character:WaitForChild("Head", 5)
@@ -385,7 +507,7 @@ game.Players.PlayerAdded:Connect(function(player)
 				gui.StudsOffset = Vector3.new(0, 2.8, 0)
 				gui.Adornee = head
 				gui.AlwaysOnTop = true
-				
+
 				local textLabel = Instance.new("TextLabel")
 				textLabel.Size = UDim2.fromScale(1, 1)
 				textLabel.BackgroundTransparency = 1
@@ -394,7 +516,7 @@ game.Players.PlayerAdded:Connect(function(player)
 				textLabel.Font = Enum.Font.FredokaOne
 				textLabel.TextScaled = true
 				textLabel.Parent = gui
-				
+
 				local gradient = Instance.new("UIGradient")
 				gradient.Color = ColorSequence.new({
 					ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 230, 0)), -- Złoto
@@ -403,50 +525,65 @@ game.Players.PlayerAdded:Connect(function(player)
 				})
 				gradient.Rotation = 90
 				gradient.Parent = textLabel
-				
+
 				local stroke = Instance.new("UIStroke")
 				stroke.Color = Color3.new(0, 0, 0)
 				stroke.Thickness = 2.5
 				stroke.Parent = textLabel
-				
-				-- Małe gwiazdki po bokach dla luksusu
-				textLabel.Text = "✨ " .. textLabel.Text .. " ✨"
-				
+
+				-- Usunięto gwiazdki zgodnie z życzeniem
+
 				gui.Parent = head
-				
-				-- === KROK 2: AURA DLA GRACZY Z ODRODZENIEM ===
+
+				-- === KROK 2: SZEROKA POŚWIATA (STYL COIN RAIN - TYLKO TRAIL) ===
 				if rebirths.Value >= 1 then
-					local aura = Instance.new("Highlight")
-					aura.Name = "RebirthAura"
-					aura.Adornee = character
-					aura.Adornee = character
-					aura.FillTransparency = 0.9 -- Jeszcze subtelniejszy (praktycznie niewidoczny środek)
-					aura.OutlineTransparency = 0.8 -- Bardzo miękki obrys
-					aura.Parent = character
-					
-					local particles = Instance.new("ParticleEmitter")
-					particles.Name = "RebirthParticles"
-					particles.Texture = "rbxassetid://13214144415"
-					particles.EmissionDirection = Enum.EmissionDirection.Top
-					particles.Rate = 20
-					particles.Lifetime = NumberRange.new(1, 1.5)
-					particles.Speed = NumberRange.new(3, 5)
-					
+					-- Tworzymy szerokie mocowanie po bokach gracza (Oś X) - rozstaw 2.25 studs
+					local att0 = Instance.new("Attachment")
+					att0.Name = "TrailAtt0"
+					att0.Position = Vector3.new(1.125, 0, 0) -- Prawa strona
+					att0.Parent = hrp
+
+					local att1 = Instance.new("Attachment")
+					att1.Name = "TrailAtt1"
+					att1.Position = Vector3.new(-1.125, 0, 0) -- Lewa strona
+					att1.Parent = hrp
+
+					local trail = Instance.new("Trail")
+					trail.Name = "RebirthTrail"
+					trail.Attachment0 = att0
+					trail.Attachment1 = att1
+					trail.Lifetime = 0.8 -- Długi ogon (jak w Coin Rain)
+					trail.FaceCamera = true -- Zawsze zwrócony przodem do kamery
+
+					-- Gładkie znikanie na końcu ogona
+					trail.Transparency = NumberSequence.new({
+						NumberSequenceKeypoint.new(0, 0),
+						NumberSequenceKeypoint.new(1, 1)
+					})
+
+					-- Zwężanie się (jak w Coin Rain)
+					trail.WidthScale = NumberSequence.new({
+						NumberSequenceKeypoint.new(0, 1),
+						NumberSequenceKeypoint.new(1, 0)
+					})
+
+					trail.LightEmission = 1
+					trail.LightInfluence = 0
+
+					-- TWOJE ORYGINALNE KOLORY REBIRTH
 					local rb = rebirths.Value
 					if rb == 1 then
-						-- Kolory ustawia Klient (RenderStepped), tu dajemy tylko cząsteczki
-						particles.Color = ColorSequence.new(Color3.fromRGB(0, 255, 0))
+						trail.Color = ColorSequence.new(Color3.fromRGB(0, 255, 0))
 					elseif rb == 2 then
-						-- Kolory ustawia Klient (RenderStepped)
-						particles.Color = ColorSequence.new(Color3.fromRGB(255, 215, 0))
+						trail.Color = ColorSequence.new(Color3.fromRGB(255, 215, 0))
 					elseif rb == 3 then
-						particles.Color = ColorSequence.new({
-							ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-							ColorSequenceKeypoint.new(0.5, Color3.fromRGB(80, 80, 80)),
-							ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))
+						trail.Color = ColorSequence.new({
+							ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)), -- Neonowy Czerwony
+							ColorSequenceKeypoint.new(0.5, Color3.fromRGB(130, 0, 0)), -- Ciemna Czerwień (agresywny gradient)
+							ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0))
 						})
 					else
-						particles.Color = ColorSequence.new({
+						trail.Color = ColorSequence.new({
 							ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
 							ColorSequenceKeypoint.new(0.2, Color3.fromRGB(255, 255, 0)),
 							ColorSequenceKeypoint.new(0.4, Color3.fromRGB(0, 255, 0)),
@@ -455,12 +592,10 @@ game.Players.PlayerAdded:Connect(function(player)
 							ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 255))
 						})
 					end
-					
-					particles.Parent = hrp
+
+					trail.Parent = hrp
 				end
 			end
 		end
 	end)
 end)
-
--- OBSŁUGA ZBIERANIA MONET Z DESZCZU (+1 Moneta)

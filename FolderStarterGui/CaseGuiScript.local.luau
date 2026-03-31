@@ -194,7 +194,7 @@ Instance.new("UIStroke", UpgradesTitle).Thickness = 3
 local VIPBtn = Instance.new("TextButton", UpgradesFrame)
 VIPBtn.Size = UDim2.new(0.9, 0, 0.45, 0)
 VIPBtn.Position = UDim2.new(0.05, 0, 0.15, 0)
-VIPBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 200) -- Bladożółty
+VIPBtn.BackgroundColor3 = Color3.fromRGB(255, 225, 150) -- Blady Złoty
 VIPBtn.Text = "ULTIMATE VIP BUNDLE\n[x2 Coins, +Speed, +Jump, VIP Tag]"
 VIPBtn.Font = Enum.Font.LuckiestGuy
 VIPBtn.TextSize = 25
@@ -219,7 +219,7 @@ Instance.new("UICorner", vipBg).CornerRadius = UDim.new(0, 15)
 local SpeedBtn = Instance.new("TextButton", UpgradesFrame)
 SpeedBtn.Size = UDim2.new(0.42, 0, 0.3, 0)
 SpeedBtn.Position = UDim2.new(0.05, 0, 0.65, 0)
-SpeedBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 200) -- Bladożółty
+SpeedBtn.BackgroundColor3 = Color3.fromRGB(180, 220, 255) -- Blady Niebieski
 SpeedBtn.Text = "\n\n2x SPEED"
 SpeedBtn.Font = Enum.Font.LuckiestGuy
 SpeedBtn.TextSize = 30
@@ -240,20 +240,30 @@ speedBg.ScaleType = Enum.ScaleType.Tile
 speedBg.TileSize = UDim2.fromOffset(128, 128)
 Instance.new("UICorner", speedBg).CornerRadius = UDim.new(0, 15)
 
+-- Czerwona tarcza pod ikonką (Twój patent!)
+local speedGlow = Instance.new("Frame", SpeedBtn)
+speedGlow.Name = "SpeedGlow"
+speedGlow.Size = UDim2.fromOffset(100, 100)
+speedGlow.Position = UDim2.new(0.5, 0, 0.35, 0)
+speedGlow.AnchorPoint = Vector2.new(0.5, 0.5)
+speedGlow.BackgroundColor3 = Color3.fromRGB(220, 0, 0) -- JASKRAWA CZERWIEŃ
+speedGlow.ZIndex = 103
+Instance.new("UICorner", speedGlow).CornerRadius = UDim.new(1, 0)
+
 local speedIcon = Instance.new("ImageLabel", SpeedBtn)
 speedIcon.Size = UDim2.fromOffset(100, 100)
 speedIcon.Position = UDim2.new(0.5, 0, 0.35, 0)
 speedIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 speedIcon.BackgroundTransparency = 1
-speedIcon.ImageColor3 = Color3.fromRGB(255, 0, 0) -- CZERWONY
-speedIcon.ZIndex = 103
+speedIcon.ImageColor3 = Color3.new(0, 0, 0) -- CZARNY LUDZIK
+speedIcon.ZIndex = 104
 local speedAsset = ReplicatedStorage:FindFirstChild("speed")
 if speedAsset then speedIcon.Image = (speedAsset:IsA("Decal") and speedAsset.Texture or speedAsset.Image) end
 
 local JumpBtn = Instance.new("TextButton", UpgradesFrame)
 JumpBtn.Size = UDim2.new(0.42, 0, 0.3, 0)
 JumpBtn.Position = UDim2.new(0.53, 0, 0.65, 0)
-JumpBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 200) -- Bladożółty
+JumpBtn.BackgroundColor3 = Color3.fromRGB(180, 255, 200) -- Blady Zielony
 JumpBtn.Text = "\n\n2x JUMP"
 JumpBtn.Font = Enum.Font.LuckiestGuy
 JumpBtn.TextSize = 30
@@ -274,13 +284,23 @@ jumpBg.ScaleType = Enum.ScaleType.Tile
 jumpBg.TileSize = UDim2.fromOffset(128, 128)
 Instance.new("UICorner", jumpBg).CornerRadius = UDim.new(0, 15)
 
+-- Czerwona tarcza pod ikonką (Twój patent!)
+local jumpGlow = Instance.new("Frame", JumpBtn)
+jumpGlow.Name = "JumpGlow"
+jumpGlow.Size = UDim2.fromOffset(100, 100)
+jumpGlow.Position = UDim2.new(0.5, 0, 0.35, 0)
+jumpGlow.AnchorPoint = Vector2.new(0.5, 0.5)
+jumpGlow.BackgroundColor3 = Color3.fromRGB(220, 0, 0) -- JASKRAWA CZERWIEŃ
+jumpGlow.ZIndex = 103
+Instance.new("UICorner", jumpGlow).CornerRadius = UDim.new(1, 0)
+
 local jumpIcon = Instance.new("ImageLabel", JumpBtn)
 jumpIcon.Size = UDim2.fromOffset(100, 100)
 jumpIcon.Position = UDim2.new(0.5, 0, 0.35, 0)
 jumpIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 jumpIcon.BackgroundTransparency = 1
-jumpIcon.ImageColor3 = Color3.fromRGB(255, 0, 0) -- CZERWONY
-jumpIcon.ZIndex = 103
+jumpIcon.ImageColor3 = Color3.new(0, 0, 0) -- CZARNY LUDZIK
+jumpIcon.ZIndex = 104
 local jumpAsset = ReplicatedStorage:FindFirstChild("Jump")
 if jumpAsset then jumpIcon.Image = (jumpAsset:IsA("Decal") and jumpAsset.Texture or jumpAsset.Image) end
 

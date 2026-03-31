@@ -220,13 +220,23 @@ local SpeedBtn = Instance.new("TextButton", UpgradesFrame)
 SpeedBtn.Size = UDim2.new(0.42, 0, 0.3, 0)
 SpeedBtn.Position = UDim2.new(0.05, 0, 0.65, 0)
 SpeedBtn.BackgroundColor3 = Color3.fromRGB(180, 220, 255) -- Blady Niebieski
-SpeedBtn.Text = "\n\n2x SPEED"
+SpeedBtn.Text = "" -- Tekst przeniesiony do osobnego labela poniżej
 SpeedBtn.Font = Enum.Font.LuckiestGuy
 SpeedBtn.TextSize = 30
 SpeedBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 SpeedBtn.ZIndex = 102
 Instance.new("UICorner", SpeedBtn).CornerRadius = UDim.new(0, 15)
 Instance.new("UIStroke", SpeedBtn).Thickness = 2
+
+local speedLabel = Instance.new("TextLabel", SpeedBtn)
+speedLabel.Size = UDim2.fromScale(1, 1)
+speedLabel.BackgroundTransparency = 1
+speedLabel.Text = "\n\n2x SPEED"
+speedLabel.Font = Enum.Font.LuckiestGuy
+speedLabel.TextSize = 30
+speedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedLabel.ZIndex = 110 -- NAD wszystkim
+Instance.new("UIStroke", speedLabel).Thickness = 2
 
 -- TŁO GreenStuds dla SpeedBtn
 local speedBg = Instance.new("ImageLabel", SpeedBtn)
@@ -264,13 +274,23 @@ local JumpBtn = Instance.new("TextButton", UpgradesFrame)
 JumpBtn.Size = UDim2.new(0.42, 0, 0.3, 0)
 JumpBtn.Position = UDim2.new(0.53, 0, 0.65, 0)
 JumpBtn.BackgroundColor3 = Color3.fromRGB(180, 255, 200) -- Blady Zielony
-JumpBtn.Text = "\n\n2x JUMP"
+JumpBtn.Text = "" -- Tekst przeniesiony do osobnego labela poniżej
 JumpBtn.Font = Enum.Font.LuckiestGuy
 JumpBtn.TextSize = 30
 JumpBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 JumpBtn.ZIndex = 102
 Instance.new("UICorner", JumpBtn).CornerRadius = UDim.new(0, 15)
 Instance.new("UIStroke", JumpBtn).Thickness = 2
+
+local jumpLabel = Instance.new("TextLabel", JumpBtn)
+jumpLabel.Size = UDim2.fromScale(1, 1)
+jumpLabel.BackgroundTransparency = 1
+jumpLabel.Text = "\n\n2x JUMP"
+jumpLabel.Font = Enum.Font.LuckiestGuy
+jumpLabel.TextSize = 30
+jumpLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+jumpLabel.ZIndex = 110 -- NAD wszystkim
+Instance.new("UIStroke", jumpLabel).Thickness = 2
 
 -- TŁO GreenStuds dla JumpBtn
 local jumpBg = Instance.new("ImageLabel", JumpBtn)

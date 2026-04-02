@@ -24,7 +24,9 @@ local function getMissingItems(rarityName)
 	return missing
 end
 
-local GameConfig = require(ReplicatedStorage:WaitForChild("FolderReplicatedStorage"):WaitForChild("GameConfig"))
+local FolderReplicatedStorage = ReplicatedStorage:WaitForChild("FolderReplicatedStorage")
+local GameConfig = require(FolderReplicatedStorage:WaitForChild("GameConfig"))
+local HudTileStyle = require(FolderReplicatedStorage:WaitForChild("HudTileStyle"))
 
 local CaseData = {}
 for name, data in pairs(GameConfig.Rarities) do
@@ -52,40 +54,26 @@ screenGui.Parent = playerGui
 
 local glowEffect = Instance.new("ImageLabel", screenGui)
 glowEffect.Name = "Glow"
-glowEffect.BackgroundTransparency = 1
-glowEffect.Image = "rbxassetid://12030614838"
-glowEffect.ImageColor3 = Color3.fromRGB(40, 180, 40)
-glowEffect.Size = UDim2.fromOffset(250, 250)
-glowEffect.Position = UDim2.new(0, 110, 0.5, 0) 
-glowEffect.AnchorPoint = Vector2.new(0.5, 0.5)
-glowEffect.ZIndex = 60
+glowEffect.Visible = false
 
 local mainBtn = Instance.new("TextButton", screenGui)
 mainBtn.Name = "MainShopButton"
-mainBtn.Size = UDim2.fromOffset(210, 210)
-mainBtn.Position = UDim2.new(0, 110, 0.5, 0) 
-mainBtn.AnchorPoint = Vector2.new(0.5, 0.5)
-mainBtn.BackgroundTransparency = 1
+mainBtn.Position = HudTileStyle.getSlot("left", 2)
 mainBtn.Text = ""
 mainBtn.ZIndex = 61
 
 local btnImg = Instance.new("ImageLabel", mainBtn)
-btnImg.Size = UDim2.fromScale(0.8, 0.8)
-btnImg.Position = UDim2.fromScale(0.5, 0.45)
-btnImg.AnchorPoint = Vector2.new(0.5, 0.5)
-btnImg.BackgroundTransparency = 1
-btnImg.Image = "rbxassetid://86015085773572"
-btnImg.ZIndex = 62
+btnImg.Name = "ShopIcon"
+btnImg.Image = HudTileStyle.getImage(ReplicatedStorage, "Shop", "rbxassetid://86015085773572")
 
 local btnText = Instance.new("TextLabel", mainBtn)
-btnText.Size = UDim2.new(1, 0, 0, 40)
-btnText.Position = UDim2.new(0, 0, 0.8, 0)
-btnText.BackgroundTransparency = 1
-btnText.Text = "GET BRAINROT"
-btnText.Font = Enum.Font.LuckiestGuy
-btnText.TextSize = 25
-btnText.ZIndex = 63
-Instance.new("UIStroke", btnText).Thickness = 2
+btnText.Text = "SHOP"
+
+HudTileStyle.apply(mainBtn, btnImg, btnText, {
+	side = "left",
+	slotIndex = 2,
+	zIndex = 61,
+})
 
 local shopContainer = Instance.new("Frame", screenGui)
 shopContainer.Size = UDim2.fromScale(0.8, 0.8)
@@ -756,12 +744,9 @@ end
 RunService.RenderStepped:Connect(function()
 	local t = tick()
 	local rainbow = Color3.fromHSV(t % 3 / 3, 1, 1)
-	local pulse = (math.sin(t * 4) + 1) / 2
-	glowEffect.Size = UDim2.fromOffset(230 + (pulse * 60), 230 + (pulse * 60))
-	mainBtn.Size = UDim2.fromOffset(210 + (pulse * 15), 210 + (pulse * 15))
 	local activeTab = BrainrotPage.Visible and TabBrainrot or TabBoosts
 	activeTab.TextColor3 = rainbow
-	btnText.TextColor3 = rainbow
+	btnText.TextColor3 = HudTileStyle.BaseLabelColor
 
 	for _, data in pairs(scrollingContainers) do
 		local offset = (t * 50) % data.Width

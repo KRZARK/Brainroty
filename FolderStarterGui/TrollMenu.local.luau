@@ -10,8 +10,10 @@ local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local BrainrotEvents = ReplicatedStorage:WaitForChild("BrainrotEvents")
 local TrollSpectateTarget = BrainrotEvents:WaitForChild("TrollSpectateTarget")
 
-local GameConfig = require(ReplicatedStorage:WaitForChild("FolderReplicatedStorage"):WaitForChild("GameConfig"))
-local BrainrotUtils = require(ReplicatedStorage:WaitForChild("FolderReplicatedStorage"):WaitForChild("BrainrotUtils"))
+local FolderReplicatedStorage = ReplicatedStorage:WaitForChild("FolderReplicatedStorage")
+local GameConfig = require(FolderReplicatedStorage:WaitForChild("GameConfig"))
+local BrainrotUtils = require(FolderReplicatedStorage:WaitForChild("BrainrotUtils"))
+local HudTileStyle = require(FolderReplicatedStorage:WaitForChild("HudTileStyle"))
 
 -- Create UI
 local ScreenGui = Instance.new("ScreenGui")
@@ -23,27 +25,24 @@ ScreenGui.Parent = PlayerGui
 local DevilEmoji = ReplicatedStorage:WaitForChild("DevilEmoji", 5)
 local ToggleBtn = Instance.new("ImageButton")
 ToggleBtn.Name = "ToggleTrollMenu"
-ToggleBtn.Size = UDim2.fromOffset(65, 65)
-ToggleBtn.Position = UDim2.new(1, -15, 0.85, 0) -- Dużo niżej w prawym dolnym rogu
-ToggleBtn.AnchorPoint = Vector2.new(1, 0.5)
-ToggleBtn.BackgroundTransparency = 1
-ToggleBtn.Image = DevilEmoji and (DevilEmoji:IsA("Decal") and DevilEmoji.Texture or DevilEmoji.Image) or "rbxassetid://164479326"
+ToggleBtn.Position = HudTileStyle.getSlot("right", 4)
 ToggleBtn.ZIndex = 50
 ToggleBtn.Parent = ScreenGui
 
+local trollIcon = Instance.new("ImageLabel")
+trollIcon.Name = "TrollIcon"
+trollIcon.Image = DevilEmoji and (DevilEmoji:IsA("Decal") and DevilEmoji.Texture or DevilEmoji.Image) or "rbxassetid://164479326"
+trollIcon.Parent = ToggleBtn
+
 local btnLabel = Instance.new("TextLabel")
-btnLabel.Size = UDim2.new(1.5, 0, 0, 20)
-btnLabel.Position = UDim2.new(-0.25, 0, 1, -5)
-btnLabel.BackgroundTransparency = 1
 btnLabel.Text = "TROLL"
-btnLabel.TextColor3 = Color3.fromRGB(220, 20, 20)
-btnLabel.Font = Enum.Font.LuckiestGuy
-btnLabel.TextSize = 22
-btnLabel.ZIndex = 51
 btnLabel.Parent = ToggleBtn
-local btnStroke = Instance.new("UIStroke", btnLabel)
-btnStroke.Thickness = 2
-btnStroke.Color = Color3.new(0, 0, 0)
+
+HudTileStyle.apply(ToggleBtn, trollIcon, btnLabel, {
+	side = "right",
+	slotIndex = 4,
+	zIndex = 50,
+})
 
 -- Panel Główny
 local MainFrame = Instance.new("Frame")

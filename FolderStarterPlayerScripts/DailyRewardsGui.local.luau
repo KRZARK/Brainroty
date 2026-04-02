@@ -4,6 +4,7 @@ local TweenService = game:GetService("TweenService")
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local HudTileStyle = require(ReplicatedStorage:WaitForChild("FolderReplicatedStorage"):WaitForChild("HudTileStyle"))
 
 local GameConfig = require(ReplicatedStorage:WaitForChild("FolderReplicatedStorage"):WaitForChild("GameConfig"))
 local BrainrotEvents = ReplicatedStorage:WaitForChild("BrainrotEvents")
@@ -18,25 +19,26 @@ ScreenGui.Parent = PlayerGui
 -- Przycisk Kalendarza na ekranie (Prawy dolny sektor)
 local ToggleBtn = Instance.new("ImageButton")
 ToggleBtn.Name = "ToggleDailyMenu"
-ToggleBtn.Size = UDim2.fromOffset(65, 65)
-ToggleBtn.Position = UDim2.new(1, -15, 0.75, 0) -- Przesunięte w dół aby nie zasłaniać
-ToggleBtn.AnchorPoint = Vector2.new(1, 0.5)
-ToggleBtn.BackgroundTransparency = 1
-ToggleBtn.Image = "rbxassetid://15222045142" -- Ikonka szarego kalendarza (zastępcza)
-local rsCalIcon = ReplicatedStorage:FindFirstChild("Kalendarz")
-if rsCalIcon then ToggleBtn.Image = rsCalIcon:IsA("Decal") and rsCalIcon.Texture or rsCalIcon.Image end
+ToggleBtn.Position = HudTileStyle.getSlot("right", 3)
+ToggleBtn.ZIndex = 50
 ToggleBtn.Parent = ScreenGui
 
+local dailyIcon = Instance.new("ImageLabel")
+dailyIcon.Name = "DailyIcon"
+dailyIcon.Image = "rbxassetid://15222045142"
+local rsCalIcon = ReplicatedStorage:FindFirstChild("Kalendarz")
+if rsCalIcon then dailyIcon.Image = rsCalIcon:IsA("Decal") and rsCalIcon.Texture or rsCalIcon.Image end
+dailyIcon.Parent = ToggleBtn
+
 local btnLabel = Instance.new("TextLabel")
-btnLabel.Size = UDim2.new(1.5, 0, 0, 20)
-btnLabel.Position = UDim2.new(-0.25, 0, 1, 0)
-btnLabel.BackgroundTransparency = 1
-btnLabel.Text = "DAILY REWARDS"
-btnLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
-btnLabel.Font = Enum.Font.LuckiestGuy
-btnLabel.TextSize = 14
-btnLabel.TextStrokeTransparency = 0
+btnLabel.Text = "DAILY"
 btnLabel.Parent = ToggleBtn
+
+HudTileStyle.apply(ToggleBtn, dailyIcon, btnLabel, {
+	side = "right",
+	slotIndex = 3,
+	zIndex = 50,
+})
 
 -- Ciemne tło całego ekranu (Blur logic)
 local DarkBg = Instance.new("Frame")

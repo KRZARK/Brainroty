@@ -38,8 +38,10 @@ player.CharacterAdded:Connect(function(newChar)
 	rootPart = newChar:WaitForChild("HumanoidRootPart")
 end)
 
+local FolderReplicatedStorage = ReplicatedStorage:WaitForChild("FolderReplicatedStorage")
 local BrainrotEvents = ReplicatedStorage:WaitForChild("BrainrotEvents")
-local GameConfig = require(ReplicatedStorage:WaitForChild("FolderReplicatedStorage"):WaitForChild("GameConfig"))
+local GameConfig = require(FolderReplicatedStorage:WaitForChild("GameConfig"))
+local HudTileStyle = require(FolderReplicatedStorage:WaitForChild("HudTileStyle"))
 local BrainrotCollectedEvent = BrainrotEvents:WaitForChild("BrainrotCollected")
 local TogglePetEvent = BrainrotEvents:WaitForChild("TogglePetEvent")
 local BrainrotStorage = ReplicatedStorage:WaitForChild("BrainrotStorage") 
@@ -368,52 +370,32 @@ local brainrots = discoverBrainrots()
 -- PRZYCISK OTWIERANIA
 -- === NOWA SEKACJA: GŁÓWNY PRZYCISK INDEX (PRAWA STRONA) ===
 
--- 1. EFEKT ŚWIATŁA (GLOW) dla Indexu
 local indexGlow = Instance.new("ImageLabel")
 indexGlow.Name = "IndexGlow"
-indexGlow.BackgroundTransparency = 1
-indexGlow.Image = "rbxassetid://12030614838"
-indexGlow.ImageColor3 = Color3.fromRGB(0, 160, 255)
-indexGlow.Size = UDim2.fromOffset(250, 250)
--- POZYCJA: Prawa krawędź (1), środek pionu (0.5)
-indexGlow.Position = UDim2.new(1, -110, 0.5, 0) 
-indexGlow.AnchorPoint = Vector2.new(0.5, 0.5)
-indexGlow.ZIndex = 10
+indexGlow.Visible = false
 indexGlow.Parent = screenGui
 
--- 2. PRZYCISK INDEX
 local openButton = Instance.new("TextButton")
 openButton.Name = "OpenButton"
-openButton.Size = UDim2.fromOffset(210, 210)
--- POZYCJA: Prawa krawędź (1) minus 110 pikseli, środek pionu (0.5)
-openButton.Position = UDim2.new(1, -110, 0.5, 0) 
-openButton.AnchorPoint = Vector2.new(0.5, 0.5)
-openButton.BackgroundTransparency = 1
+openButton.Position = HudTileStyle.getSlot("right", 1)
 openButton.Text = ""
 openButton.ZIndex = 11
 openButton.Parent = screenGui
 
--- 3. IKONKA INDEXU
 local indexImg = Instance.new("ImageLabel")
-indexImg.Size = UDim2.fromScale(0.7, 0.7)
-indexImg.Position = UDim2.fromScale(0.5, 0.45)
-indexImg.AnchorPoint = Vector2.new(0.5, 0.5)
-indexImg.BackgroundTransparency = 1
-indexImg.Image = "rbxassetid://72256385"
-indexImg.ZIndex = 12
+indexImg.Name = "IndexIcon"
+indexImg.Image = HudTileStyle.getImage(ReplicatedStorage, "Index", "rbxassetid://72256385")
 indexImg.Parent = openButton
 
--- 4. NAPIS "INDEX"
 local indexText = Instance.new("TextLabel")
-indexText.Size = UDim2.new(1, 0, 0, 40)
-indexText.Position = UDim2.new(0, 0, 0.8, 0)
-indexText.BackgroundTransparency = 1
 indexText.Text = "INDEX"
-indexText.Font = Enum.Font.LuckiestGuy
-indexText.TextSize = 35
-indexText.ZIndex = 12
 indexText.Parent = openButton
-Instance.new("UIStroke", indexText).Thickness = 3
+
+HudTileStyle.apply(openButton, indexImg, indexText, {
+	side = "right",
+	slotIndex = 1,
+	zIndex = 11,
+})
 
 -- RAMKA INDEKSU
 local indexFrame = Instance.new("ScrollingFrame")
@@ -780,15 +762,8 @@ RunService.RenderStepped:Connect(function()
 	local t = tick()
 	local rainbow = Color3.fromHSV(t % 3 / 3, 1, 1)
 
-	-- Pulsowanie Indexu
-	local pulseIndex = (math.sin(t * 4) + 1) / 2
-	indexGlow.Size = UDim2.fromOffset(230 + (pulseIndex * 60), 230 + (pulseIndex * 60))
-	indexGlow.ImageTransparency = 0.4 + (pulseIndex * 0.5)
-	openButton.Size = UDim2.fromOffset(210 + (pulseIndex * 15), 210 + (pulseIndex * 15))
-
-	-- Tęczowy napis INDEX
-	indexText.TextColor3 = rainbow
-	titleLabel.TextColor3 = rainbow -- Tęcza dla dolnego napisu
+	indexText.TextColor3 = HudTileStyle.BaseLabelColor
+	titleLabel.TextColor3 = rainbow
 	stripes.Position = UDim2.new(0, -(t * 60) % 60, 0, 0)
 
 	if activeNotifyRarity == "Brainrot God" then

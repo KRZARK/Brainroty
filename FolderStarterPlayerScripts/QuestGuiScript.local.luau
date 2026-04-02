@@ -6,7 +6,9 @@ print("[QuestSystem] Initializing QuestGuiScript...")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
-local GameConfig = require(ReplicatedStorage:WaitForChild("FolderReplicatedStorage"):WaitForChild("GameConfig"))
+local FolderReplicatedStorage = ReplicatedStorage:WaitForChild("FolderReplicatedStorage")
+local GameConfig = require(FolderReplicatedStorage:WaitForChild("GameConfig"))
+local HudTileStyle = require(FolderReplicatedStorage:WaitForChild("HudTileStyle"))
 local BrainrotEvents = ReplicatedStorage:WaitForChild("BrainrotEvents")
 local ClaimQuestReward = BrainrotEvents:WaitForChild("ClaimQuestReward")
 
@@ -19,23 +21,14 @@ screenGui.ResetOnSpawn = false
 screenGui.DisplayOrder = 20 -- Wyższy priorytet
 screenGui.Parent = playerGui
 
--- PRZYCISK OTWARTY (NA LEWEJ, POWYŻEJ SKRZYNKI SHOPU)
 local questBtn = Instance.new("ImageButton")
 questBtn.Name = "OpenQuests"
-questBtn.Size = UDim2.fromOffset(110, 110) -- Dopasowany rozmiar do reszty
-questBtn.Position = UDim2.new(0, 110, 0.5, -210) -- Powyżej skrzynki (skrzynka jest na 0.5, 0)
-questBtn.AnchorPoint = Vector2.new(0.5, 0.5)
-questBtn.BackgroundTransparency = 1
-questBtn.Image = "" -- Domyślnie puste (Zastąpi drewnianą skrzynkę)
-questBtn.ZIndex = 100 -- Na samym wierzchu, żeby był klikalny
+questBtn.Position = HudTileStyle.getSlot("left", 1)
+questBtn.ZIndex = 100
 questBtn.Parent = screenGui
 
 local btnIcon = Instance.new("ImageLabel")
-btnIcon.Size = UDim2.fromScale(0.95, 0.95) -- Znacznie większe, żeby wypełniało
-btnIcon.Position = UDim2.fromScale(0.5, 0.40) -- Uniesione odrobinę, żeby nie zakryć napisu
-btnIcon.AnchorPoint = Vector2.new(0.5, 0.5)
-btnIcon.BackgroundTransparency = 1
-btnIcon.ZIndex = 11
+btnIcon.Name = "QuestIcon"
 btnIcon.Parent = questBtn
 
 -- Ładowanie ikony dynamicznie (zastępuje brzydką skrzynkę/emoji)
@@ -57,16 +50,14 @@ task.spawn(function()
 end)
 
 local btnText = Instance.new("TextLabel")
-btnText.Size = UDim2.new(1, 0, 0, 30)
-btnText.Position = UDim2.new(0, 0, 0.8, 0)
-btnText.BackgroundTransparency = 1
 btnText.Text = "QUESTS"
-btnText.Font = Enum.Font.LuckiestGuy
-btnText.TextSize = 20
-btnText.TextColor3 = Color3.fromRGB(255, 215, 0)
-btnText.ZIndex = 12
 btnText.Parent = questBtn
-Instance.new("UIStroke", btnText).Thickness = 2
+
+HudTileStyle.apply(questBtn, btnIcon, btnText, {
+	side = "left",
+	slotIndex = 1,
+	zIndex = 100,
+})
 
 -- GŁÓWNY PANEL ZADAŃ
 local questPanel = Instance.new("Frame")
@@ -122,8 +113,8 @@ listLayout.Padding = UDim.new(0, 10)
 -- IKONKA POWIADOMIENIA (Wykrzyknik)
 local notifyBadge = Instance.new("ImageLabel")
 notifyBadge.Name = "NotifyBadge"
-notifyBadge.Size = UDim2.fromOffset(50, 50)
-notifyBadge.Position = UDim2.new(1, -10, 0, 10)
+notifyBadge.Size = UDim2.fromOffset(38, 38)
+notifyBadge.Position = UDim2.new(1, -6, 0, 6)
 notifyBadge.AnchorPoint = Vector2.new(1, 0)
 notifyBadge.BackgroundTransparency = 1
 notifyBadge.Visible = false
@@ -335,12 +326,12 @@ closeBtn.Activated:Connect(toggleMenu)
 game:GetService("RunService").RenderStepped:Connect(function()
 	local t = tick()
 	-- Animacja ikony głównej
-	btnIcon.Position = UDim2.new(0.5, 0, 0.40, math.sin(t * 4) * 6)
-	btnText.TextColor3 = Color3.fromHSV(t % 3 / 3, 0.5, 1)
+	btnIcon.Position = UDim2.new(0.5, 0, 0.38, math.sin(t * 4) * 4)
+	btnText.TextColor3 = HudTileStyle.BaseLabelColor
 	
 	-- Animacja pulsującego wykrzyknika
 	if notifyBadge.Visible then
 		local s = 1 + math.sin(t * 10) * 0.15
-		notifyBadge.Size = UDim2.fromOffset(50 * s, 50 * s)
+		notifyBadge.Size = UDim2.fromOffset(38 * s, 38 * s)
 	end
 end)

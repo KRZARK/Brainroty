@@ -5,6 +5,7 @@ local Workspace = game:GetService("Workspace")
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local HudTileStyle = require(ReplicatedStorage:WaitForChild("FolderReplicatedStorage"):WaitForChild("HudTileStyle"))
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "SpawnTeleportUI"
@@ -16,24 +17,24 @@ local HomeImage = ReplicatedStorage:FindFirstChild("Domek")
 
 local TeleportBtn = Instance.new("ImageButton")
 TeleportBtn.Name = "TeleportBtn"
-TeleportBtn.Size = UDim2.fromOffset(60, 60)
--- Domek w lewym dolnym rogu (odsunięty o 45 dla lepszej widoczności)
-TeleportBtn.Position = UDim2.new(0, 45, 1, -100) 
-TeleportBtn.BackgroundTransparency = 1
--- Jeśli Domek istnieje pobiera go, inaczej daje domyślną Robloxową ikonę domu
-TeleportBtn.Image = HomeImage and (HomeImage:IsA("Decal") and HomeImage.Texture or HomeImage.Image) or "rbxassetid://6031280882"
+TeleportBtn.Position = HudTileStyle.getSlot("left", 4)
+TeleportBtn.ZIndex = 50
 TeleportBtn.Parent = ScreenGui
 
+local teleportIcon = Instance.new("ImageLabel")
+teleportIcon.Name = "TeleportIcon"
+teleportIcon.Image = HomeImage and (HomeImage:IsA("Decal") and HomeImage.Texture or HomeImage.Image) or "rbxassetid://6031280882"
+teleportIcon.Parent = TeleportBtn
+
 local label = Instance.new("TextLabel")
-label.Size = UDim2.new(2, 0, 0, 20)
-label.Position = UDim2.new(-0.5, 0, 1, 2)
-label.BackgroundTransparency = 1
-label.Text = "SPAWN TELEPORT"
-label.TextColor3 = Color3.fromRGB(255, 255, 255)
-label.Font = Enum.Font.LuckiestGuy
-label.TextSize = 16
-label.TextStrokeTransparency = 0
+label.Text = "SPAWN"
 label.Parent = TeleportBtn
+
+HudTileStyle.apply(TeleportBtn, teleportIcon, label, {
+	side = "left",
+	slotIndex = 4,
+	zIndex = 50,
+})
 
 -- Ramka weryfikacji po kliknięciu "Are you sure?"
 local ConfirmFrame = Instance.new("Frame")

@@ -3,6 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local SocialService = game:GetService("SocialService")
+local Workspace = game:GetService("Workspace")
 
 local GameConfig = require(ReplicatedStorage:WaitForChild("FolderReplicatedStorage"):WaitForChild("GameConfig"))
 local BrainrotEvents = ReplicatedStorage:WaitForChild("BrainrotEvents")
@@ -11,6 +12,7 @@ local getTimeEvent = BrainrotEvents:WaitForChild("GetPlaytimeData")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+local HudTileStyle = require(ReplicatedStorage:WaitForChild("FolderReplicatedStorage"):WaitForChild("HudTileStyle"))
 
 -- Inicjalizacja Danych z Serwera
 local sessionStartTime = os.time()
@@ -39,57 +41,103 @@ local Wykrzyknik = ReplicatedStorage:WaitForChild("Wykrzyknik")
 -- === 1. PRZYCISK Z LEWEJ STRONY ===
 local giftBtn = Instance.new("ImageButton")
 giftBtn.Name = "GiftButton"
-giftBtn.Size = UDim2.fromOffset(80, 80)
-giftBtn.Position = UDim2.new(1, -25, 0, 110) -- Mocne przesunięcie w górę
-giftBtn.AnchorPoint = Vector2.new(1, 0)
-giftBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-giftBtn.BackgroundTransparency = 0.2
-giftBtn.Image = Coin2D:IsA("Decal") and Coin2D.Texture or Coin2D.Image
+giftBtn.Position = HudTileStyle.getSlot("right", 2)
 giftBtn.ZIndex = 50
 giftBtn.Parent = screenGui
-Instance.new("UICorner", giftBtn).CornerRadius = UDim.new(0.3, 0)
-Instance.new("UIStroke", giftBtn).Thickness = 3
-Instance.new("UIStroke", giftBtn).Color = Color3.fromRGB(150, 150, 150)
+
+local giftIcon = Instance.new("ImageLabel")
+giftIcon.Name = "GiftIcon"
+giftIcon.Image = Coin2D:IsA("Decal") and Coin2D.Texture or Coin2D.Image
+giftIcon.Parent = giftBtn
+
+local giftTitle = Instance.new("TextLabel")
+giftTitle.Text = "PLAYTIME"
+giftTitle.Parent = giftBtn
+
+HudTileStyle.apply(giftBtn, giftIcon, giftTitle, {
+	side = "right",
+	slotIndex = 2,
+	zIndex = 50,
+})
 
 -- Wykrzyknik
 local giftNotif = Instance.new("ImageLabel")
-giftNotif.Size = UDim2.fromOffset(35, 35)
-giftNotif.Position = UDim2.new(1, -20, 0, -15)
+giftNotif.Size = UDim2.fromOffset(36, 36)
+giftNotif.Position = UDim2.new(1, -6, 0, 6)
 giftNotif.BackgroundTransparency = 1
 giftNotif.Image = Wykrzyknik:IsA("Decal") and Wykrzyknik.Texture or Wykrzyknik.Image
 giftNotif.Visible = false
-giftNotif.ZIndex = 51
+giftNotif.AnchorPoint = Vector2.new(1, 0)
+giftNotif.ZIndex = 55
 giftNotif.Parent = giftBtn
 
 -- Licznik czasu pod ikonką
 local giftTimerLbl = Instance.new("TextLabel")
-giftTimerLbl.Size = UDim2.new(1.2, 0, 0, 22)
-giftTimerLbl.Position = UDim2.new(-0.1, 0, 1, 15) -- Przesunięty niżej pod obrazek
-giftTimerLbl.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-giftTimerLbl.BackgroundTransparency = 0.3
+giftTimerLbl.Size = UDim2.new(0.76, 0, 0, 20)
+giftTimerLbl.AnchorPoint = Vector2.new(0.5, 0.5)
+giftTimerLbl.Position = UDim2.new(0.5, 0, 0.63, 0)
+giftTimerLbl.BackgroundColor3 = Color3.fromRGB(20, 24, 29)
+giftTimerLbl.BackgroundTransparency = 0.15
 giftTimerLbl.Text = ""
 giftTimerLbl.TextColor3 = Color3.new(1, 1, 1)
 giftTimerLbl.Font = Enum.Font.FredokaOne
-giftTimerLbl.TextSize = 16
-giftTimerLbl.ZIndex = 52
+giftTimerLbl.TextSize = 14
+giftTimerLbl.ZIndex = 53
 giftTimerLbl.Parent = giftBtn
 Instance.new("UICorner", giftTimerLbl).CornerRadius = UDim.new(0, 5)
 Instance.new("UIStroke", giftTimerLbl).Thickness = 1
 
 -- Licznik monet NA DOLE obrazka
 local giftAmountLbl = Instance.new("TextLabel")
-giftAmountLbl.Size = UDim2.new(1, 0, 0, 25)
-giftAmountLbl.Position = UDim2.new(0, 0, 1, -12) -- Na samym dole obrazka (lekko ponad krawędzią)
-giftAmountLbl.BackgroundTransparency = 1 -- Przezroczyste, bo jest na obrazku
+giftAmountLbl.Size = UDim2.new(1, -14, 0, 18)
+giftAmountLbl.AnchorPoint = Vector2.new(0.5, 0.5)
+giftAmountLbl.Position = UDim2.new(0.5, 0, 0.16, 0)
+giftAmountLbl.BackgroundTransparency = 1
 giftAmountLbl.Text = ""
 giftAmountLbl.TextColor3 = Color3.fromRGB(255, 230, 0)
 giftAmountLbl.Font = Enum.Font.LuckiestGuy
-giftAmountLbl.TextSize = 22
-giftAmountLbl.ZIndex = 53
+giftAmountLbl.TextSize = 16
+giftAmountLbl.ZIndex = 54
 giftAmountLbl.Parent = giftBtn
 local amtStroke = Instance.new("UIStroke", giftAmountLbl)
 amtStroke.Thickness = 2
 amtStroke.Color = Color3.new(0, 0, 0)
+
+local function updateGiftButtonLayout()
+	local metrics = HudTileStyle.getLayoutMetrics()
+	if metrics.IsMobile then
+		giftTitle.Text = "TIME"
+		giftNotif.Size = UDim2.fromOffset(24, 24)
+		giftNotif.Position = UDim2.new(1, -2, 0, 2)
+		giftTimerLbl.Size = UDim2.new(0.82, 0, 0, 14)
+		giftTimerLbl.Position = UDim2.new(0.5, 0, 0.58, 0)
+		giftTimerLbl.TextSize = 10
+		giftAmountLbl.Visible = false
+	else
+		giftTitle.Text = "PLAYTIME"
+		giftNotif.Size = UDim2.fromOffset(36, 36)
+		giftNotif.Position = UDim2.new(1, -6, 0, 6)
+		giftTimerLbl.Size = UDim2.new(0.76, 0, 0, 20)
+		giftTimerLbl.Position = UDim2.new(0.5, 0, 0.63, 0)
+		giftTimerLbl.TextSize = 14
+		giftAmountLbl.Visible = true
+	end
+end
+
+updateGiftButtonLayout()
+
+local function bindGiftLayoutCamera(camera)
+	if not camera then
+		return
+	end
+	camera:GetPropertyChangedSignal("ViewportSize"):Connect(updateGiftButtonLayout)
+end
+
+bindGiftLayoutCamera(Workspace.CurrentCamera)
+Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+	bindGiftLayoutCamera(Workspace.CurrentCamera)
+	updateGiftButtonLayout()
+end)
 
 -- === 2. GŁÓWNY PANEL NAGRÓD ===
 local mainPanel = Instance.new("Frame")
@@ -373,7 +421,7 @@ RunService.RenderStepped:Connect(function(dt)
 		giftNotif.Visible = true
 		local scale = 1 + math.sin(tick() * 8) * 0.2
 		giftNotif.Size = UDim2.fromOffset(35 * scale, 35 * scale)
-		giftBtn.Rotation = math.sin(tick() * 4) * 8
+		giftBtn.Rotation = math.sin(tick() * 4) * 3
 		
 		giftTimerLbl.Text = "CLAIM!"
 		giftTimerLbl.TextColor3 = Color3.fromRGB(0, 255, 0)

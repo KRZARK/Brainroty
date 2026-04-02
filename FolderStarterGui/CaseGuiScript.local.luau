@@ -2,6 +2,7 @@ local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -172,6 +173,22 @@ BoostPage.Visible = false
 BoostPage.ZIndex = 101
 
 -- === 2.3 LOGIKA PREMIUM SHOP (BoostPage) ===
+local floatingElements = {}
+
+-- Funkcja pomocnicza do hoverów
+local function addHover(btn, originalSize)
+	btn.MouseEnter:Connect(function()
+		TweenService:Create(btn, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			Size = UDim2.new(originalSize.X.Scale * 1.05, originalSize.X.Offset, originalSize.Y.Scale * 1.05, originalSize.Y.Offset)
+		}):Play()
+	end)
+	btn.MouseLeave:Connect(function()
+		TweenService:Create(btn, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = originalSize
+		}):Play()
+	end)
+end
+
 -- Lewa Sekcja: Ulepszenia
 local UpgradesFrame = Instance.new("Frame", BoostPage)
 UpgradesFrame.Size = UDim2.new(0.48, 0, 0.9, 0)
@@ -190,18 +207,41 @@ UpgradesTitle.BackgroundTransparency = 1
 UpgradesTitle.ZIndex = 102
 Instance.new("UIStroke", UpgradesTitle).Thickness = 3
 
+local upgradesGradient = Instance.new("UIGradient", UpgradesTitle)
+upgradesGradient.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 180, 0)), 
+	ColorSequenceKeypoint.new(0.45, Color3.fromRGB(255, 180, 0)),
+	ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
+	ColorSequenceKeypoint.new(0.55, Color3.fromRGB(255, 180, 0)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 180, 0)) 
+})
+
+
 -- Przycisk VIP
 local VIPBtn = Instance.new("TextButton", UpgradesFrame)
-VIPBtn.Size = UDim2.new(0.9, 0, 0.45, 0)
+local vipOrigSize = UDim2.new(0.9, 0, 0.45, 0)
+VIPBtn.Size = vipOrigSize
 VIPBtn.Position = UDim2.new(0.05, 0, 0.15, 0)
-VIPBtn.BackgroundColor3 = Color3.fromRGB(255, 225, 150) -- Blady Złoty
+VIPBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 VIPBtn.Text = "ULTIMATE VIP BUNDLE\n[x2 Coins, +Speed, +Jump, VIP Tag]"
 VIPBtn.Font = Enum.Font.LuckiestGuy
 VIPBtn.TextSize = 25
 VIPBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+VIPBtn.TextWrapped = true
+VIPBtn.TextXAlignment = Enum.TextXAlignment.Center
+VIPBtn.TextYAlignment = Enum.TextYAlignment.Center
 VIPBtn.ZIndex = 102
 Instance.new("UICorner", VIPBtn).CornerRadius = UDim.new(0, 15)
 Instance.new("UIStroke", VIPBtn).Thickness = 3
+addHover(VIPBtn, vipOrigSize)
+
+local vipGrad = Instance.new("UIGradient", VIPBtn)
+vipGrad.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 200, 0)),
+	ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 140, 0)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 200, 0))
+})
+vipGrad.Rotation = 45
 
 -- TŁO GreenStuds dla VIPBtn
 local vipBg = Instance.new("ImageLabel", VIPBtn)
@@ -210,23 +250,34 @@ vipBg.Size = UDim2.fromScale(1, 1)
 vipBg.BackgroundTransparency = 1
 vipBg.ZIndex = 102
 if gs then vipBg.Image = (gs:IsA("Decal") and gs.Texture or gs.Image) end
-vipBg.ImageTransparency = 0.8
+vipBg.ImageColor3 = Color3.fromRGB(200, 150, 0)
+vipBg.ImageTransparency = 0.6
 vipBg.ScaleType = Enum.ScaleType.Tile
 vipBg.TileSize = UDim2.fromOffset(128, 128)
 Instance.new("UICorner", vipBg).CornerRadius = UDim.new(0, 15)
 
--- Przyciski mniejsze
+
+-- Przyciski mniejsze (Speed)
 local SpeedBtn = Instance.new("TextButton", UpgradesFrame)
-SpeedBtn.Size = UDim2.new(0.42, 0, 0.3, 0)
+local speedOrigSize = UDim2.new(0.42, 0, 0.3, 0)
+SpeedBtn.Size = speedOrigSize
 SpeedBtn.Position = UDim2.new(0.05, 0, 0.65, 0)
-SpeedBtn.BackgroundColor3 = Color3.fromRGB(180, 220, 255) -- Blady Niebieski
-SpeedBtn.Text = "" -- Tekst przeniesiony do osobnego labela poniżej
+SpeedBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+SpeedBtn.Text = "" 
 SpeedBtn.Font = Enum.Font.LuckiestGuy
 SpeedBtn.TextSize = 30
 SpeedBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 SpeedBtn.ZIndex = 102
 Instance.new("UICorner", SpeedBtn).CornerRadius = UDim.new(0, 15)
 Instance.new("UIStroke", SpeedBtn).Thickness = 2
+addHover(SpeedBtn, speedOrigSize)
+
+local speedGrad = Instance.new("UIGradient", SpeedBtn)
+speedGrad.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 200, 255)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 100, 255))
+})
+speedGrad.Rotation = 90
 
 local speedLabel = Instance.new("TextLabel", SpeedBtn)
 speedLabel.Size = UDim2.fromScale(1, 1)
@@ -235,7 +286,7 @@ speedLabel.Text = "\n\n2x SPEED"
 speedLabel.Font = Enum.Font.LuckiestGuy
 speedLabel.TextSize = 30
 speedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-speedLabel.ZIndex = 110 -- NAD wszystkim
+speedLabel.ZIndex = 110 
 Instance.new("UIStroke", speedLabel).Thickness = 2
 
 -- TŁO GreenStuds dla SpeedBtn
@@ -245,42 +296,57 @@ speedBg.Size = UDim2.fromScale(1, 1)
 speedBg.BackgroundTransparency = 1
 speedBg.ZIndex = 102
 if gs then speedBg.Image = (gs:IsA("Decal") and gs.Texture or gs.Image) end
-speedBg.ImageTransparency = 0.8
+speedBg.ImageColor3 = Color3.fromRGB(0, 150, 255)
+speedBg.ImageTransparency = 0.7
 speedBg.ScaleType = Enum.ScaleType.Tile
 speedBg.TileSize = UDim2.fromOffset(128, 128)
 Instance.new("UICorner", speedBg).CornerRadius = UDim.new(0, 15)
 
--- Czerwona tarcza pod ikonką (Twój patent!)
-local speedGlow = Instance.new("Frame", SpeedBtn)
+-- Miękki blask (Glow) pod ikonką Speed
+local speedGlow = Instance.new("ImageLabel", SpeedBtn)
 speedGlow.Name = "SpeedGlow"
-speedGlow.Size = UDim2.fromOffset(100, 100)
+speedGlow.Size = UDim2.fromOffset(120, 120)
 speedGlow.Position = UDim2.new(0.5, 0, 0.35, 0)
 speedGlow.AnchorPoint = Vector2.new(0.5, 0.5)
-speedGlow.BackgroundColor3 = Color3.fromRGB(220, 0, 0) -- JASKRAWA CZERWIEŃ
+speedGlow.BackgroundTransparency = 1
+speedGlow.Image = "rbxassetid://12030614838" 
+speedGlow.ImageColor3 = Color3.fromRGB(0, 255, 255) 
 speedGlow.ZIndex = 103
-Instance.new("UICorner", speedGlow).CornerRadius = UDim.new(1, 0)
 
 local speedIcon = Instance.new("ImageLabel", SpeedBtn)
-speedIcon.Size = UDim2.fromOffset(100, 100)
+speedIcon.Name = "FloatingIcon"
+speedIcon.Size = UDim2.fromOffset(90, 90)
 speedIcon.Position = UDim2.new(0.5, 0, 0.35, 0)
 speedIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 speedIcon.BackgroundTransparency = 1
-speedIcon.ImageColor3 = Color3.new(0, 0, 0) -- CZARNY LUDZIK
+speedIcon.ImageColor3 = Color3.new(0, 0, 0) 
 speedIcon.ZIndex = 104
 local speedAsset = ReplicatedStorage:FindFirstChild("speed")
 if speedAsset then speedIcon.Image = (speedAsset:IsA("Decal") and speedAsset.Texture or speedAsset.Image) end
+table.insert(floatingElements, {obj = speedIcon, isCoin = false})
 
+
+-- Przycisk Jump
 local JumpBtn = Instance.new("TextButton", UpgradesFrame)
-JumpBtn.Size = UDim2.new(0.42, 0, 0.3, 0)
+local jumpOrigSize = UDim2.new(0.42, 0, 0.3, 0)
+JumpBtn.Size = jumpOrigSize
 JumpBtn.Position = UDim2.new(0.53, 0, 0.65, 0)
-JumpBtn.BackgroundColor3 = Color3.fromRGB(180, 255, 200) -- Blady Zielony
-JumpBtn.Text = "" -- Tekst przeniesiony do osobnego labela poniżej
+JumpBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+JumpBtn.Text = "" 
 JumpBtn.Font = Enum.Font.LuckiestGuy
 JumpBtn.TextSize = 30
 JumpBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 JumpBtn.ZIndex = 102
 Instance.new("UICorner", JumpBtn).CornerRadius = UDim.new(0, 15)
 Instance.new("UIStroke", JumpBtn).Thickness = 2
+addHover(JumpBtn, jumpOrigSize)
+
+local jumpGrad = Instance.new("UIGradient", JumpBtn)
+jumpGrad.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(150, 255, 100)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 200, 50))
+})
+jumpGrad.Rotation = 90
 
 local jumpLabel = Instance.new("TextLabel", JumpBtn)
 jumpLabel.Size = UDim2.fromScale(1, 1)
@@ -289,7 +355,7 @@ jumpLabel.Text = "\n\n2x JUMP"
 jumpLabel.Font = Enum.Font.LuckiestGuy
 jumpLabel.TextSize = 30
 jumpLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-jumpLabel.ZIndex = 110 -- NAD wszystkim
+jumpLabel.ZIndex = 110 
 Instance.new("UIStroke", jumpLabel).Thickness = 2
 
 -- TŁO GreenStuds dla JumpBtn
@@ -299,30 +365,35 @@ jumpBg.Size = UDim2.fromScale(1, 1)
 jumpBg.BackgroundTransparency = 1
 jumpBg.ZIndex = 102
 if gs then jumpBg.Image = (gs:IsA("Decal") and gs.Texture or gs.Image) end
-jumpBg.ImageTransparency = 0.8
+jumpBg.ImageColor3 = Color3.fromRGB(0, 200, 50)
+jumpBg.ImageTransparency = 0.7
 jumpBg.ScaleType = Enum.ScaleType.Tile
 jumpBg.TileSize = UDim2.fromOffset(128, 128)
 Instance.new("UICorner", jumpBg).CornerRadius = UDim.new(0, 15)
 
--- Czerwona tarcza pod ikonką (Twój patent!)
-local jumpGlow = Instance.new("Frame", JumpBtn)
+-- Miękki blask (Glow) pod ikonką Jump
+local jumpGlow = Instance.new("ImageLabel", JumpBtn)
 jumpGlow.Name = "JumpGlow"
-jumpGlow.Size = UDim2.fromOffset(100, 100)
+jumpGlow.Size = UDim2.fromOffset(120, 120)
 jumpGlow.Position = UDim2.new(0.5, 0, 0.35, 0)
 jumpGlow.AnchorPoint = Vector2.new(0.5, 0.5)
-jumpGlow.BackgroundColor3 = Color3.fromRGB(220, 0, 0) -- JASKRAWA CZERWIEŃ
+jumpGlow.BackgroundTransparency = 1
+jumpGlow.Image = "rbxassetid://12030614838" 
+jumpGlow.ImageColor3 = Color3.fromRGB(100, 255, 100) 
 jumpGlow.ZIndex = 103
-Instance.new("UICorner", jumpGlow).CornerRadius = UDim.new(1, 0)
 
 local jumpIcon = Instance.new("ImageLabel", JumpBtn)
-jumpIcon.Size = UDim2.fromOffset(100, 100)
+jumpIcon.Name = "FloatingIcon"
+jumpIcon.Size = UDim2.fromOffset(90, 90)
 jumpIcon.Position = UDim2.new(0.5, 0, 0.35, 0)
 jumpIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 jumpIcon.BackgroundTransparency = 1
-jumpIcon.ImageColor3 = Color3.new(0, 0, 0) -- CZARNY LUDZIK
+jumpIcon.ImageColor3 = Color3.new(0, 0, 0) 
 jumpIcon.ZIndex = 104
 local jumpAsset = ReplicatedStorage:FindFirstChild("Jump")
 if jumpAsset then jumpIcon.Image = (jumpAsset:IsA("Decal") and jumpAsset.Texture or jumpAsset.Image) end
+table.insert(floatingElements, {obj = jumpIcon, isCoin = false})
+
 
 VIPBtn.MouseButton1Click:Connect(function() MarketplaceService:PromptGamePassPurchase(player, GameConfig.GamePasses.VIPBundle) end)
 SpeedBtn.MouseButton1Click:Connect(function() MarketplaceService:PromptGamePassPurchase(player, GameConfig.GamePasses.SpeedBoost) end)
@@ -346,6 +417,15 @@ CoinsTitle.BackgroundTransparency = 1
 CoinsTitle.ZIndex = 102
 Instance.new("UIStroke", CoinsTitle).Thickness = 3
 
+local coinsGradient = Instance.new("UIGradient", CoinsTitle)
+coinsGradient.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 230, 0)), 
+	ColorSequenceKeypoint.new(0.45, Color3.fromRGB(255, 230, 0)),
+	ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
+	ColorSequenceKeypoint.new(0.55, Color3.fromRGB(255, 230, 0)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 230, 0)) 
+})
+
 local CoinsGrid = Instance.new("Frame", CoinsFrame)
 CoinsGrid.Size = UDim2.new(0.9, 0, 0.85, 0)
 CoinsGrid.Position = UDim2.new(0.05, 0, 0.15, 0)
@@ -356,15 +436,32 @@ cLayout.CellSize = UDim2.new(0.45, 0, 0.45, 0)
 cLayout.CellPadding = UDim2.new(0.05, 0, 0.05, 0)
 
 local packsOrder = {"Pack100", "Pack250", "Pack500", "Pack1000"}
-local scales = {0.3, 0.45, 0.6, 0.8} -- 100(30%), 250(60%), 500(90%), 1000(120%)
+local scales = {0.3, 0.45, 0.6, 0.8}
 
 for i, packKey in ipairs(packsOrder) do
 	local packData = GameConfig.CoinPacks[packKey]
-	local btn = Instance.new("TextButton", CoinsGrid)
-	btn.BackgroundColor3 = Color3.fromRGB(255, 255, 200) -- Bladożółty
+	
+	-- Niewidzialna ramka komórki dla siatki UIGridLayout (pozwala na hover na dzieciach bez psucia siatki)
+	local cellFrame = Instance.new("Frame", CoinsGrid)
+	cellFrame.BackgroundTransparency = 1
+	
+	local btn = Instance.new("TextButton", cellFrame)
+	btn.Size = UDim2.fromScale(1, 1)
+	btn.Position = UDim2.fromScale(0.5, 0.5)
+	btn.AnchorPoint = Vector2.new(0.5, 0.5)
+	btn.BackgroundColor3 = Color3.fromRGB(255, 255, 255) 
 	btn.Text = ""
 	btn.ZIndex = 102
 	Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 15)
+	Instance.new("UIStroke", btn).Thickness = 3
+	addHover(btn, UDim2.fromScale(1, 1))
+	
+	local packGrad = Instance.new("UIGradient", btn)
+	packGrad.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 150)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 200, 50))
+	})
+	packGrad.Rotation = 45
 	
 	-- TŁO GreenStuds dla kafelka monety
 	local coinTileBg = Instance.new("ImageLabel", btn)
@@ -373,22 +470,20 @@ for i, packKey in ipairs(packsOrder) do
 	coinTileBg.BackgroundTransparency = 1
 	coinTileBg.ZIndex = 102
 	if gs then coinTileBg.Image = (gs:IsA("Decal") and gs.Texture or gs.Image) end
-	coinTileBg.ImageTransparency = 0.8
+	coinTileBg.ImageColor3 = Color3.fromRGB(255, 200, 0)
+	coinTileBg.ImageTransparency = 0.7
 	coinTileBg.ScaleType = Enum.ScaleType.Tile
 	coinTileBg.TileSize = UDim2.fromOffset(128, 128)
 	Instance.new("UICorner", coinTileBg).CornerRadius = UDim.new(0, 15)
 
-	Instance.new("UIStroke", btn).Thickness = 3
-	
 	local icon = Instance.new("ImageLabel", btn)
+	icon.Name = "FloatingCoin"
 	local s = scales[i] or 0.5
 	icon.Size = UDim2.fromScale(s, s)
 	
-	-- Pozycja (wszystkie monety +20px w dół dla lepszej kompozycji)
 	local yPos = 0.4
 	local yOffset = 20
 	icon.Position = UDim2.new(0.5, 0, yPos, yOffset)
-	
 	icon.AnchorPoint = Vector2.new(0.5, 0.5)
 	icon.BackgroundTransparency = 1
 	icon.ZIndex = 103
@@ -396,8 +491,9 @@ for i, packKey in ipairs(packsOrder) do
 	if coinAsset then
 		icon.Image = (coinAsset:IsA("Decal") and coinAsset.Texture or coinAsset.Image)
 	else
-		icon.Image = "rbxassetid://1350436906" -- Placeholder monety
+		icon.Image = "rbxassetid://1350436906" 
 	end
+	table.insert(floatingElements, {obj = icon, isCoin = true})
 	
 	local amountLabel = Instance.new("TextLabel", btn)
 	amountLabel.Size = UDim2.new(1, 0, 0.3, 0)
@@ -420,10 +516,28 @@ for i, packKey in ipairs(packsOrder) do
 	priceLabel.TextColor3 = Color3.fromRGB(150, 255, 150)
 	priceLabel.ZIndex = 103
 	
+	-- BEST VALUE Wstążka
+	if packKey == "Pack1000" then
+		local ribbon = Instance.new("TextLabel", btn)
+		ribbon.Size = UDim2.new(0.8, 0, 0.25, 0)
+		ribbon.Position = UDim2.new(0.8, 0, 0, 0)
+		ribbon.AnchorPoint = Vector2.new(0.5, 0.5)
+		ribbon.Rotation = 15 
+		ribbon.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+		ribbon.Text = "BEST\nVALUE!"
+		ribbon.Font = Enum.Font.LuckiestGuy
+		ribbon.TextSize = 18
+		ribbon.TextColor3 = Color3.fromRGB(255, 255, 255)
+		ribbon.ZIndex = 105
+		Instance.new("UICorner", ribbon).CornerRadius = UDim.new(0.2, 0)
+		Instance.new("UIStroke", ribbon).Thickness = 2
+	end
+
 	btn.MouseButton1Click:Connect(function()
 		MarketplaceService:PromptProductPurchase(player, packData.ID)
 	end)
 end
+
 
 local subTitle = Instance.new("TextLabel", BrainrotPage)
 subTitle.Size = UDim2.new(0.9, 0, 0, 140) 
@@ -453,6 +567,8 @@ task.spawn(function()
 		offset = offset + 0.02
 		if offset > 1 then offset = -1 end
 		subTitleGradient.Offset = Vector2.new(offset, 0)
+		if upgradesGradient then upgradesGradient.Offset = Vector2.new(offset, 0) end
+		if coinsGradient then coinsGradient.Offset = Vector2.new(offset, 0) end
 		task.wait(0.01)
 	end
 end)
@@ -661,6 +777,16 @@ RunService.RenderStepped:Connect(function()
 	for _, item in pairs(secretLabels) do
 		item.Label.TextColor3 = silver
 		item.Stroke.Color = silver
+	end
+	
+	-- Pływające Ikonki w Boost Shop
+	local floatOffset = math.sin(t * 3) * 5
+	for _, data in ipairs(floatingElements) do
+		if not data.isCoin then
+			data.obj.Position = UDim2.new(0.5, 0, 0.35, floatOffset)
+		else
+			data.obj.Position = UDim2.new(0.5, 0, 0.4, 20 + floatOffset)
+		end
 	end
 end)
 

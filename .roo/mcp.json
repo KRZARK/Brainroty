@@ -1,0 +1,21 @@
+{
+	"mcpServers": {
+		"Roblox_Studio": {
+			"command": "cmd.exe",
+			"args": [
+				"/c",
+				"%LOCALAPPDATA%\\Roblox\\mcp.bat"
+			],
+			"alwaysAllow": [
+				"inspect_instance",
+				"execute_luau",
+				"list_roblox_studios",
+				"set_active_studio",
+				"search_game_tree",
+				"script_grep",
+				"script_read",
+				"multi_edit"
+			]
+		}
+	}
+}

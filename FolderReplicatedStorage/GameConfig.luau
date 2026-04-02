@@ -73,16 +73,16 @@ GameConfig.DailyRewards = {
 
 -- PREMIUM SHOP CONFIGURATION
 GameConfig.GamePasses = {
-	VIPBundle = 000000, -- ULTIMATE VIP BUNDLE
-	SpeedBoost = 000000,
-	JumpBoost = 000000
+	VIPBundle = 1780076745, -- ULTIMATE VIP BUNDLE
+	SpeedBoost = 1778738985,
+	JumpBoost = 1779440817
 }
 
 GameConfig.CoinPacks = {
-	Pack100 = { ID = 000000, Amount = 100, Price = 19 },
-	Pack250 = { ID = 000000, Amount = 250, Price = 45 },
-	Pack500 = { ID = 000000, Amount = 500, Price = 79 },
-	Pack1000 = { ID = 000000, Amount = 1000, Price = 149 }
+	Pack100 = { ID = 3568785592, Amount = 100, Price = 19 },
+	Pack250 = { ID = 3568785721, Amount = 250, Price = 45 },
+	Pack500 = { ID = 3568785904, Amount = 500, Price = 79 },
+	Pack1000 = { ID = 3568786016, Amount = 1000, Price = 149 }
 }
 
 return GameConfig

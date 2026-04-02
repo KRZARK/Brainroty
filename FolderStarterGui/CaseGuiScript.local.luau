@@ -163,7 +163,7 @@ BoostPage.ZIndex = 101
 -- === 2.3 LOGIKA PREMIUM SHOP (BoostPage) ===
 local floatingElements = {}
 
-local function addPriceLabel(parent, price, yPositionScale)
+local function addPriceLabel(parent, id, infoType, yPositionScale)
 	local container = Instance.new("Frame", parent)
 	container.Size = UDim2.new(1, 0, 0.2, 0)
 	container.Position = UDim2.new(0, 0, yPositionScale, 0)
@@ -188,7 +188,7 @@ local function addPriceLabel(parent, price, yPositionScale)
 	textLabel.Size = UDim2.fromOffset(0, 30)
 	textLabel.AutomaticSize = Enum.AutomaticSize.X
 	textLabel.BackgroundTransparency = 1
-	textLabel.Text = tostring(price)
+	textLabel.Text = "..."
 	textLabel.Font = Enum.Font.LuckiestGuy
 	textLabel.TextSize = 34
 	textLabel.TextColor3 = Color3.new(0, 0, 0)
@@ -198,6 +198,19 @@ local function addPriceLabel(parent, price, yPositionScale)
 	local stroke = Instance.new("UIStroke", textLabel)
 	stroke.Color = Color3.new(1, 1, 1)
 	stroke.Thickness = 2
+	
+	-- NOWE: Pobieranie ceny z serwerów Robloxa
+	task.spawn(function()
+		if id == 0 or not id then return end
+		local ok, info = pcall(function()
+			return MarketplaceService:GetProductInfo(id, infoType or Enum.InfoType.Product)
+		end)
+		if ok and info and info.PriceInRobux then
+			textLabel.Text = tostring(info.PriceInRobux)
+		else
+			textLabel.Text = "ERR"
+		end
+	end)
 end
 
 -- Funkcja pomocnicza do hoverów
@@ -259,7 +272,7 @@ VIPBtn.ZIndex = 102
 Instance.new("UICorner", VIPBtn).CornerRadius = UDim.new(0, 15)
 Instance.new("UIStroke", VIPBtn).Thickness = 3
 addHover(VIPBtn, vipOrigSize)
-addPriceLabel(VIPBtn, 399, 0.7)
+addPriceLabel(VIPBtn, GameConfig.GamePasses.VIPBundle, Enum.InfoType.GamePass, 0.7)
 
 local vipGrad = Instance.new("UIGradient", VIPBtn)
 vipGrad.Color = ColorSequence.new({
@@ -314,7 +327,7 @@ speedLabel.TextSize = 30
 speedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 speedLabel.ZIndex = 110 
 Instance.new("UIStroke", speedLabel).Thickness = 2
-addPriceLabel(SpeedBtn, 199, 0.8)
+addPriceLabel(SpeedBtn, GameConfig.GamePasses.SpeedBoost, Enum.InfoType.GamePass, 0.8)
 
 -- TŁO GreenStuds dla SpeedBtn
 local speedBg = Instance.new("ImageLabel", SpeedBtn)
@@ -384,7 +397,7 @@ jumpLabel.TextSize = 30
 jumpLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 jumpLabel.ZIndex = 110 
 Instance.new("UIStroke", jumpLabel).Thickness = 2
-addPriceLabel(JumpBtn, 249, 0.8)
+addPriceLabel(JumpBtn, GameConfig.GamePasses.JumpBoost, Enum.InfoType.GamePass, 0.8)
 
 -- TŁO GreenStuds dla JumpBtn
 local jumpBg = Instance.new("ImageLabel", JumpBtn)
@@ -534,7 +547,7 @@ for i, packKey in ipairs(packsOrder) do
 	amountLabel.ZIndex = 103
 	Instance.new("UIStroke", amountLabel).Thickness = 2
 	
-	addPriceLabel(btn, packData.Price, 0.78)
+	addPriceLabel(btn, packData.ID, Enum.InfoType.Product, 0.78)
 
 	btn.MouseButton1Click:Connect(function()
 		MarketplaceService:PromptProductPurchase(player, packData.ID)

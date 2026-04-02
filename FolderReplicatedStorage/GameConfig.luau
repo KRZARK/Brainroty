@@ -79,10 +79,10 @@ GameConfig.GamePasses = {
 }
 
 GameConfig.CoinPacks = {
-	Pack100 = { ID = 000000, Amount = 100, Price = 10 },
-	Pack250 = { ID = 000000, Amount = 250, Price = 25 },
-	Pack500 = { ID = 000000, Amount = 500, Price = 50 },
-	Pack1000 = { ID = 000000, Amount = 1000, Price = 100 }
+	Pack100 = { ID = 000000, Amount = 100, Price = 19 },
+	Pack250 = { ID = 000000, Amount = 250, Price = 45 },
+	Pack500 = { ID = 000000, Amount = 500, Price = 79 },
+	Pack1000 = { ID = 000000, Amount = 1000, Price = 149 }
 }
 
 return GameConfig

@@ -71,10 +71,19 @@ local function computeMovementStats(player)
 		jumpEnabled = true
 	end
 
-	local baseSpeed = ownsSpeedBoost and speedEnabled and 32 or 16
-	local baseJump = ownsJumpBoost and jumpEnabled and 100 or 50
+	local walkSpeed = 16
+	if speedEnabled then
+		local baseSpeed = ownsSpeedBoost and 32 or 16
+		walkSpeed = math.floor(baseSpeed * speedMultiplier * rebirthMultiplier)
+	end
 
-	return math.floor(baseSpeed * speedMultiplier * rebirthMultiplier), math.floor(baseJump * jumpMultiplier * rebirthMultiplier)
+	local jumpPower = 50
+	if jumpEnabled then
+		local baseJump = ownsJumpBoost and 100 or 50
+		jumpPower = math.floor(baseJump * jumpMultiplier * rebirthMultiplier)
+	end
+
+	return walkSpeed, jumpPower
 end
 
 local function applyCurrentCharacterStats(player)
@@ -226,14 +235,6 @@ local function bindPlayer(player)
 	end)
 end
 
-local function canUseSpeedSetting(player)
-	return player:GetAttribute("HasVIP") == true or player:GetAttribute("HasSpeedBoost") == true
-end
-
-local function canUseJumpSetting(player)
-	return player:GetAttribute("HasVIP") == true or player:GetAttribute("HasJumpBoost") == true
-end
-
 local function canUseVIPProtection(player)
 	return player:GetAttribute("HasVIP") == true
 end
@@ -244,18 +245,10 @@ UpdateGameplaySettingRF.OnServerInvoke = function(player, settingName, enabled)
 	end
 
 	if settingName == "Speed" then
-		if not canUseSpeedSetting(player) then
-			return false, player:GetAttribute("SpeedSettingEnabled") ~= false, "LOCKED"
-		end
-
 		player:SetAttribute("SpeedSettingEnabled", enabled)
 		applyCurrentCharacterStats(player)
 		return true, enabled, ""
 	elseif settingName == "Jump" then
-		if not canUseJumpSetting(player) then
-			return false, player:GetAttribute("JumpSettingEnabled") ~= false, "LOCKED"
-		end
-
 		player:SetAttribute("JumpSettingEnabled", enabled)
 		applyCurrentCharacterStats(player)
 		return true, enabled, ""

@@ -205,7 +205,7 @@ local function updateUI()
 		end
 		
 		-- LOGIKA STANÓW
-		local isClaimed = (i < displayStreak) or (i == displayStreak and claimedToday)
+		local isClaimed = (i < displayStreak)
 		local isToday = (i == displayStreak and not claimedToday)
 		local isLocked = (i > displayStreak)
 		

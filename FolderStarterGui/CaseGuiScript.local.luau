@@ -163,6 +163,43 @@ BoostPage.ZIndex = 101
 -- === 2.3 LOGIKA PREMIUM SHOP (BoostPage) ===
 local floatingElements = {}
 
+local function addPriceLabel(parent, price, yPositionScale)
+	local container = Instance.new("Frame", parent)
+	container.Size = UDim2.new(1, 0, 0.2, 0)
+	container.Position = UDim2.new(0, 0, yPositionScale, 0)
+	container.BackgroundTransparency = 1
+	container.ZIndex = 110
+
+	local layout = Instance.new("UIListLayout", container)
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	layout.VerticalAlignment = Enum.VerticalAlignment.Center
+	layout.Padding = UDim.new(0, 6)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+
+	local icon = Instance.new("ImageLabel", container)
+	icon.Size = UDim2.fromOffset(30, 30)
+	icon.BackgroundTransparency = 1
+	icon.Image = "rbxasset://textures/ui/common/robux_small.png"
+	icon.ZIndex = 110
+	icon.LayoutOrder = 1
+
+	local textLabel = Instance.new("TextLabel", container)
+	textLabel.Size = UDim2.fromOffset(0, 30)
+	textLabel.AutomaticSize = Enum.AutomaticSize.X
+	textLabel.BackgroundTransparency = 1
+	textLabel.Text = tostring(price)
+	textLabel.Font = Enum.Font.LuckiestGuy
+	textLabel.TextSize = 34
+	textLabel.TextColor3 = Color3.new(0, 0, 0)
+	textLabel.ZIndex = 110
+	textLabel.LayoutOrder = 2
+	
+	local stroke = Instance.new("UIStroke", textLabel)
+	stroke.Color = Color3.new(1, 1, 1)
+	stroke.Thickness = 2
+end
+
 -- Funkcja pomocnicza do hoverów
 local function addHover(btn, originalSize)
 	btn.MouseEnter:Connect(function()
@@ -211,7 +248,7 @@ local vipOrigSize = UDim2.new(0.9, 0, 0.45, 0)
 VIPBtn.Size = vipOrigSize
 VIPBtn.Position = UDim2.new(0.05, 0, 0.15, 0)
 VIPBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-VIPBtn.Text = "ULTIMATE VIP BUNDLE\n[x2 Coins, +Speed, +Jump, VIP Tag]"
+VIPBtn.Text = "ULTIMATE VIP BUNDLE\n[x2 Coins, +Speed, +Jump, VIP Tag]\n\n"
 VIPBtn.Font = Enum.Font.LuckiestGuy
 VIPBtn.TextSize = 25
 VIPBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -222,6 +259,7 @@ VIPBtn.ZIndex = 102
 Instance.new("UICorner", VIPBtn).CornerRadius = UDim.new(0, 15)
 Instance.new("UIStroke", VIPBtn).Thickness = 3
 addHover(VIPBtn, vipOrigSize)
+addPriceLabel(VIPBtn, 399, 0.7)
 
 local vipGrad = Instance.new("UIGradient", VIPBtn)
 vipGrad.Color = ColorSequence.new({
@@ -270,12 +308,13 @@ speedGrad.Rotation = 90
 local speedLabel = Instance.new("TextLabel", SpeedBtn)
 speedLabel.Size = UDim2.fromScale(1, 1)
 speedLabel.BackgroundTransparency = 1
-speedLabel.Text = "\n\n2x SPEED"
+speedLabel.Text = "\n\n2x SPEED\n"
 speedLabel.Font = Enum.Font.LuckiestGuy
 speedLabel.TextSize = 30
 speedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 speedLabel.ZIndex = 110 
 Instance.new("UIStroke", speedLabel).Thickness = 2
+addPriceLabel(SpeedBtn, 199, 0.8)
 
 -- TŁO GreenStuds dla SpeedBtn
 local speedBg = Instance.new("ImageLabel", SpeedBtn)
@@ -339,12 +378,13 @@ jumpGrad.Rotation = 90
 local jumpLabel = Instance.new("TextLabel", JumpBtn)
 jumpLabel.Size = UDim2.fromScale(1, 1)
 jumpLabel.BackgroundTransparency = 1
-jumpLabel.Text = "\n\n2x JUMP"
+jumpLabel.Text = "\n\n2x JUMP\n"
 jumpLabel.Font = Enum.Font.LuckiestGuy
 jumpLabel.TextSize = 30
 jumpLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 jumpLabel.ZIndex = 110 
 Instance.new("UIStroke", jumpLabel).Thickness = 2
+addPriceLabel(JumpBtn, 249, 0.8)
 
 -- TŁO GreenStuds dla JumpBtn
 local jumpBg = Instance.new("ImageLabel", JumpBtn)
@@ -485,7 +525,7 @@ for i, packKey in ipairs(packsOrder) do
 	
 	local amountLabel = Instance.new("TextLabel", btn)
 	amountLabel.Size = UDim2.new(1, 0, 0.3, 0)
-	amountLabel.Position = UDim2.new(0, 0, 0.6, 0)
+	amountLabel.Position = UDim2.new(0, 0, 0.55, 0)
 	amountLabel.BackgroundTransparency = 1
 	amountLabel.Text = packData.Amount .. " COINS"
 	amountLabel.Font = Enum.Font.LuckiestGuy
@@ -494,32 +534,7 @@ for i, packKey in ipairs(packsOrder) do
 	amountLabel.ZIndex = 103
 	Instance.new("UIStroke", amountLabel).Thickness = 2
 	
-	local priceLabel = Instance.new("TextLabel", btn)
-	priceLabel.Size = UDim2.new(1, 0, 0.2, 0)
-	priceLabel.Position = UDim2.new(0, 0, 0.85, 0)
-	priceLabel.BackgroundTransparency = 1
-	priceLabel.Text = packData.Price .. " R$"
-	priceLabel.Font = Enum.Font.SourceSansBold
-	priceLabel.TextSize = 20
-	priceLabel.TextColor3 = Color3.fromRGB(150, 255, 150)
-	priceLabel.ZIndex = 103
-	
-	-- BEST VALUE Wstążka
-	if packKey == "Pack1000" then
-		local ribbon = Instance.new("TextLabel", btn)
-		ribbon.Size = UDim2.new(0.8, 0, 0.25, 0)
-		ribbon.Position = UDim2.new(0.8, 0, 0, 0)
-		ribbon.AnchorPoint = Vector2.new(0.5, 0.5)
-		ribbon.Rotation = 15 
-		ribbon.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-		ribbon.Text = "BEST\nVALUE!"
-		ribbon.Font = Enum.Font.LuckiestGuy
-		ribbon.TextSize = 18
-		ribbon.TextColor3 = Color3.fromRGB(255, 255, 255)
-		ribbon.ZIndex = 105
-		Instance.new("UICorner", ribbon).CornerRadius = UDim.new(0.2, 0)
-		Instance.new("UIStroke", ribbon).Thickness = 2
-	end
+	addPriceLabel(btn, packData.Price, 0.78)
 
 	btn.MouseButton1Click:Connect(function()
 		MarketplaceService:PromptProductPurchase(player, packData.ID)

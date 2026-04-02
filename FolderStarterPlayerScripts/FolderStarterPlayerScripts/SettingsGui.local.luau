@@ -23,61 +23,46 @@ local localSettings = {
 local settingDefinitions = {
 	{
 		id = "Music",
-		title = "Muzyka",
-		description = "Wycisza muzyke i zapetlone utwory w tle.",
+		title = "MUZYKA",
 		kind = "local",
 		default = true,
 	},
 	{
 		id = "SFX",
-		title = "Dzwieki / SFX",
-		description = "Wycisza wszystkie dzwieki poza muzyka.",
+		title = "DŹWIĘKI / SFX",
 		kind = "local",
 		default = true,
 	},
 	{
 		id = "Speed",
-		title = "Szybkosc",
-		description = "Przelacza bonus szybkosci z VIP lub gamepassa.",
+		title = "SZYBKOŚĆ",
 		kind = "server",
 		remoteKey = "Speed",
 		attributeName = "SpeedSettingEnabled",
 		default = true,
-		lockReason = "Wymaga HasSpeedBoost lub HasVIP.",
-		isUnlocked = function()
-			return LocalPlayer:GetAttribute("HasVIP") == true or LocalPlayer:GetAttribute("HasSpeedBoost") == true
-		end,
 	},
 	{
 		id = "Jump",
-		title = "Skok",
-		description = "Przelacza bonus skoku z VIP lub gamepassa.",
+		title = "SKOK",
 		kind = "server",
 		remoteKey = "Jump",
 		attributeName = "JumpSettingEnabled",
 		default = true,
-		lockReason = "Wymaga HasJumpBoost lub HasVIP.",
-		isUnlocked = function()
-			return LocalPlayer:GetAttribute("HasVIP") == true or LocalPlayer:GetAttribute("HasJumpBoost") == true
-		end,
 	},
 	{
 		id = "VIPProtection",
-		title = "Ochrona VIP",
-		description = "Blokuje trolle na tobie, kiedy masz VIP.",
+		title = "OCHRONA VIP",
 		kind = "server",
 		remoteKey = "VIPProtection",
 		attributeName = "VIPProtectionEnabled",
 		default = false,
-		lockReason = "Tylko gracze z HasVIP moga to wlaczyc.",
 		isUnlocked = function()
 			return LocalPlayer:GetAttribute("HasVIP") == true
 		end,
 	},
 	{
 		id = "Performance",
-		title = "Optymalizacja",
-		description = "Ukrywa traile, PrestigeGui i pety innych graczy tylko u ciebie.",
+		title = "OPTYMALIZACJA",
 		kind = "local",
 		default = false,
 	},
@@ -89,7 +74,6 @@ local trackedSounds = {}
 local performanceOverrides = {}
 local performanceScanConnection
 local performanceScanToken = 0
-local statusToken = 0
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "SettingsUI"
@@ -175,7 +159,7 @@ patternCorner.Parent = panelPattern
 
 local Header = Instance.new("Frame")
 Header.Name = "Header"
-Header.Size = UDim2.new(1, -28, 0, 90)
+Header.Size = UDim2.new(1, -28, 0, 64)
 Header.Position = UDim2.new(0, 14, 0, 14)
 Header.BackgroundColor3 = Color3.fromRGB(14, 18, 24)
 Header.BackgroundTransparency = 0.12
@@ -216,10 +200,10 @@ accentCorner.CornerRadius = UDim.new(1, 0)
 accentCorner.Parent = Accent
 
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -120, 0, 42)
-Title.Position = UDim2.new(0, 38, 0, 10)
+Title.Size = UDim2.new(1, -120, 1, 0)
+Title.Position = UDim2.new(0, 38, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "SETTINGS"
+Title.Text = "USTAWIENIA"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.LuckiestGuy
 Title.TextSize = 38
@@ -232,23 +216,11 @@ titleStroke.Thickness = 2
 titleStroke.Color = Color3.new(0, 0, 0)
 titleStroke.Parent = Title
 
-local Subtitle = Instance.new("TextLabel")
-Subtitle.Size = UDim2.new(1, -140, 0, 28)
-Subtitle.Position = UDim2.new(0, 38, 0, 50)
-Subtitle.BackgroundTransparency = 1
-Subtitle.Text = "Audio, boosty i wydajnosc tylko kilka klikniec od ciebie."
-Subtitle.TextColor3 = Color3.fromRGB(212, 224, 216)
-Subtitle.Font = Enum.Font.GothamMedium
-Subtitle.TextSize = 15
-Subtitle.TextXAlignment = Enum.TextXAlignment.Left
-Subtitle.ZIndex = 93
-Subtitle.Parent = Header
-
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Name = "Close"
 CloseBtn.Size = UDim2.fromOffset(44, 44)
-CloseBtn.Position = UDim2.new(1, -12, 0, 12)
-CloseBtn.AnchorPoint = Vector2.new(1, 0)
+CloseBtn.Position = UDim2.new(1, -10, 0.5, 0)
+CloseBtn.AnchorPoint = Vector2.new(1, 0.5)
 CloseBtn.BackgroundColor3 = Color3.fromRGB(196, 66, 66)
 CloseBtn.Text = "X"
 CloseBtn.TextColor3 = Color3.new(1, 1, 1)
@@ -270,8 +242,8 @@ closeStroke.Parent = CloseBtn
 
 local Content = Instance.new("ScrollingFrame")
 Content.Name = "Content"
-Content.Size = UDim2.new(1, -28, 1, -164)
-Content.Position = UDim2.new(0, 14, 0, 116)
+Content.Size = UDim2.new(1, -28, 1, -106)
+Content.Position = UDim2.new(0, 14, 0, 92)
 Content.BackgroundTransparency = 1
 Content.BorderSizePixel = 0
 Content.ScrollBarThickness = 8
@@ -285,48 +257,6 @@ local ContentLayout = Instance.new("UIListLayout")
 ContentLayout.Padding = UDim.new(0, 12)
 ContentLayout.SortOrder = Enum.SortOrder.LayoutOrder
 ContentLayout.Parent = Content
-
-local Footer = Instance.new("Frame")
-Footer.Name = "Footer"
-Footer.Size = UDim2.new(1, -28, 0, 42)
-Footer.Position = UDim2.new(0, 14, 1, -56)
-Footer.BackgroundColor3 = Color3.fromRGB(13, 16, 21)
-Footer.BackgroundTransparency = 0.1
-Footer.BorderSizePixel = 0
-Footer.ZIndex = 91
-Footer.Parent = Panel
-
-local footerCorner = Instance.new("UICorner")
-footerCorner.CornerRadius = UDim.new(0, 16)
-footerCorner.Parent = Footer
-
-local StatusLabel = Instance.new("TextLabel")
-StatusLabel.Size = UDim2.new(1, -20, 1, 0)
-StatusLabel.Position = UDim2.new(0, 10, 0, 0)
-StatusLabel.BackgroundTransparency = 1
-StatusLabel.Text = "Lokalne ustawienia wplywaja tylko na twoj ekran i dzwiek."
-StatusLabel.TextColor3 = Color3.fromRGB(201, 219, 205)
-StatusLabel.Font = Enum.Font.GothamMedium
-StatusLabel.TextSize = 14
-StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
-StatusLabel.ZIndex = 92
-StatusLabel.Parent = Footer
-
-local function showStatus(text, color)
-	statusToken += 1
-	local token = statusToken
-	StatusLabel.Text = text
-	StatusLabel.TextColor3 = color or Color3.fromRGB(201, 219, 205)
-
-	task.delay(3, function()
-		if statusToken ~= token then
-			return
-		end
-
-		StatusLabel.Text = "Lokalne ustawienia wplywaja tylko na twoj ekran i dzwiek."
-		StatusLabel.TextColor3 = Color3.fromRGB(201, 219, 205)
-	end)
-end
 
 local function isLikelyMusic(sound)
 	local name = string.lower(sound.Name)
@@ -367,9 +297,7 @@ local function applySoundState(sound)
 		return
 	end
 
-	tracked.isApplying = true
 	sound.Volume = targetVolume
-	tracked.isApplying = false
 end
 
 local function trackSound(sound)
@@ -379,13 +307,13 @@ local function trackSound(sound)
 
 	local tracked = {
 		baseVolume = sound.Volume,
-		isApplying = false,
 		connections = {},
 	}
 
 	trackedSounds[sound] = tracked
 	table.insert(tracked.connections, sound:GetPropertyChangedSignal("Volume"):Connect(function()
-		if not tracked.isApplying then
+		local shouldMute = (isLikelyMusic(sound) and not localSettings.Music) or ((not isLikelyMusic(sound)) and not localSettings.SFX)
+		if not shouldMute then
 			tracked.baseVolume = sound.Volume
 		end
 		applySoundState(sound)
@@ -580,9 +508,6 @@ local function updateRowVisual(definition)
 	local unlocked = isUnlocked(definition)
 	local isPending = pendingServerToggles[definition.id] == true
 
-	row.Description.Text = unlocked and definition.description or definition.lockReason
-	row.Description.TextColor3 = unlocked and Color3.fromRGB(206, 217, 223) or Color3.fromRGB(150, 160, 168)
-
 	if isPending then
 		row.Toggle.Text = "..."
 		row.Toggle.BackgroundColor3 = Color3.fromRGB(86, 99, 112)
@@ -622,18 +547,15 @@ local function toggleDefinition(definition)
 		localSettings[definition.id] = not getCurrentSettingValue(definition)
 		applyLocalSetting(definition)
 		updateRowVisual(definition)
-		showStatus(definition.title .. (localSettings[definition.id] and " wlaczone." or " wylaczone."), localSettings[definition.id] and Color3.fromRGB(111, 223, 143) or Color3.fromRGB(236, 136, 136))
 		return
 	end
 
 	if not isUnlocked(definition) then
-		showStatus(definition.lockReason, Color3.fromRGB(224, 165, 96))
 		updateRowVisual(definition)
 		return
 	end
 
 	if not UpdateGameplaySettingRF then
-		showStatus("Serwer ustawien nie jest jeszcze gotowy.", Color3.fromRGB(236, 136, 136))
 		return
 	end
 
@@ -645,31 +567,18 @@ local function toggleDefinition(definition)
 	updateRowVisual(definition)
 
 	local targetValue = not getCurrentSettingValue(definition)
-	local callOk, success, newValue, reason = pcall(function()
+	pcall(function()
 		return UpdateGameplaySettingRF:InvokeServer(definition.remoteKey, targetValue)
 	end)
 
 	pendingServerToggles[definition.id] = nil
-
-	if not callOk then
-		showStatus("Nie udalo sie zaktualizowac " .. definition.title .. ".", Color3.fromRGB(236, 136, 136))
-	elseif success then
-		showStatus(definition.title .. (newValue and " wlaczone." or " wylaczone."), newValue and Color3.fromRGB(111, 223, 143) or Color3.fromRGB(236, 136, 136))
-	else
-		if reason == "LOCKED" then
-			showStatus(definition.lockReason, Color3.fromRGB(224, 165, 96))
-		else
-			showStatus("Serwer odrzucil zmiane dla " .. definition.title .. ".", Color3.fromRGB(236, 136, 136))
-		end
-	end
-
 	updateAllRows()
 end
 
 local function createSettingRow(order, definition)
 	local Row = Instance.new("Frame")
 	Row.Name = definition.id .. "Row"
-	Row.Size = UDim2.new(1, -4, 0, 82)
+	Row.Size = UDim2.new(1, -4, 0, 72)
 	Row.BackgroundColor3 = Color3.fromRGB(17, 21, 28)
 	Row.BackgroundTransparency = 0.06
 	Row.BorderSizePixel = 0
@@ -703,30 +612,17 @@ local function createSettingRow(order, definition)
 	rowPatternCorner.Parent = rowPattern
 
 	local rowTitle = Instance.new("TextLabel")
-	rowTitle.Size = UDim2.new(1, -170, 0, 28)
-	rowTitle.Position = UDim2.new(0, 20, 0, 14)
+	rowTitle.Size = UDim2.new(1, -170, 1, 0)
+	rowTitle.Position = UDim2.new(0, 20, 0, 0)
 	rowTitle.BackgroundTransparency = 1
 	rowTitle.Text = definition.title
 	rowTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
 	rowTitle.Font = Enum.Font.GothamBold
 	rowTitle.TextSize = 20
 	rowTitle.TextXAlignment = Enum.TextXAlignment.Left
+	rowTitle.TextYAlignment = Enum.TextYAlignment.Center
 	rowTitle.ZIndex = 93
 	rowTitle.Parent = Row
-
-	local rowDescription = Instance.new("TextLabel")
-	rowDescription.Size = UDim2.new(1, -190, 0, 32)
-	rowDescription.Position = UDim2.new(0, 20, 0, 42)
-	rowDescription.BackgroundTransparency = 1
-	rowDescription.Text = definition.description
-	rowDescription.TextColor3 = Color3.fromRGB(206, 217, 223)
-	rowDescription.Font = Enum.Font.GothamMedium
-	rowDescription.TextSize = 13
-	rowDescription.TextWrapped = true
-	rowDescription.TextXAlignment = Enum.TextXAlignment.Left
-	rowDescription.TextYAlignment = Enum.TextYAlignment.Top
-	rowDescription.ZIndex = 93
-	rowDescription.Parent = Row
 
 	local toggleButton = Instance.new("TextButton")
 	toggleButton.Name = "Toggle"
@@ -759,7 +655,6 @@ local function createSettingRow(order, definition)
 	rowLookup[definition.id] = {
 		Row = Row,
 		Stroke = rowStroke,
-		Description = rowDescription,
 		Toggle = toggleButton,
 	}
 end

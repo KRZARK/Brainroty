@@ -103,7 +103,7 @@ local function spawnPhysicalCoins(count)
 		end
 
 		coin.Name = "CollectibleCoin"
-		coin.Size = Vector3.new(3, 3, 3)
+		coin.Size = Vector3.new(3, 3, 0.5)
 		coin.Position = Vector3.new(
 			math.random(-SPAWN_RANGE, SPAWN_RANGE),
 			100,

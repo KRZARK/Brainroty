@@ -398,45 +398,138 @@ HudTileStyle.apply(openButton, indexImg, indexText, {
 })
 
 -- RAMKA INDEKSU
-local indexFrame = Instance.new("ScrollingFrame")
-indexFrame.Name = "IndexFrame"
-indexFrame.Size = UDim2.fromScale(0.85, 0.85)
-indexFrame.Position = UDim2.fromScale(0.5, 0.5)
-indexFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-indexFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-indexFrame.BorderSizePixel = 0
-indexFrame.ScrollBarThickness = 8
-indexFrame.Visible = false
-indexFrame.Parent = screenGui
-indexFrame.ZIndex = 50
-indexFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+local indexBackdrop = Instance.new("Frame")
+indexBackdrop.Name = "IndexBackdrop"
+indexBackdrop.Size = UDim2.fromScale(1, 1)
+indexBackdrop.BackgroundColor3 = Color3.fromRGB(7, 9, 13)
+indexBackdrop.BackgroundTransparency = 0.32
+indexBackdrop.BorderSizePixel = 0
+indexBackdrop.Visible = false
+indexBackdrop.Active = true
+indexBackdrop.ZIndex = 49
+indexBackdrop.Parent = screenGui
+
+local indexModal = Instance.new("Frame")
+indexModal.Name = "IndexModal"
+indexModal.AnchorPoint = Vector2.new(0.5, 0.5)
+indexModal.Position = UDim2.fromScale(0.5, 0.5)
+indexModal.BackgroundColor3 = HudTileStyle.BaseBackgroundColor
+indexModal.BorderSizePixel = 0
+indexModal.ClipsDescendants = true
+indexModal.ZIndex = 50
+indexModal.Parent = indexBackdrop
+
+local modalCorner = Instance.new("UICorner")
+modalCorner.CornerRadius = UDim.new(0, 28)
+modalCorner.Parent = indexModal
+
+local modalStroke = Instance.new("UIStroke")
+modalStroke.Thickness = 3
+modalStroke.Color = HudTileStyle.BaseStrokeColor
+modalStroke.Transparency = 0.04
+modalStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+modalStroke.Parent = indexModal
+
+local modalGradient = Instance.new("UIGradient")
+modalGradient.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, HudTileStyle.BaseTopColor),
+	ColorSequenceKeypoint.new(1, HudTileStyle.BaseBottomColor),
+})
+modalGradient.Rotation = 90
+modalGradient.Parent = indexModal
+
+local modalHeader = Instance.new("Frame")
+modalHeader.Name = "Header"
+modalHeader.BackgroundTransparency = 1
+modalHeader.ZIndex = 51
+modalHeader.Parent = indexModal
+
+local headerDivider = Instance.new("Frame")
+headerDivider.Name = "Divider"
+headerDivider.AnchorPoint = Vector2.new(0.5, 1)
+headerDivider.Position = UDim2.new(0.5, 0, 1, 0)
+headerDivider.Size = UDim2.new(1, -36, 0, 2)
+headerDivider.BackgroundColor3 = HudTileStyle.BaseStrokeColor
+headerDivider.BackgroundTransparency = 0.72
+headerDivider.BorderSizePixel = 0
+headerDivider.ZIndex = 52
+headerDivider.Parent = modalHeader
+
+-- GŁÓWNY TYTUŁ W HEADERZE
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Name = "TitleLabel"
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "BRAINROT INDEX"
+titleLabel.TextColor3 = HudTileStyle.BaseLabelColor
+titleLabel.Font = Enum.Font.LuckiestGuy
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.ZIndex = 53
+titleLabel.Parent = modalHeader
+local titleStroke = Instance.new("UIStroke")
+titleStroke.Thickness = 2
+titleStroke.Color = Color3.new(0, 0, 0)
+titleStroke.Parent = titleLabel
+
+local helperLabel = Instance.new("TextLabel")
+helperLabel.Name = "HelperLabel"
+helperLabel.BackgroundTransparency = 1
+helperLabel.Text = "COLLECTION ALBUM"
+helperLabel.TextColor3 = Color3.fromRGB(214, 222, 235)
+helperLabel.TextTransparency = 0.16
+helperLabel.Font = Enum.Font.FredokaOne
+helperLabel.TextXAlignment = Enum.TextXAlignment.Left
+helperLabel.ZIndex = 52
+helperLabel.Parent = modalHeader
+
+-- PRZYCISK X
+local closeButton = Instance.new("TextButton")
+closeButton.Name = "CloseButton"
+closeButton.AnchorPoint = Vector2.new(1, 0)
+closeButton.BackgroundColor3 = Color3.fromRGB(156, 52, 64)
+closeButton.Text = "X"
+closeButton.TextColor3 = Color3.new(1, 1, 1)
+closeButton.Font = Enum.Font.FredokaOne
+closeButton.AutoButtonColor = false
+closeButton.ZIndex = 54
+closeButton.Parent = modalHeader
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 14)
+closeCorner.Parent = closeButton
+local closeStroke = Instance.new("UIStroke")
+closeStroke.Thickness = 2
+closeStroke.Color = HudTileStyle.BaseStrokeColor
+closeStroke.Transparency = 0.12
+closeStroke.Parent = closeButton
+closeButton.Activated:Connect(HudTileStyle.playClick)
 
 -- PASEK POSTĘPU (W INDEKSIE)
 local progressContainer = Instance.new("Frame")
 progressContainer.Name = "ProgressContainer"
-progressContainer.BackgroundTransparency = 1 -- Całkowicie przezroczysty
-progressContainer.Visible = false -- I tak go nie chcemy widzieć
-progressContainer.Size = UDim2.new(0.85, 0, 0, 60)
-progressContainer.Position = UDim2.new(0.5, 0, 0.5 + (0.85/2), 15)
-progressContainer.AnchorPoint = Vector2.new(0.5, 0)
-progressContainer.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-progressContainer.Visible = false
-progressContainer.Parent = screenGui
+progressContainer.BackgroundColor3 = Color3.fromRGB(18, 21, 27)
+progressContainer.BorderSizePixel = 0
+progressContainer.ZIndex = 52
+progressContainer.Parent = modalHeader
 
 local progressCorner = Instance.new("UICorner")
-progressCorner.CornerRadius = UDim.new(0, 8)
+progressCorner.CornerRadius = UDim.new(0, 16)
 progressCorner.Parent = progressContainer
+
+local progressStroke = Instance.new("UIStroke")
+progressStroke.Thickness = 2
+progressStroke.Color = HudTileStyle.BaseStrokeColor
+progressStroke.Transparency = 0.18
+progressStroke.Parent = progressContainer
 
 local progressBar = Instance.new("Frame")
 progressBar.Name = "ProgressBar"
 progressBar.Size = UDim2.fromScale(0, 1)
-progressBar.BackgroundColor3 = Color3.fromRGB(34, 139, 34)
+progressBar.BackgroundColor3 = Color3.fromRGB(255, 78, 126)
 progressBar.BorderSizePixel = 0
+progressBar.ClipsDescendants = true
 progressBar.Parent = progressContainer
-progressBar.Transparency = 1
 
 local barCorner = Instance.new("UICorner")
-barCorner.CornerRadius = UDim.new(0, 8)
+barCorner.CornerRadius = UDim.new(0, 16)
 barCorner.Parent = progressBar
 
 local progressLabel = Instance.new("TextLabel")
@@ -445,54 +538,91 @@ progressLabel.Size = UDim2.fromScale(1, 1)
 progressLabel.BackgroundTransparency = 1
 progressLabel.Text = "COLLECTED: 0 / 0"
 progressLabel.TextColor3 = Color3.new(1, 1, 1)
-progressLabel.Font = Enum.Font.SourceSansBold
-progressLabel.TextSize = 0
-progressLabel.TextStrokeTransparency = 0
-progressLabel.ZIndex = 2
+progressLabel.Font = Enum.Font.FredokaOne
+progressLabel.TextStrokeTransparency = 1
+progressLabel.ZIndex = 53
 progressLabel.Parent = progressContainer
 
+local indexFrame = Instance.new("ScrollingFrame")
+indexFrame.Name = "IndexFrame"
+indexFrame.BackgroundTransparency = 1
+indexFrame.BorderSizePixel = 0
+indexFrame.ScrollBarThickness = 8
+indexFrame.ScrollBarImageColor3 = HudTileStyle.BaseStrokeColor
+indexFrame.ScrollBarImageTransparency = 0.25
+indexFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+indexFrame.CanvasSize = UDim2.fromOffset(0, 0)
+indexFrame.ZIndex = 51
+indexFrame.Parent = indexModal
 
--- GŁÓWNY TYTUŁ NA DOLE
-local titleLabel = Instance.new("TextLabel")
-titleLabel.Name = "TitleLabel"
-titleLabel.Size = UDim2.new(0.85, 0, 0, 80) 
-titleLabel.Position = UDim2.new(0.5, 0, 0.935, 0) -- Pozycja na dole
-titleLabel.AnchorPoint = Vector2.new(0.5, 0)
-titleLabel.BackgroundTransparency = 1
-titleLabel.Text = "BRAINROT INDEX"
-titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-titleLabel.Font = Enum.Font.LuckiestGuy -- Gruba czcionka
-titleLabel.TextSize = 80 
-titleLabel.Visible = false
-titleLabel.ZIndex = 55
-titleLabel.Parent = screenGui
-Instance.new("UIStroke", titleLabel).Thickness = 4
-
--- PRZYCISK X
-local closeButton = Instance.new("TextButton")
-closeButton.Name = "CloseButton"
-closeButton.Size = UDim2.fromOffset(80, 80)
-closeButton.Position = UDim2.new(0.5 + (0.85/2), 0, 0.5 - (0.85/2), 0)
-closeButton.AnchorPoint = Vector2.new(0.5, 0.5)
-closeButton.BackgroundColor3 = Color3.fromRGB(220, 0, 0)
-closeButton.Text = "X"
-closeButton.TextColor3 = Color3.new(1, 1, 1)
-closeButton.Font = Enum.Font.SourceSansBold
-closeButton.TextSize = 45
-closeButton.Visible = false
-closeButton.ZIndex = 55
-closeButton.Parent = screenGui
-
-local closeCorner = Instance.new("UICorner")
-closeCorner.CornerRadius = UDim.new(1, 0)
-closeCorner.Parent = closeButton
+local gridPadding = Instance.new("UIPadding")
+gridPadding.PaddingTop = UDim.new(0, 4)
+gridPadding.PaddingBottom = UDim.new(0, 4)
+gridPadding.Parent = indexFrame
 
 local layout = Instance.new("UIGridLayout")
-layout.CellPadding = UDim2.fromOffset(15, 15)
-layout.CellSize = UDim2.fromOffset(260, 380)
+layout.CellPadding = UDim2.fromOffset(14, 14)
+layout.CellSize = UDim2.fromOffset(172, 200)
+layout.FillDirectionMaxCells = 4
 layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 layout.SortOrder = Enum.SortOrder.Name
 layout.Parent = indexFrame
+
+local function applyIndexModalLayout()
+	local viewport = Workspace.CurrentCamera and Workspace.CurrentCamera.ViewportSize or Vector2.new(1280, 720)
+	local isMobile = HudTileStyle.isMobileLayout()
+	local modalWidthScale = isMobile and 0.92 or 0.84
+	local modalHeightScale = isMobile and 0.80 or 0.82
+	local headerHeight = isMobile and 124 or 140
+	local sidePadding = isMobile and 16 or 22
+	local bodyGap = isMobile and 10 or 14
+	local modalWidthPx = math.floor(viewport.X * modalWidthScale + 0.5)
+	local frameWidth = modalWidthPx - (sidePadding * 2)
+	local columns = isMobile and 2 or (frameWidth >= 1180 and 5 or frameWidth >= 900 and 4 or 3)
+	local cellPadding = isMobile and 10 or 14
+	local cellWidth = math.floor((frameWidth - (cellPadding * (columns - 1))) / columns)
+	cellWidth = math.clamp(cellWidth, isMobile and 126 or 160, isMobile and 164 or 196)
+	local cellHeight = math.floor(cellWidth * (isMobile and 1.24 or 1.16) + 0.5)
+
+	indexModal.Size = UDim2.fromScale(modalWidthScale, modalHeightScale)
+	modalHeader.Size = UDim2.new(1, 0, 0, headerHeight)
+	indexFrame.Position = UDim2.new(0, sidePadding, 0, headerHeight + bodyGap)
+	indexFrame.Size = UDim2.new(1, -(sidePadding * 2), 1, -(headerHeight + bodyGap + sidePadding))
+	layout.FillDirectionMaxCells = columns
+	layout.CellPadding = UDim2.fromOffset(cellPadding, cellPadding)
+	layout.CellSize = UDim2.fromOffset(cellWidth, cellHeight)
+
+	titleLabel.Position = UDim2.fromOffset(sidePadding, isMobile and 14 or 18)
+	titleLabel.Size = UDim2.new(1, -(sidePadding * 2) - (isMobile and 58 or 72), 0, isMobile and 34 or 42)
+	titleLabel.TextSize = isMobile and 30 or 42
+
+	helperLabel.Position = UDim2.fromOffset(sidePadding, isMobile and 46 or 60)
+	helperLabel.Size = UDim2.new(1, -(sidePadding * 2) - (isMobile and 58 or 72), 0, isMobile and 18 or 22)
+	helperLabel.TextSize = isMobile and 13 or 17
+
+	closeButton.Position = UDim2.new(1, -sidePadding, 0, isMobile and 14 or 18)
+	closeButton.Size = UDim2.fromOffset(isMobile and 42 or 48, isMobile and 42 or 48)
+	closeButton.TextSize = isMobile and 24 or 28
+
+	progressContainer.Position = UDim2.new(0, sidePadding, 0, isMobile and 76 or 90)
+	progressContainer.Size = UDim2.new(1, -(sidePadding * 2), 0, isMobile and 28 or 34)
+	progressLabel.TextSize = isMobile and 13 or 16
+end
+
+applyIndexModalLayout()
+
+local function bindIndexLayoutCamera(camera)
+	if not camera then
+		return
+	end
+	camera:GetPropertyChangedSignal("ViewportSize"):Connect(applyIndexModalLayout)
+end
+
+bindIndexLayoutCamera(Workspace.CurrentCamera)
+Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+	bindIndexLayoutCamera(Workspace.CurrentCamera)
+	applyIndexModalLayout()
+end)
 
 local function updateProgressBar()
 	local total = 0
@@ -526,10 +656,12 @@ local function updateProgressBar()
 
 	-- 3. Aktualizacja pasków i tekstów
 	local percentage = (total > 0) and (collected / total) or 0
+	local remaining = math.max(total - collected, 0)
 
 	topProgressLabel.Text = "BRAINROT PROGRESS: " .. collected .. " / " .. total
 	topProgressFill:TweenSize(UDim2.fromScale(percentage, 1), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.5, true)
 
+	helperLabel.Text = (remaining == 0 and total > 0) and "ALBUM COMPLETE" or (remaining .. " LEFT TO FIND")
 	progressLabel.Text = "COLLECTED: " .. collected .. " / " .. total
 	progressBar:TweenSize(UDim2.fromScale(percentage, 1), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.3, true)
 end
@@ -561,6 +693,28 @@ local function isRarityFinished(rarityName)
 	return collectedInRarity >= totalInRarity
 end
 
+local function getActivePetName()
+	local activePetsFolder = Workspace:FindFirstChild("ActivePets")
+	if not activePetsFolder then
+		return nil
+	end
+
+	local pet = activePetsFolder:FindFirstChild(player.Name .. "_ActivePet")
+	return pet and pet:GetAttribute("PetName")
+end
+
+local function getCardAccentColor(rarity, timeValue)
+	local t = timeValue or tick()
+	if rarity == "Brainrot God" then
+		return Color3.fromHSV((t % 3) / 3, 1, 1)
+	elseif rarity == "Secret" then
+		local shine = (math.sin(t * 3) + 1) / 2
+		return Color3.new(shine, shine, shine)
+	end
+
+	return (RarityColors[rarity] or HudTileStyle.BaseStrokeColor):Lerp(HudTileStyle.BaseStrokeColor, 0.35)
+end
+
 local function refreshIndex()
 	-- Zamiast czyścić całą tabelę, usuwamy z niej tylko te modele, które NIE są powiadomieniami
 	for viewport, data in pairs(spinningModels) do
@@ -578,125 +732,217 @@ local function refreshIndex()
 		local rarity = wzorzec:GetAttribute("Rarity") or "Common"
 		local order = RarityOrder[rarity] or 9 
 
-		local itemFrame = Instance.new("Frame")
-		itemFrame.Name = order .. "_" .. wzorzec.Name
-		itemFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-		itemFrame.BorderSizePixel = 4
-		itemFrame.BorderMode = Enum.BorderMode.Inset
-		itemFrame.BorderColor3 = RarityColors[rarity] or Color3.new(1, 1, 1)
-		itemFrame.ZIndex = 51 -- O 1 wyżej niż główna ramka
-		itemFrame.Parent = indexFrame
-
 		local isCollected = collectedBrainrots[wzorzec.Name]
-		createViewport(wzorzec, itemFrame, isCollected)
+		local accentColor = getCardAccentColor(rarity)
+		local rarityConfig = GameConfig.Rarities[rarity] or {}
+		local leaderstats = player:FindFirstChild("leaderstats")
+		local rebirths = leaderstats and leaderstats:FindFirstChild("Rebirths")
+		local userRebirths = (rebirths and rebirths.Value) or 0
+		local reqLevel = rarityConfig.PetReqRebirth or 1
+		local canEquipPet = userRebirths >= reqLevel
+		local isEquipped = isCollected and (getActivePetName() == wzorzec.Name)
 
-		local nameLabel = Instance.new("TextLabel")
-		nameLabel.Name = "NameLabel"
-		nameLabel.Size = UDim2.new(1, -10, 0, 40)
-		nameLabel.Position = UDim2.new(0, 5, 0, 320)
-		nameLabel.BackgroundTransparency = 1
-		nameLabel.Text = isCollected and wzorzec.Name or "???"
-		nameLabel.TextColor3 = Color3.new(1, 1, 1)
-		nameLabel.Font = Enum.Font.SourceSansBold
-		nameLabel.TextSize = 28
-		nameLabel.ZIndex = 52
-		nameLabel.TextScaled = true
-		nameLabel.Parent = itemFrame
+		local itemFrame = Instance.new("Frame")
+		itemFrame.Name = string.format("%02d_%s", order, wzorzec.Name)
+		itemFrame:SetAttribute("RarityKey", rarity)
+		itemFrame.BackgroundColor3 = Color3.fromRGB(30, 34, 40)
+		itemFrame.BackgroundTransparency = isCollected and 0.04 or 0.08
+		itemFrame.BorderSizePixel = 0
+		itemFrame.ClipsDescendants = true
+		itemFrame.ZIndex = 51
+		itemFrame.Parent = indexFrame
+		local itemCorner = Instance.new("UICorner")
+		itemCorner.CornerRadius = UDim.new(0, 18)
+		itemCorner.Parent = itemFrame
+		local itemStroke = Instance.new("UIStroke")
+		itemStroke.Name = "ItemStroke"
+		itemStroke.Thickness = 2
+		itemStroke.Color = accentColor
+		itemStroke.Transparency = isCollected and 0.08 or 0.18
+		itemStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		itemStroke.Parent = itemFrame
+		local itemGradient = Instance.new("UIGradient")
+		itemGradient.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, HudTileStyle.BaseTopColor),
+			ColorSequenceKeypoint.new(1, HudTileStyle.BaseBottomColor),
+		})
+		itemGradient.Rotation = 90
+		itemGradient.Parent = itemFrame
+
+		local previewHolder = Instance.new("Frame")
+		previewHolder.Name = "PreviewHolder"
+		previewHolder.Size = UDim2.new(1, -20, 0.42, 0)
+		previewHolder.Position = UDim2.new(0.5, 0, 0, 12)
+		previewHolder.AnchorPoint = Vector2.new(0.5, 0)
+		previewHolder.BackgroundColor3 = Color3.fromRGB(18, 21, 27)
+		previewHolder.BorderSizePixel = 0
+		previewHolder.ZIndex = 53
+		previewHolder.Parent = itemFrame
+		local previewCorner = Instance.new("UICorner")
+		previewCorner.CornerRadius = UDim.new(0, 14)
+		previewCorner.Parent = previewHolder
+		local previewStroke = Instance.new("UIStroke")
+		previewStroke.Name = "PreviewStroke"
+		previewStroke.Thickness = 1.5
+		previewStroke.Color = accentColor
+		previewStroke.Transparency = 0.3
+		previewStroke.Parent = previewHolder
+
+		local previewViewport = createViewport(wzorzec, previewHolder, isCollected)
+		previewViewport.Name = "PreviewViewport"
+		previewViewport.Size = UDim2.new(1, -12, 1, -12)
+		previewViewport.Position = UDim2.new(0.5, 0, 0.5, 0)
+		previewViewport.AnchorPoint = Vector2.new(0.5, 0.5)
+		previewViewport.ZIndex = 54
+
+		local infoContainer = Instance.new("Frame")
+		infoContainer.Name = "InfoContainer"
+		infoContainer.Size = UDim2.new(1, -20, 0, 94)
+		infoContainer.Position = UDim2.new(0.5, 0, 1, -12)
+		infoContainer.AnchorPoint = Vector2.new(0.5, 1)
+		infoContainer.BackgroundTransparency = 1
+		infoContainer.ZIndex = 55
+		infoContainer.Parent = itemFrame
 
 		local rarityLabel = Instance.new("TextLabel")
 		rarityLabel.Name = "RarityLabel"
-		rarityLabel.Size = UDim2.new(1, -10, 0, 25)
-		rarityLabel.Position = UDim2.new(0, 5, 0, 300)
+		rarityLabel.Position = UDim2.new(0, 0, 0, 0)
+		rarityLabel.Size = UDim2.new(1, 0, 0, 18)
 		rarityLabel.BackgroundTransparency = 1
 		rarityLabel.Text = string.upper(rarity)
-		rarityLabel.TextColor3 = RarityColors[rarity] or Color3.new(1, 1, 1)
-		rarityLabel.Font = Enum.Font.SourceSansBold
-		rarityLabel.ZIndex = 52
-		rarityLabel.TextSize = 24
-		rarityLabel.Parent = itemFrame
-		
-		-- === SYSTEM PETÓW (Przycisk Equip) ===
+		rarityLabel.TextColor3 = accentColor
+		rarityLabel.Font = Enum.Font.FredokaOne
+		rarityLabel.TextScaled = true
+		rarityLabel.ZIndex = 56
+		rarityLabel.Parent = infoContainer
+		local rarityConstraint = Instance.new("UITextSizeConstraint")
+		rarityConstraint.MinTextSize = 14
+		rarityConstraint.MaxTextSize = 20
+		rarityConstraint.Parent = rarityLabel
+
+		local nameLabel = Instance.new("TextLabel")
+		nameLabel.Name = "NameLabel"
+		nameLabel.Position = UDim2.new(0, 0, 0, 20)
+		nameLabel.Size = UDim2.new(1, 0, 0, 40)
+		nameLabel.BackgroundTransparency = 1
+		nameLabel.Text = isCollected and wzorzec.Name or "???"
+		nameLabel.TextColor3 = Color3.new(1, 1, 1)
+		nameLabel.Font = Enum.Font.LuckiestGuy
+		nameLabel.TextScaled = true
+		nameLabel.TextWrapped = true
+		nameLabel.TextYAlignment = Enum.TextYAlignment.Center
+		nameLabel.ZIndex = 56
+		nameLabel.Parent = infoContainer
+		local nameConstraint = Instance.new("UITextSizeConstraint")
+		nameConstraint.MinTextSize = 18
+		nameConstraint.MaxTextSize = 28
+		nameConstraint.Parent = nameLabel
+		local nameStroke = Instance.new("UIStroke")
+		nameStroke.Thickness = 2.5
+		nameStroke.Color = Color3.new(0, 0, 0)
+		nameStroke.Parent = nameLabel
+
 		if isCollected then
-			local function getActivePetName()
-				if not character then return nil end
-				local pet = workspace:FindFirstChild(player.Name .. "_ActivePet")
-				return pet and pet:GetAttribute("PetName")
-			end
-			
-			local isEquipped = (getActivePetName() == wzorzec.Name)
-			
 			local equipBtn = Instance.new("TextButton")
 			equipBtn.Name = "EquipButton"
-			equipBtn.Size = UDim2.new(1, -10, 0, 40) -- Taki sam rozmiar jak NameLabel
-			equipBtn.Position = UDim2.new(0, 5, 0, 320) -- Pozycja NameLabel
-			equipBtn.BackgroundColor3 = isEquipped and Color3.fromRGB(150, 0, 0) or Color3.fromRGB(0, 100, 200)
-			equipBtn.Text = isEquipped and "UNEQUIP PET" or "EQUIP PET"
+			equipBtn.Size = UDim2.new(1, 0, 0, 34)
+			equipBtn.Position = UDim2.new(0.5, 0, 1, 0)
+			equipBtn.AnchorPoint = Vector2.new(0.5, 1)
+			equipBtn.BackgroundColor3 = isEquipped and Color3.fromRGB(53, 156, 96) or (canEquipPet and Color3.fromRGB(57, 117, 194) or Color3.fromRGB(96, 101, 111))
+			equipBtn.Text = isEquipped and "EQUIPPED" or (canEquipPet and "EQUIP" or "NEED MORE REBIRTHS")
 			equipBtn.TextColor3 = Color3.new(1, 1, 1)
-			equipBtn.Font = Enum.Font.FredokaOne
-			equipBtn.TextSize = 18
-			equipBtn.ZIndex = 55
-			equipBtn.Visible = false -- Domyślnie ukryty do momentu najechania
-			equipBtn.Parent = itemFrame
+			equipBtn.Font = Enum.Font.LuckiestGuy
+			equipBtn.TextScaled = true
+			equipBtn.TextWrapped = true
+			equipBtn.TextStrokeColor3 = Color3.new(0, 0, 0)
+			equipBtn.TextStrokeTransparency = 0.15
+			equipBtn.AutoButtonColor = false
+			equipBtn.ZIndex = 57
+			equipBtn.Parent = infoContainer
+			local equipConstraint = Instance.new("UITextSizeConstraint")
+			equipConstraint.MinTextSize = 13
+			equipConstraint.MaxTextSize = 22
+			equipConstraint.Parent = equipBtn
+			local equipCorner = Instance.new("UICorner")
+			equipCorner.CornerRadius = UDim.new(0, 10)
+			equipCorner.Parent = equipBtn
+			local equipStroke = Instance.new("UIStroke")
+			equipStroke.Name = "StatusStroke"
+			equipStroke.Thickness = 2
+			equipStroke.Color = HudTileStyle.BaseStrokeColor
+			equipStroke.Transparency = 0.08
+			equipStroke.Parent = equipBtn
 			
-			Instance.new("UICorner", equipBtn).CornerRadius = UDim.new(0, 6)
-			
-			-- Zablokowanie przycisku jeśli gracz ma Rebirth 1
-			local leaderstats = player:FindFirstChild("leaderstats")
-			local rebirths = leaderstats and leaderstats:FindFirstChild("Rebirths")
-			local userRebirths = (rebirths and rebirths.Value) or 0
-			
-			if userRebirths < 1 then
-				equipBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-				equipBtn.Text = "REQUIRES REBIRTH"
-				equipBtn.AutoButtonColor = false
-			else
+			if canEquipPet then
 				equipBtn.MouseButton1Click:Connect(function()
-					if not TogglePetEvent then return end
-					equipBtn.Text = "..."
+					if not TogglePetEvent then
+						return
+					end
 					
-					local success, response, reqLvl = TogglePetEvent:InvokeServer(wzorzec.Name)
+					equipBtn.Text = "..."
+					local success, response = TogglePetEvent:InvokeServer(wzorzec.Name)
 					
 					if success then
-						equipBtn.Text = response
+						equipBtn.Text = string.upper(response)
 						task.wait(0.2)
 						refreshIndex()
 					else
-						-- Błąd (Teraz czyta PRAWIDŁOWY powód z serwera!)
 						equipBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-						equipBtn.Text = string.upper(response) -- Używamy prawdziwego powodu
+						equipBtn.Text = string.upper(response)
 						task.wait(2)
-						equipBtn.BackgroundColor3 = (getActivePetName() == wzorzec.Name) and Color3.fromRGB(150, 0, 0) or Color3.fromRGB(0, 100, 200)
-						equipBtn.Text = (getActivePetName() == wzorzec.Name) and "UNEQUIP PET" or "EQUIP PET"
+						refreshIndex()
 					end
 				end)
 			end
-			
-			-- Obsługa najechania myszką (Hover)
-			itemFrame.MouseEnter:Connect(function()
-				nameLabel.Visible = false
-				equipBtn.Visible = true
-			end)
-			
-			itemFrame.MouseLeave:Connect(function()
-				equipBtn.Visible = false
-				nameLabel.Visible = true
-			end)
+		else
+			local missingLabel = Instance.new("TextLabel")
+			missingLabel.Name = "MissingLabel"
+			missingLabel.Size = UDim2.new(1, 0, 0, 30)
+			missingLabel.Position = UDim2.new(0.5, 0, 1, 0)
+			missingLabel.AnchorPoint = Vector2.new(0.5, 1)
+			missingLabel.BackgroundColor3 = Color3.fromRGB(18, 21, 27)
+			missingLabel.BackgroundTransparency = 0.06
+			missingLabel.Text = "MISSING"
+			missingLabel.TextColor3 = accentColor
+			missingLabel.Font = Enum.Font.LuckiestGuy
+			missingLabel.TextScaled = true
+			missingLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+			missingLabel.TextStrokeTransparency = 0.12
+			missingLabel.ZIndex = 57
+			missingLabel.Parent = infoContainer
+			local missingConstraint = Instance.new("UITextSizeConstraint")
+			missingConstraint.MinTextSize = 16
+			missingConstraint.MaxTextSize = 24
+			missingConstraint.Parent = missingLabel
+			local missingCorner = Instance.new("UICorner")
+			missingCorner.CornerRadius = UDim.new(0, 10)
+			missingCorner.Parent = missingLabel
+			local missingStroke = Instance.new("UIStroke")
+			missingStroke.Name = "StatusStroke"
+			missingStroke.Thickness = 2
+			missingStroke.Color = accentColor
+			missingStroke.Transparency = 0.08
+			missingStroke.Parent = missingLabel
 		end
 	end
 	updateProgressBar()
 end
 
 local function toggleUI(visible)
-	indexFrame.Visible = visible
-	titleLabel.Visible = visible
-	closeButton.Visible = visible
-	progressContainer.Visible = visible
+	indexBackdrop.Visible = visible
 	
 	-- Ukrywamy HUD (monety), by nie zaśmiecał ekranu przy Indeksie
 	local hudGui = playerGui:FindFirstChild("HUD_Standalone_UI")
-	if hudGui then hudGui.Enabled = not visible end
+	if hudGui then
+		hudGui.Enabled = not visible
+	end
 	
-	if visible then refreshIndex() end
+	if visible then
+		applyIndexModalLayout()
+		updateProgressBar()
+		refreshIndex()
+		indexFrame.CanvasPosition = Vector2.zero
+	end
 end
 
 local function collectBrainrot(model)
@@ -749,7 +995,7 @@ local function checkTouches()
 end
 
 openButton.MouseButton1Click:Connect(function()
-	toggleUI(not indexFrame.Visible)
+	toggleUI(not indexBackdrop.Visible)
 end)
 
 closeButton.MouseButton1Click:Connect(function()
@@ -763,7 +1009,7 @@ RunService.RenderStepped:Connect(function()
 	local rainbow = Color3.fromHSV(t % 3 / 3, 1, 1)
 
 	indexText.TextColor3 = HudTileStyle.BaseLabelColor
-	titleLabel.TextColor3 = rainbow
+	titleLabel.TextColor3 = HudTileStyle.BaseLabelColor
 	stripes.Position = UDim2.new(0, -(t * 60) % 60, 0, 0)
 
 	if activeNotifyRarity == "Brainrot God" then
@@ -783,18 +1029,36 @@ RunService.RenderStepped:Connect(function()
 		end
 	end
 
-	if indexFrame.Visible then
+	if indexBackdrop.Visible then
 		for _, frame in pairs(indexFrame:GetChildren()) do
 			if frame:IsA("Frame") then
-				if string.sub(frame.Name, 1, 2) == "6_" then
-					local rainbow = Color3.fromHSV(t % 3 / 3, 1, 1)
-					frame.BorderColor3 = rainbow
-					if frame:FindFirstChild("RarityLabel") then frame.RarityLabel.TextColor3 = rainbow end
-				elseif string.sub(frame.Name, 1, 2) == "7_" then
-					local shine = (math.sin(t * 3) + 1) / 2 
-					local silver = Color3.new(shine, shine, shine)
-					frame.BorderColor3 = silver
-					if frame:FindFirstChild("RarityLabel") then frame.RarityLabel.TextColor3 = silver end
+				local rarityKey = frame:GetAttribute("RarityKey")
+				if rarityKey == "Brainrot God" or rarityKey == "Secret" then
+					local accentColor = getCardAccentColor(rarityKey, t)
+					local itemStroke = frame:FindFirstChild("ItemStroke")
+					if itemStroke then
+						itemStroke.Color = accentColor
+					end
+					local previewHolder = frame:FindFirstChild("PreviewHolder")
+					local previewStroke = previewHolder and previewHolder:FindFirstChild("PreviewStroke")
+					if previewStroke then
+						previewStroke.Color = accentColor
+					end
+					local infoContainer = frame:FindFirstChild("InfoContainer")
+					if infoContainer then
+						local rarityLabel = infoContainer:FindFirstChild("RarityLabel")
+						if rarityLabel then
+							rarityLabel.TextColor3 = accentColor
+						end
+						local missingLabel = infoContainer:FindFirstChild("MissingLabel")
+						if missingLabel then
+							missingLabel.TextColor3 = accentColor
+							local statusStroke = missingLabel:FindFirstChild("StatusStroke")
+							if statusStroke then
+								statusStroke.Color = accentColor
+							end
+						end
+					end
 				end
 			end
 		end

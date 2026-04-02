@@ -48,7 +48,7 @@ end
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "CaseShopUI"
-screenGui.DisplayOrder = 15 -- NA SAMYM WIERZCHU (NAD INDEKSEM)
+screenGui.DisplayOrder = 10 -- Ta sama warstwa co reszta bocznych kafelków
 screenGui.ResetOnSpawn = false
 screenGui.Parent = playerGui
 

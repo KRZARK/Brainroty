@@ -39,16 +39,27 @@ local function getTargetCharacter(player)
 	return nil, nil, nil, target
 end
 
+local function hasVIPProtectionEnabled(target)
+	return target and target:GetAttribute("HasVIP") == true and target:GetAttribute("VIPProtectionEnabled") == true
+end
+
 -- RemoteFunction do sprawdzania ważności (Pojawia się zanim klient kupi)
-local CheckValidityRF = Instance.new("RemoteFunction")
-CheckValidityRF.Name = "CheckTrollValidity"
-CheckValidityRF.Parent = BrainrotEvents
+local CheckValidityRF = BrainrotEvents:FindFirstChild("CheckTrollValidity")
+if not CheckValidityRF then
+	CheckValidityRF = Instance.new("RemoteFunction")
+	CheckValidityRF.Name = "CheckTrollValidity"
+	CheckValidityRF.Parent = BrainrotEvents
+end
 
 CheckValidityRF.OnServerInvoke = function(player, target, trollType)
 	if not target then return false, "No target selected!" end
 	-- 1. Sprawdź immunitet OG
 	if BrainrotUtils.hasCompletedRarity(target, "Secret") then
 		return false, "This player is IMMUNE (OG Searcher)!"
+	end
+
+	if hasVIPProtectionEnabled(target) then
+		return false, "This player has VIP Protection enabled!"
 	end
 	
 	-- 2. Sprawdź oddzielny cooldown
@@ -429,6 +440,11 @@ local function executeTroll(player, trollType)
 		warn("Target " .. targetName .. " is IMMUNE to trolls. Consuming receipt.")
 		return true -- Zapobiega blokadzie kolejki
 	end
+
+	if hasVIPProtectionEnabled(targetPlayer) then
+		warn("Target " .. targetName .. " has VIP protection enabled. Consuming receipt.")
+		return true
+	end
 	
 	-- Ustawiamy OCHRONĘ po tym udanym trollu na konkretny slot (Fart uniezależniony od reszty)
 	if trollType == "Fart" then
@@ -453,9 +469,12 @@ local function executeTroll(player, trollType)
 end
 
 -- Udostępniamy funkcję Trollowania dla głównego skryptu zakupów (BindableEvent)
-local TrollExecuteEvent = Instance.new("BindableFunction")
-TrollExecuteEvent.Name = "TrollExecuteLogic"
-TrollExecuteEvent.Parent = BrainrotEvents
+local TrollExecuteEvent = BrainrotEvents:FindFirstChild("TrollExecuteLogic")
+if not TrollExecuteEvent then
+	TrollExecuteEvent = Instance.new("BindableFunction")
+	TrollExecuteEvent.Name = "TrollExecuteLogic"
+	TrollExecuteEvent.Parent = BrainrotEvents
+end
 
 TrollExecuteEvent.OnInvoke = function(player, trollType)
 	return executeTroll(player, trollType)

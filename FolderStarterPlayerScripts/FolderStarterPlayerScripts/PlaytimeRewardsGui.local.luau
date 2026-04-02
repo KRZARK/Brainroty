@@ -31,7 +31,7 @@ end)
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "PlaytimeRewardsUI"
 screenGui.ResetOnSpawn = false
-screenGui.DisplayOrder = 20
+screenGui.DisplayOrder = 10
 screenGui.Parent = playerGui
 
 -- Pobranie zasobów wizualnych

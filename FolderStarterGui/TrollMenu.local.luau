@@ -135,15 +135,84 @@ Instance.new("UICorner", SpectateLabel).CornerRadius = UDim.new(0, 8)
 
 local spectateIndex = 0
 local spectateTarget = nil
+local trollButtons = {}
+local targetAttributeConnections = {}
+
+local function disconnectTargetAttributeConnections()
+    for _, connection in ipairs(targetAttributeConnections) do
+        connection:Disconnect()
+    end
+
+    table.clear(targetAttributeConnections)
+end
+
+local function isTargetVipProtected(target)
+    return target and target:GetAttribute("HasVIP") == true and target:GetAttribute("VIPProtectionEnabled") == true
+end
+
+local function setTrollButtonsLocked(locked)
+    for _, button in ipairs(trollButtons) do
+        button.Active = not locked
+        button.AutoButtonColor = not locked
+        button.BackgroundColor3 = locked and Color3.fromRGB(40, 40, 40) or Color3.fromRGB(70, 70, 70)
+        button.TextColor3 = locked and Color3.fromRGB(110, 110, 110) or Color3.fromRGB(255, 255, 255)
+    end
+end
+
+local function getTargetStatusText(target)
+    if not target then
+        return "Spectate: None", false
+    end
+
+    local statusBits = {}
+    local locked = false
+
+    if BrainrotUtils.hasCompletedRarity(target, "Secret") then
+        table.insert(statusBits, "OG SEARCHER - IMMUNE")
+        locked = true
+    end
+
+    if isTargetVipProtected(target) then
+        table.insert(statusBits, "VIP PROTECTION ENABLED")
+        locked = true
+    end
+
+    local text = "Spectating: " .. target.Name
+    if #statusBits > 0 then
+        text = text .. "\n(" .. table.concat(statusBits, " | ") .. ")"
+    end
+
+    return text, locked
+end
+
+local function refreshSpectateDisplay()
+    local text, locked = getTargetStatusText(spectateTarget)
+    SpectateLabel.Text = text
+    setTrollButtonsLocked(locked)
+end
+
+local function watchTargetAttributes(target)
+    disconnectTargetAttributeConnections()
+
+    if not target then
+        return
+    end
+
+    table.insert(targetAttributeConnections, target:GetAttributeChangedSignal("VIPProtectionEnabled"):Connect(refreshSpectateDisplay))
+    table.insert(targetAttributeConnections, target:GetAttributeChangedSignal("HasVIP"):Connect(refreshSpectateDisplay))
+end
 
 local function stopSpectating()
     Workspace.CurrentCamera.CameraSubject = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
     SpectateLabel.Text = "Spectate: None"
     spectateTarget = nil
+    disconnectTargetAttributeConnections()
+    refreshSpectateDisplay()
+    -- Fall through and restore any remaining legacy button states.
     
     -- Zabezpieczające odblokowanie przycisków trolli
     for _, child in ipairs(MainFrame:GetChildren()) do
-        if child:IsA("TextButton") then
+        if child:GetAttribute("IsTrollActionButton") then
             child.Active = true
             child.AutoButtonColor = true
             child.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
@@ -177,33 +246,9 @@ local function updateSpectateTarget(dir)
 
     if target and target.Character and target.Character:FindFirstChild("Humanoid") then
         Workspace.CurrentCamera.CameraSubject = target.Character.Humanoid
-        
-        local isImmune = BrainrotUtils.hasCompletedRarity(target, "Secret")
-        if isImmune then
-            SpectateLabel.Text = "Spectating: " .. target.Name .. "\n(OG SEARCHER - IMMUNE)"
-            -- Zablokuj przyciski (trolle to dzieci MainFrame)
-            for _, child in ipairs(MainFrame:GetChildren()) do
-                if child:IsA("TextButton") then
-                    child.Active = false
-                    child.AutoButtonColor = false
-                    child.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-                    child.TextColor3 = Color3.fromRGB(100, 100, 100)
-                end
-            end
-        else
-            SpectateLabel.Text = "Spectating: " .. target.Name
-            -- Odblokuj przyciski
-            for _, child in ipairs(MainFrame:GetChildren()) do
-                if child:IsA("TextButton") then
-                    child.Active = true
-                    child.AutoButtonColor = true
-                    child.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-                    child.TextColor3 = Color3.fromRGB(255, 255, 255)
-                end
-            end
-        end
-        
         spectateTarget = target
+        watchTargetAttributes(target)
+        refreshSpectateDisplay()
         TrollSpectateTarget:FireServer(target)
     else
         stopSpectating()
@@ -262,6 +307,8 @@ local function createTrollButton(name, yPos, productId)
     local UICornerBtn = Instance.new("UICorner")
     UICornerBtn.CornerRadius = UDim.new(0, 10)
     UICornerBtn.Parent = Button
+    Button:SetAttribute("IsTrollActionButton", true)
+    table.insert(trollButtons, Button)
 
     Button.MouseButton1Click:Connect(function()
         if spectateTarget then
@@ -272,12 +319,7 @@ local function createTrollButton(name, yPos, productId)
                 if not isValid then
                     SpectateLabel.Text = "BLOCKED: " .. errMessage
                     task.delay(2, function()
-                        if spectateTarget then
-                            local isImmune = BrainrotUtils.hasCompletedRarity(spectateTarget, "Secret")
-                            SpectateLabel.Text = "Spectating: " .. spectateTarget.Name .. (isImmune and "\n(OG SEARCHER - IMMUNE)" or "")
-                        else
-                            SpectateLabel.Text = "Spectate: None"
-                        end
+                        refreshSpectateDisplay()
                     end)
                     return
                 end
@@ -287,12 +329,7 @@ local function createTrollButton(name, yPos, productId)
         else
             SpectateLabel.Text = "Select Target First!"
             task.delay(1.5, function()
-                if spectateTarget then
-                    local isImmune = BrainrotUtils.hasCompletedRarity(spectateTarget, "Secret")
-                    SpectateLabel.Text = "Spectating: " .. spectateTarget.Name .. (isImmune and "\n(OG SEARCHER - IMMUNE)" or "")
-                else
-                    SpectateLabel.Text = "Spectate: None"
-                end
+                refreshSpectateDisplay()
             end)
         end
     end)
@@ -303,6 +340,8 @@ for name, id in pairs(GameConfig.TrollProducts) do
     createTrollButton(name, yOffset, id)
     yOffset = yOffset + 90
 end
+
+refreshSpectateDisplay()
 
 -- Clean up camera when character dies/respawns
 LocalPlayer.CharacterAdded:Connect(function(char)

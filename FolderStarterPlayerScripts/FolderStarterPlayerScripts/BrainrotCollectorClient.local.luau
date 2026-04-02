@@ -46,6 +46,7 @@ local BrainrotCollectedEvent = BrainrotEvents:WaitForChild("BrainrotCollected")
 local TogglePetEvent = BrainrotEvents:WaitForChild("TogglePetEvent")
 local BrainrotStorage = ReplicatedStorage:WaitForChild("BrainrotStorage") 
 local BrainrotyFolder = Workspace:WaitForChild("Brainroty") 
+local GreenStudsTexture = HudTileStyle.getImage(ReplicatedStorage, "GreenStuds", "")
 
 local CollectSound = SoundService:WaitForChild("CollectSound")
 CollectSound.SoundId = "rbxassetid://3150375869"
@@ -247,21 +248,22 @@ local function createViewport(model, parent, isCollected)
 	clone.Parent = viewport
 
 	local camera = Instance.new("Camera")
+	camera.FieldOfView = 30
 	viewport.CurrentCamera = camera
 	camera.Parent = viewport
 
 	local cf, size = clone:GetBoundingBox()
-	local maxSide = math.max(size.X, size.Y, size.Z)
-
 	local isNotify = (parent == notifyViewport)
-	local zoomFactor = isNotify and 1.2 or 0.8 
-	local distance = maxSide * zoomFactor
-
-	if isNotify then
-		camera.CFrame = CFrame.lookAt(cf.Position + Vector3.new(0, 0, distance), cf.Position)
-	else
-		camera.CFrame = CFrame.lookAt(cf.Position + Vector3.new(distance, distance/2, distance), cf.Position)
-	end
+	local absSize = viewport.AbsoluteSize
+	local aspect = (absSize.X > 0 and absSize.Y > 0) and (absSize.X / absSize.Y) or (isNotify and 1 or 1.55)
+	local verticalHalfFov = math.rad(camera.FieldOfView * 0.5)
+	local horizontalHalfFov = math.atan(math.tan(verticalHalfFov) * aspect)
+	local fitHalfFov = math.min(verticalHalfFov, horizontalHalfFov)
+	local radius = math.max(size.Magnitude * 0.5, 0.1)
+	local distance = (radius / math.sin(fitHalfFov)) * (isNotify and 1.08 or 1.08)
+	local lookDirection = isNotify and Vector3.new(0, 0, 1) or Vector3.new(1, 0.48, 1).Unit
+	local cameraPosition = cf.Position + (lookDirection * distance)
+	camera.CFrame = CFrame.lookAt(cameraPosition, cf.Position)
 
 	if not isCollected then
 		for _, item in clone:GetDescendants() do
@@ -438,6 +440,21 @@ modalGradient.Color = ColorSequence.new({
 modalGradient.Rotation = 90
 modalGradient.Parent = indexModal
 
+local modalBg = Instance.new("ImageLabel")
+modalBg.Name = "ModalBg"
+modalBg.Size = UDim2.fromScale(1, 1)
+modalBg.BackgroundTransparency = 1
+modalBg.Image = GreenStudsTexture
+modalBg.ImageColor3 = Color3.fromRGB(126, 184, 132)
+modalBg.ImageTransparency = 0.74
+modalBg.ScaleType = Enum.ScaleType.Tile
+modalBg.TileSize = UDim2.fromOffset(128, 128)
+modalBg.ZIndex = 50
+modalBg.Parent = indexModal
+local modalBgCorner = Instance.new("UICorner")
+modalBgCorner.CornerRadius = UDim.new(0, 28)
+modalBgCorner.Parent = modalBg
+
 local modalHeader = Instance.new("Frame")
 modalHeader.Name = "Header"
 modalHeader.BackgroundTransparency = 1
@@ -547,9 +564,9 @@ local indexFrame = Instance.new("ScrollingFrame")
 indexFrame.Name = "IndexFrame"
 indexFrame.BackgroundTransparency = 1
 indexFrame.BorderSizePixel = 0
-indexFrame.ScrollBarThickness = 8
+indexFrame.ScrollBarThickness = 18
 indexFrame.ScrollBarImageColor3 = HudTileStyle.BaseStrokeColor
-indexFrame.ScrollBarImageTransparency = 0.25
+indexFrame.ScrollBarImageTransparency = 0.06
 indexFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 indexFrame.CanvasSize = UDim2.fromOffset(0, 0)
 indexFrame.ZIndex = 51
@@ -571,17 +588,17 @@ layout.Parent = indexFrame
 local function applyIndexModalLayout()
 	local viewport = Workspace.CurrentCamera and Workspace.CurrentCamera.ViewportSize or Vector2.new(1280, 720)
 	local isMobile = HudTileStyle.isMobileLayout()
-	local modalWidthScale = isMobile and 0.92 or 0.84
+	local modalWidthScale = isMobile and 0.92 or 0.72
 	local modalHeightScale = isMobile and 0.80 or 0.82
 	local headerHeight = isMobile and 124 or 140
 	local sidePadding = isMobile and 16 or 22
 	local bodyGap = isMobile and 10 or 14
 	local modalWidthPx = math.floor(viewport.X * modalWidthScale + 0.5)
 	local frameWidth = modalWidthPx - (sidePadding * 2)
-	local columns = isMobile and 2 or (frameWidth >= 1180 and 5 or frameWidth >= 900 and 4 or 3)
-	local cellPadding = isMobile and 10 or 14
+	local columns = isMobile and 2 or (frameWidth >= 780 and 3 or 2)
+	local cellPadding = isMobile and 10 or 18
 	local cellWidth = math.floor((frameWidth - (cellPadding * (columns - 1))) / columns)
-	cellWidth = math.clamp(cellWidth, isMobile and 126 or 160, isMobile and 164 or 196)
+	cellWidth = math.clamp(cellWidth, isMobile and 146 or 210, isMobile and 188 or 300)
 	local cellHeight = math.floor(cellWidth * (isMobile and 1.24 or 1.16) + 0.5)
 
 	indexModal.Size = UDim2.fromScale(modalWidthScale, modalHeightScale)
@@ -715,7 +732,15 @@ local function getCardAccentColor(rarity, timeValue)
 	return (RarityColors[rarity] or HudTileStyle.BaseStrokeColor):Lerp(HudTileStyle.BaseStrokeColor, 0.35)
 end
 
-local function refreshIndex()
+local function getCardTileColor(rarity, timeValue)
+	local accent = getCardAccentColor(rarity, timeValue)
+	local neutral = Color3.fromRGB(126, 132, 138)
+	local shadow = Color3.fromRGB(46, 52, 60)
+	return accent:Lerp(neutral, 0.68):Lerp(shadow, 0.18)
+end
+
+local function refreshIndex(preserveScrollPosition)
+	local savedCanvasPosition = preserveScrollPosition and indexFrame.CanvasPosition or Vector2.zero
 	-- Zamiast czyścić całą tabelę, usuwamy z niej tylko te modele, które NIE są powiadomieniami
 	for viewport, data in pairs(spinningModels) do
 		if not data.IsNotify then
@@ -734,6 +759,7 @@ local function refreshIndex()
 
 		local isCollected = collectedBrainrots[wzorzec.Name]
 		local accentColor = getCardAccentColor(rarity)
+		local tileColor = getCardTileColor(rarity)
 		local rarityConfig = GameConfig.Rarities[rarity] or {}
 		local leaderstats = player:FindFirstChild("leaderstats")
 		local rebirths = leaderstats and leaderstats:FindFirstChild("Rebirths")
@@ -745,7 +771,8 @@ local function refreshIndex()
 		local itemFrame = Instance.new("Frame")
 		itemFrame.Name = string.format("%02d_%s", order, wzorzec.Name)
 		itemFrame:SetAttribute("RarityKey", rarity)
-		itemFrame.BackgroundColor3 = Color3.fromRGB(30, 34, 40)
+		itemFrame:SetAttribute("IsCollected", isCollected)
+		itemFrame.BackgroundColor3 = tileColor:Lerp(Color3.fromRGB(24, 27, 32), isCollected and 0.55 or 0.48)
 		itemFrame.BackgroundTransparency = isCollected and 0.04 or 0.08
 		itemFrame.BorderSizePixel = 0
 		itemFrame.ClipsDescendants = true
@@ -761,26 +788,55 @@ local function refreshIndex()
 		itemStroke.Transparency = isCollected and 0.08 or 0.18
 		itemStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		itemStroke.Parent = itemFrame
+		local itemBg = Instance.new("ImageLabel")
+		itemBg.Name = "TileBg"
+		itemBg.Size = UDim2.fromScale(1, 1)
+		itemBg.BackgroundTransparency = 1
+		itemBg.Image = GreenStudsTexture
+		itemBg.ImageColor3 = tileColor
+		itemBg.ImageTransparency = isCollected and 0.78 or 0.84
+		itemBg.ScaleType = Enum.ScaleType.Tile
+		itemBg.TileSize = UDim2.fromOffset(92, 92)
+		itemBg.ZIndex = 51
+		itemBg.Parent = itemFrame
+		local itemBgCorner = Instance.new("UICorner")
+		itemBgCorner.CornerRadius = UDim.new(0, 18)
+		itemBgCorner.Parent = itemBg
 		local itemGradient = Instance.new("UIGradient")
+		itemGradient.Name = "ItemGradient"
 		itemGradient.Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, HudTileStyle.BaseTopColor),
-			ColorSequenceKeypoint.new(1, HudTileStyle.BaseBottomColor),
+			ColorSequenceKeypoint.new(0, tileColor:Lerp(Color3.fromRGB(78, 84, 92), 0.55)),
+			ColorSequenceKeypoint.new(1, tileColor:Lerp(Color3.fromRGB(18, 22, 28), 0.72)),
 		})
 		itemGradient.Rotation = 90
 		itemGradient.Parent = itemFrame
 
 		local previewHolder = Instance.new("Frame")
 		previewHolder.Name = "PreviewHolder"
-		previewHolder.Size = UDim2.new(1, -20, 0.42, 0)
+		previewHolder.Size = UDim2.new(1, -18, 0.52, 0)
 		previewHolder.Position = UDim2.new(0.5, 0, 0, 12)
 		previewHolder.AnchorPoint = Vector2.new(0.5, 0)
-		previewHolder.BackgroundColor3 = Color3.fromRGB(18, 21, 27)
+		previewHolder.BackgroundColor3 = Color3.fromRGB(88, 96, 92)
 		previewHolder.BorderSizePixel = 0
 		previewHolder.ZIndex = 53
 		previewHolder.Parent = itemFrame
 		local previewCorner = Instance.new("UICorner")
 		previewCorner.CornerRadius = UDim.new(0, 14)
 		previewCorner.Parent = previewHolder
+		local previewBg = Instance.new("ImageLabel")
+		previewBg.Name = "PreviewBg"
+		previewBg.Size = UDim2.fromScale(1, 1)
+		previewBg.BackgroundTransparency = 1
+		previewBg.Image = GreenStudsTexture
+		previewBg.ImageColor3 = Color3.fromRGB(122, 146, 126)
+		previewBg.ImageTransparency = 0.92
+		previewBg.ScaleType = Enum.ScaleType.Tile
+		previewBg.TileSize = UDim2.fromOffset(96, 96)
+		previewBg.ZIndex = 53
+		previewBg.Parent = previewHolder
+		local previewBgCorner = Instance.new("UICorner")
+		previewBgCorner.CornerRadius = UDim.new(0, 14)
+		previewBgCorner.Parent = previewBg
 		local previewStroke = Instance.new("UIStroke")
 		previewStroke.Name = "PreviewStroke"
 		previewStroke.Thickness = 1.5
@@ -790,7 +846,7 @@ local function refreshIndex()
 
 		local previewViewport = createViewport(wzorzec, previewHolder, isCollected)
 		previewViewport.Name = "PreviewViewport"
-		previewViewport.Size = UDim2.new(1, -12, 1, -12)
+		previewViewport.Size = UDim2.new(1, -2, 1, -2)
 		previewViewport.Position = UDim2.new(0.5, 0, 0.5, 0)
 		previewViewport.AnchorPoint = Vector2.new(0.5, 0.5)
 		previewViewport.ZIndex = 54
@@ -869,8 +925,8 @@ local function refreshIndex()
 			local equipStroke = Instance.new("UIStroke")
 			equipStroke.Name = "StatusStroke"
 			equipStroke.Thickness = 2
-			equipStroke.Color = HudTileStyle.BaseStrokeColor
-			equipStroke.Transparency = 0.08
+			equipStroke.Color = Color3.new(0, 0, 0)
+			equipStroke.Transparency = 0.02
 			equipStroke.Parent = equipBtn
 			
 			if canEquipPet then
@@ -885,12 +941,12 @@ local function refreshIndex()
 					if success then
 						equipBtn.Text = string.upper(response)
 						task.wait(0.2)
-						refreshIndex()
+						refreshIndex(true)
 					else
 						equipBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
 						equipBtn.Text = string.upper(response)
 						task.wait(2)
-						refreshIndex()
+						refreshIndex(true)
 					end
 				end)
 			end
@@ -920,12 +976,19 @@ local function refreshIndex()
 			local missingStroke = Instance.new("UIStroke")
 			missingStroke.Name = "StatusStroke"
 			missingStroke.Thickness = 2
-			missingStroke.Color = accentColor
-			missingStroke.Transparency = 0.08
+			missingStroke.Color = Color3.new(0, 0, 0)
+			missingStroke.Transparency = 0.02
 			missingStroke.Parent = missingLabel
 		end
 	end
 	updateProgressBar()
+	if preserveScrollPosition then
+		task.defer(function()
+			RunService.Heartbeat:Wait()
+			local maxCanvasY = math.max(indexFrame.AbsoluteCanvasSize.Y - indexFrame.AbsoluteWindowSize.Y, 0)
+			indexFrame.CanvasPosition = Vector2.new(savedCanvasPosition.X, math.clamp(savedCanvasPosition.Y, 0, maxCanvasY))
+		end)
+	end
 end
 
 local function toggleUI(visible)
@@ -940,7 +1003,7 @@ local function toggleUI(visible)
 	if visible then
 		applyIndexModalLayout()
 		updateProgressBar()
-		refreshIndex()
+		refreshIndex(false)
 		indexFrame.CanvasPosition = Vector2.zero
 	end
 end
@@ -1053,9 +1116,12 @@ RunService.RenderStepped:Connect(function()
 						local missingLabel = infoContainer:FindFirstChild("MissingLabel")
 						if missingLabel then
 							missingLabel.TextColor3 = accentColor
+							missingLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+							missingLabel.TextStrokeTransparency = 0
 							local statusStroke = missingLabel:FindFirstChild("StatusStroke")
 							if statusStroke then
-								statusStroke.Color = accentColor
+								statusStroke.Color = Color3.new(0, 0, 0)
+								statusStroke.Transparency = 0
 							end
 						end
 					end
@@ -1206,7 +1272,7 @@ BrainrotCollectedEvent.OnClientEvent:Connect(function(name)
 		table.insert(notificationQueue, {name = safeName, rarity = safeRarity})
 
 		updateProgressBar()
-		if indexFrame.Visible then refreshIndex() end
+		if indexFrame.Visible then refreshIndex(true) end
 	end)
 end)
 

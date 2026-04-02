@@ -87,16 +87,16 @@ end
 function HudTileStyle.getLayoutMetrics()
 	local viewport = getViewportSize()
 	local isMobile = HudTileStyle.isMobileLayout()
-	local rows = 4
+	local rows = 5
 
-	local topSafe = isMobile and math.max(88, math.floor(viewport.Y * 0.24 + 0.5)) or math.max(198, math.floor(viewport.Y * 0.22 + 0.5))
-	local bottomSafe = isMobile and math.max(56, math.floor(viewport.Y * 0.18 + 0.5)) or math.max(90, math.floor(viewport.Y * 0.10 + 0.5))
+	local topSafe = isMobile and math.max(74, math.floor(viewport.Y * 0.19 + 0.5)) or math.max(164, math.floor(viewport.Y * 0.18 + 0.5))
+	local bottomSafe = isMobile and math.max(44, math.floor(viewport.Y * 0.12 + 0.5)) or math.max(64, math.floor(viewport.Y * 0.08 + 0.5))
 	local leftMargin = isMobile and math.max(12, math.floor(viewport.X * 0.02 + 0.5)) or 26
 	local rightMargin = isMobile and math.max(12, math.floor(viewport.X * 0.02 + 0.5)) or 32
-	local widthCap = isMobile and (viewport.X * 0.10) or (viewport.X * 0.085)
-	local heightCap = (viewport.Y - topSafe - bottomSafe) / (rows + 0.16 * (rows - 1))
-	local buttonPx = math.floor(math.clamp(math.min(widthCap, heightCap), isMobile and 34 or 92, isMobile and 52 or 104) + 0.5)
-	local gapPx = isMobile and math.max(5, math.floor(buttonPx * 0.10 + 0.5)) or math.max(10, math.floor(buttonPx * 0.11 + 0.5))
+	local widthCap = isMobile and (viewport.X * 0.10) or (viewport.X * 0.082)
+	local heightCap = (viewport.Y - topSafe - bottomSafe) / (rows + 0.12 * (rows - 1))
+	local buttonPx = math.floor(math.clamp(math.min(widthCap, heightCap), isMobile and 34 or 70, isMobile and 52 or 104) + 0.5)
+	local gapPx = isMobile and math.max(5, math.floor(buttonPx * 0.10 + 0.5)) or math.max(8, math.floor(buttonPx * 0.10 + 0.5))
 	local totalHeight = (buttonPx * rows) + (gapPx * (rows - 1))
 	local spareSpace = math.max(0, viewport.Y - topSafe - bottomSafe - totalHeight)
 	local startY = topSafe + math.floor(spareSpace * 0.08 + 0.5) + (buttonPx / 2)

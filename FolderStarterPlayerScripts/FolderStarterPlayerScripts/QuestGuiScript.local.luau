@@ -18,7 +18,7 @@ print("[QuestSystem] Events found. Creating GUI...")
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "QuestUI"
 screenGui.ResetOnSpawn = false
-screenGui.DisplayOrder = 20 -- Wyższy priorytet
+screenGui.DisplayOrder = 10 -- Ta sama warstwa co reszta bocznych kafelków
 screenGui.Parent = playerGui
 
 local questBtn = Instance.new("ImageButton")
@@ -325,8 +325,7 @@ closeBtn.Activated:Connect(toggleMenu)
 -- Animacje przycisku i powiadomienia
 game:GetService("RunService").RenderStepped:Connect(function()
 	local t = tick()
-	-- Animacja ikony głównej
-	btnIcon.Position = UDim2.new(0.5, 0, 0.38, math.sin(t * 4) * 4)
+	btnIcon.Position = UDim2.new(0.5, 0, 0.38, 0)
 	btnText.TextColor3 = HudTileStyle.BaseLabelColor
 	
 	-- Animacja pulsującego wykrzyknika

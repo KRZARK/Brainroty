@@ -39,6 +39,13 @@ local GlobalRobuxPool = 0
 local Sponsors = {} -- Zachowujemy dla kompatybilności paska (opcjonalnie)
 local isEventActive = false -- STARY FLAG (Zostawiam dla kompatybilności paska, ale użyjemy IsRainActive do kolejki)
 
+local function addRobuxSpent(player, amount)
+	amount = math.floor(tonumber(amount) or 0)
+	if amount > 0 then
+		player:SetAttribute("RobuxSpent", (player:GetAttribute("RobuxSpent") or 0) + amount)
+	end
+end
+
 -- NOWE: Kolejkowanie
 local QueuedRains = 0
 local IsRainActive = false
@@ -225,6 +232,7 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
 				
 				if ok and pInfo then
 					local price = pInfo.PriceInRobux or 0
+					addRobuxSpent(player, price)
 					GlobalRobuxPool += price
 					-- DODAWANIE SPONSORA (Bez duplikacji)
 					if not table.find(CurrentSponsors, player.Name) then
@@ -267,6 +275,12 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
 			local stats = player:FindFirstChild("leaderstats")
 			if stats and stats:FindFirstChild("Coins") then
 				stats.Coins.Value += packData.Amount
+				local ok, pInfo = pcall(function()
+					return MarketplaceService:GetProductInfo(receiptInfo.ProductId, Enum.InfoType.Product)
+				end)
+				if ok and pInfo then
+					addRobuxSpent(player, pInfo.PriceInRobux or 0)
+				end
 				print(player.Name .. " kupił paczkę " .. packName .. " otrzymując " .. packData.Amount .. " monet!")
 				return Enum.ProductPurchaseDecision.PurchaseGranted
 			end
@@ -298,6 +312,7 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
 
 	if success and pInfo then
 		local robuxPrice = pInfo.PriceInRobux or 0
+		addRobuxSpent(player, robuxPrice)
 		GlobalRobuxPool += robuxPrice
 		-- DODAWANIE SPONSORA (Bez duplikacji)
 		if not table.find(CurrentSponsors, player.Name) then

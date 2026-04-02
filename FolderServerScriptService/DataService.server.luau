@@ -306,8 +306,19 @@ buyHintEvent.OnServerInvoke = function(player, rarityName)
 end
 
 -- 6. Obsługa Game Passów kupionych w trakcie gry
+local function addGamePassSpend(player, gamePassId)
+	local success, info = pcall(function()
+		return MarketplaceService:GetProductInfo(gamePassId, Enum.InfoType.GamePass)
+	end)
+
+	if success and info and info.PriceInRobux then
+		player:SetAttribute("RobuxSpent", (player:GetAttribute("RobuxSpent") or 0) + info.PriceInRobux)
+	end
+end
+
 MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gamePassId, wasPurchased)
 	if wasPurchased then
+		addGamePassSpend(player, gamePassId)
 		if gamePassId == GameConfig.GamePasses.VIPBundle then
 			player:SetAttribute("HasVIP", true)
 			player:SetAttribute("CoinMultiplier", 2)

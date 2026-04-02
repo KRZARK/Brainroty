@@ -1,6 +1,4 @@
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 
 local GameConfig = require(ReplicatedStorage:WaitForChild("FolderReplicatedStorage"):WaitForChild("GameConfig"))
 local BrainrotEvents = ReplicatedStorage:WaitForChild("BrainrotEvents")
@@ -45,6 +43,9 @@ ClaimDailyRewardRF.OnServerInvoke = function(player)
 	return true, streak, reward
 end
 
+-- SettingsService applies movement and temporary boosts now.
+--[[
+
 -- Petla nakładająca boosty nawet po śmierci (co 1 sekunde sprawdza atrybuty czasowe gracza)
 Players.PlayerAdded:Connect(function(player)
 	player.CharacterAdded:Connect(function(char)
@@ -69,3 +70,4 @@ Players.PlayerAdded:Connect(function(player)
 		end)
 	end)
 end)
+]]

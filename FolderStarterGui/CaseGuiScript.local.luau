@@ -165,35 +165,49 @@ local floatingElements = {}
 
 local function addPriceLabel(parent, id, infoType, yPositionScale)
 	local container = Instance.new("Frame", parent)
-	container.Size = UDim2.new(1, 0, 0.2, 0)
-	container.Position = UDim2.new(0, 0, yPositionScale, 0)
-	container.BackgroundTransparency = 1
+	container.Size = UDim2.new(0.85, 0, 0.22, 0) -- Przywrócono pierwotną wielkość (z 0.3)
+	container.Position = UDim2.new(0.075, 0, yPositionScale, 0)
+	container.BackgroundColor3 = Color3.fromRGB(50, 200, 50) -- Ładna zieleń pod cenę
+	container.BackgroundTransparency = 0.15
 	container.ZIndex = 110
-
+	
+	Instance.new("UICorner", container).CornerRadius = UDim.new(0, 10)
+	Instance.new("UIStroke", container).Thickness = 1.5 -- Subtelna obwódka kafelka
+	
 	local layout = Instance.new("UIListLayout", container)
 	layout.FillDirection = Enum.FillDirection.Horizontal
 	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	layout.VerticalAlignment = Enum.VerticalAlignment.Center
-	layout.Padding = UDim.new(0, 6)
+	layout.Padding = UDim.new(0, 4) -- Przerwa między ikonką a liczbami
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 
 	local icon = Instance.new("ImageLabel", container)
-	icon.Size = UDim2.fromOffset(30, 30)
+	icon.Size = UDim2.fromOffset(25, 25) -- Nieco mniejsza ikonka by nie kolidować
 	icon.BackgroundTransparency = 1
 	icon.Image = "rbxasset://textures/ui/common/robux_small.png"
 	icon.ZIndex = 110
 	icon.LayoutOrder = 1
 
-	local textLabel = Instance.new("TextLabel", container)
-	textLabel.Size = UDim2.fromOffset(0, 30)
-	textLabel.AutomaticSize = Enum.AutomaticSize.X
+	-- Ramka pomocnicza dla tekstu (umożliwia niezależne przesuwanie go w dół)
+	local textWrapper = Instance.new("Frame", container)
+	textWrapper.Size = UDim2.fromOffset(0, 0)
+	textWrapper.AutomaticSize = Enum.AutomaticSize.XY -- Pełne automatyczne dopasowanie
+	textWrapper.BackgroundTransparency = 1
+	textWrapper.ZIndex = 110
+	textWrapper.LayoutOrder = 2
+	
+	local textPadding = Instance.new("UIPadding", textWrapper)
+	textPadding.PaddingTop = UDim.new(0, 5) -- Mniejsze obniżenie (z 10 na 5) żeby nie wystawało na dole
+
+	local textLabel = Instance.new("TextLabel", textWrapper)
+	textLabel.Size = UDim2.fromOffset(0, 0)
+	textLabel.AutomaticSize = Enum.AutomaticSize.XY -- Tekst sam mówi jaką ma szerokość
 	textLabel.BackgroundTransparency = 1
 	textLabel.Text = "..."
 	textLabel.Font = Enum.Font.LuckiestGuy
-	textLabel.TextSize = 34
+	textLabel.TextSize = 32 -- Nieco mniejszy tekst żeby nie "wybuchał"
 	textLabel.TextColor3 = Color3.new(0, 0, 0)
 	textLabel.ZIndex = 110
-	textLabel.LayoutOrder = 2
 	
 	local stroke = Instance.new("UIStroke", textLabel)
 	stroke.Color = Color3.new(1, 1, 1)
@@ -639,9 +653,9 @@ local function refreshShop()
 		uiStroke.Color = data.Color
 
 		local nameLabel = Instance.new("TextLabel", caseBtn)
-		nameLabel.Size = UDim2.new(1, 0, 0.22, 0) 
-		nameLabel.Position = UDim2.fromScale(0, 0) -- Podciągnięte na samą górę
-		nameLabel.Text = (#missing == 0 and "ALL COLLECTED!") or (data.Name .. "\nCHEST")
+		nameLabel.Size = UDim2.new(1, 0, 0.28, 0) -- Powiększone z 0.22 (teraz 1.5x zamiast 2x)
+		nameLabel.Position = UDim2.fromScale(0, 0)
+		nameLabel.Text = (#missing == 0 and "ALL COLLECTED!") or (data.Name)
 		if #missing == 0 then caseBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 20) end
 		nameLabel.TextColor3 = data.Color
 		nameLabel.Font = Enum.Font.SourceSansBold
@@ -655,8 +669,8 @@ local function refreshShop()
 
 		-- DOPRACOWANY OBSZAR WYŚWIETLANIA (Podniesiony, by nie zasłaniać R$)
 		local clipFrame = Instance.new("Frame", caseBtn)
-		clipFrame.Size = UDim2.new(0.95, 0, 0.60, 0) -- Skrócone z 0.68
-		clipFrame.Position = UDim2.new(0.025, 0, 0.22, 0) -- Zaraz pod nazwą
+		clipFrame.Size = UDim2.new(0.95, 0, 0.54, 0) -- Skorygowany rozmiar
+		clipFrame.Position = UDim2.new(0.025, 0, 0.28, 0) -- Dopasowane pod nową nazwę (z 0.22)
 		clipFrame.BackgroundTransparency = 1
 		clipFrame.ClipsDescendants = true
 		clipFrame.ZIndex = 105
@@ -741,20 +755,7 @@ local function refreshShop()
 			end
 		end
 
-		local priceLabel = Instance.new("TextLabel", caseBtn)
-		priceLabel.Size = UDim2.new(1, 0, 0, 40)
-		priceLabel.Position = UDim2.new(0, 0, 1, -40)
-		priceLabel.Text = "..."
-		priceLabel.TextColor3 = Color3.new(1, 1, 1)
-		priceLabel.Font = Enum.Font.SourceSansBold
-		priceLabel.TextSize = 28
-		priceLabel.BackgroundTransparency = 1
-		priceLabel.ZIndex = 104
-
-		task.spawn(function()
-			local success, info = pcall(function() return MarketplaceService:GetProductInfo(data.ID, Enum.InfoType.Product) end)
-			if success and info then priceLabel.Text = info.PriceInRobux .. " R$" end
-		end)
+		addPriceLabel(caseBtn, data.ID, Enum.InfoType.Product, 0.85)
 
 		caseBtn.MouseButton1Click:Connect(function()
 			local currentMissing = getMissingItems(data.Name)

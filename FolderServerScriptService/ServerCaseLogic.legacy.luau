@@ -175,6 +175,43 @@ local function checkRainQueue()
 	end
 end
 
+-- NOWE: Zunifikowana funkcja zarządzająca globalną pulą Robux
+local function addToGlobalRobuxPool(player, amount)
+	amount = math.floor(tonumber(amount) or 0)
+	if amount <= 0 then return end
+	
+	addRobuxSpent(player, amount)
+	GlobalRobuxPool += amount
+	
+	-- DODAWANIE SPONSORA (Bez duplikacji)
+	if not table.find(CurrentSponsors, player.Name) then
+		table.insert(CurrentSponsors, player.Name)
+	end
+	
+	Sponsors[player.Name] = true -- Dla starszych systemów
+	print("[COINRAIN] " .. player.Name .. " wydał " .. amount .. " R$. Nowa pula: " .. GlobalRobuxPool)
+
+	if GlobalRobuxPool >= GameConfig.CoinRainTriggerAmount then
+		while GlobalRobuxPool >= GameConfig.CoinRainTriggerAmount do
+			GlobalRobuxPool -= GameConfig.CoinRainTriggerAmount
+			QueuedRains += 1
+			table.insert(SponsorQueue, table.clone(CurrentSponsors))
+		end
+		
+		CurrentSponsors = {} -- Reset dla następnej puli
+		Sponsors = {} -- Reset starych sponsorów
+		PoolUpdated:FireAllClients(GlobalRobuxPool, QueuedRains)
+		checkRainQueue()
+	else
+		PoolUpdated:FireAllClients(GlobalRobuxPool, QueuedRains)
+	end
+end
+
+-- NOWE: Komunikacja między skryptami dla wspólnej puli
+local AddRobuxToPoolEvent = BrainrotEvents:FindFirstChild("AddRobuxToPool") or Instance.new("BindableEvent", BrainrotEvents)
+AddRobuxToPoolEvent.Name = "AddRobuxToPool"
+AddRobuxToPoolEvent.Event:Connect(addToGlobalRobuxPool)
+
 
 
 -- Funkcja pomocnicza do tworzenia/pobierania folderu kolekcji
@@ -211,6 +248,18 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
 	local player = game.Players:GetPlayerByUserId(receiptInfo.PlayerId)
 	if not player then return Enum.ProductPurchaseDecision.NotProcessedYet end
 
+	-- Wspólna logika pobierania ceny
+	local function getProductPrice(productId)
+		local ok, pInfo = pcall(function()
+			return MarketplaceService:GetProductInfo(productId, Enum.InfoType.Product)
+		end)
+		if ok and pInfo then
+			return pInfo.PriceInRobux or 0
+		end
+		warn("[COINRAIN ERROR] Nie udało się pobrać ceny produktu: " .. tostring(productId))
+		return 0
+	end
+
 	-- SPRAWDZENIE A: CZY TO JEST TROLL?
 	local trollType = nil
 	for name, id in pairs(GameConfig.TrollProducts) do
@@ -225,41 +274,8 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
 		if TrollExecuteEvent then
 			local success = TrollExecuteEvent:Invoke(player, trollType)
 			if success then
-				-- DODAJEMY DO PULI COINRAIN (dla wszystkich trolli, w tym Fart)
-				local ok, pInfo = pcall(function()
-					return MarketplaceService:GetProductInfo(receiptInfo.ProductId, Enum.InfoType.Product)
-				end)
-				
-				if ok and pInfo then
-					local price = pInfo.PriceInRobux or 0
-					addRobuxSpent(player, price)
-					GlobalRobuxPool += price
-					-- DODAWANIE SPONSORA (Bez duplikacji)
-					if not table.find(CurrentSponsors, player.Name) then
-						table.insert(CurrentSponsors, player.Name)
-					end
-					
-					Sponsors[player.Name] = true -- Dla starszych systemów
-					print("[COINRAIN DEBUG] " .. player.Name .. " kupił trolla " .. (trollType or "???") .. " za " .. price .. " R$. Nowa pula: " .. GlobalRobuxPool)
-
-					if GlobalRobuxPool >= GameConfig.CoinRainTriggerAmount then
-						while GlobalRobuxPool >= GameConfig.CoinRainTriggerAmount do
-							GlobalRobuxPool -= GameConfig.CoinRainTriggerAmount
-							QueuedRains += 1
-							table.insert(SponsorQueue, table.clone(CurrentSponsors))
-						end
-						
-						CurrentSponsors = {} -- Reset dla następnej puli
-						Sponsors = {} -- Reset starych sponsorów
-						PoolUpdated:FireAllClients(GlobalRobuxPool, QueuedRains)
-						checkRainQueue()
-					else
-						PoolUpdated:FireAllClients(GlobalRobuxPool, QueuedRains)
-					end
-				else
-					warn("[COINRAIN ERROR] Nie udało się pobrać ceny produktu: " .. tostring(receiptInfo.ProductId))
-					-- Bonus: Jeśli GetProductInfo zawiedzie, spróbujmy chociaż dodać 1 R$ (albo po prostu logować)
-				end
+				local price = getProductPrice(receiptInfo.ProductId)
+				addToGlobalRobuxPool(player, price)
 				return Enum.ProductPurchaseDecision.PurchaseGranted
 			else
 				warn("Nie udalo sie wykonac Trolla (Brak celu lub blad)")
@@ -275,12 +291,10 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
 			local stats = player:FindFirstChild("leaderstats")
 			if stats and stats:FindFirstChild("Coins") then
 				stats.Coins.Value += packData.Amount
-				local ok, pInfo = pcall(function()
-					return MarketplaceService:GetProductInfo(receiptInfo.ProductId, Enum.InfoType.Product)
-				end)
-				if ok and pInfo then
-					addRobuxSpent(player, pInfo.PriceInRobux or 0)
-				end
+				
+				local price = getProductPrice(receiptInfo.ProductId)
+				addToGlobalRobuxPool(player, price)
+				
 				print(player.Name .. " kupił paczkę " .. packName .. " otrzymując " .. packData.Amount .. " monet!")
 				return Enum.ProductPurchaseDecision.PurchaseGranted
 			end
@@ -305,39 +319,9 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
 		return Enum.ProductPurchaseDecision.PurchaseGranted 
 	end
 
-	-- === DODAWANIE DO GLOBALNEJ PULI ROBUX (Działa tylko dla skrzynek) ===
-	local success, pInfo = pcall(function()
-		return MarketplaceService:GetProductInfo(receiptInfo.ProductId, Enum.InfoType.Product)
-	end)
-
-	if success and pInfo then
-		local robuxPrice = pInfo.PriceInRobux or 0
-		addRobuxSpent(player, robuxPrice)
-		GlobalRobuxPool += robuxPrice
-		-- DODAWANIE SPONSORA (Bez duplikacji)
-		if not table.find(CurrentSponsors, player.Name) then
-			table.insert(CurrentSponsors, player.Name)
-		end
-		
-		Sponsors[player.Name] = true
-		print("Aktualna pula Robux: " .. GlobalRobuxPool .. " (Ostatni zakup: " .. player.Name .. " za " .. robuxPrice .. " R$)")
-
-		if GlobalRobuxPool >= GameConfig.CoinRainTriggerAmount then
-			while GlobalRobuxPool >= GameConfig.CoinRainTriggerAmount do
-				GlobalRobuxPool -= GameConfig.CoinRainTriggerAmount
-				QueuedRains += 1
-				table.insert(SponsorQueue, table.clone(CurrentSponsors))
-			end
-
-			CurrentSponsors = {}
-			Sponsors = {}
-			PoolUpdated:FireAllClients(GlobalRobuxPool, QueuedRains)
-			checkRainQueue()
-		else
-			-- Postęp w puli
-			PoolUpdated:FireAllClients(GlobalRobuxPool, QueuedRains)
-		end
-	end
+	-- Dodanie do puli
+	local price = getProductPrice(receiptInfo.ProductId)
+	addToGlobalRobuxPool(player, price)
 
 	local wonModel = missingItems[math.random(1, #missingItems)]
 	local collection = getCollection(player)
@@ -487,30 +471,88 @@ game.Players.PlayerAdded:Connect(function(player)
 		local rebirths = stats:WaitForChild("Rebirths")
 
 		-- Obliczanie zredukowanych buffów (Zredukowane o połowę)
-		local multiplier = 1
-		if rebirths.Value == 1 then
-			multiplier = 1.25 -- Było 1.5
-		elseif rebirths.Value == 2 then
-			multiplier = 1.5 -- Było 2.0
-		elseif rebirths.Value >= 3 then
-			multiplier = 2 -- Było 3.0
+		local function updateStatsAndVIP()
+			local humanoid = character:FindFirstChild("Humanoid")
+			if humanoid then
+				local multiplier = 1
+				if rebirths.Value == 1 then
+					multiplier = 1.25 -- Było 1.5
+				elseif rebirths.Value == 2 then
+					multiplier = 1.5 -- Było 2.0
+				elseif rebirths.Value >= 3 then
+					multiplier = 2 -- Było 3.0
+				end
+
+				local baseSpeed = 16
+				local baseJump = 50
+				
+				if player:GetAttribute("HasVIP") then
+					baseSpeed = 32
+					baseJump = 100
+				else
+					if player:GetAttribute("HasSpeedBoost") then baseSpeed = 32 end
+					if player:GetAttribute("HasJumpBoost") then baseJump = 100 end
+				end
+
+				-- Modifikacja statystyk
+				humanoid.WalkSpeed = math.floor(baseSpeed * multiplier)
+				humanoid.JumpPower = math.floor(baseJump * multiplier)
+				humanoid.UseJumpPower = true 
+			end
+
+			-- Napis VIP nad głową
+			if player:GetAttribute("HasVIP") then
+				local head = character:FindFirstChild("Head")
+				if head and not head:FindFirstChild("VIPGui") then
+					local vipGui = Instance.new("BillboardGui")
+					vipGui.Name = "VIPGui"
+					vipGui.Size = UDim2.fromScale(3.5, 0.8)
+					
+					-- Jeśli ma też prestiż, dajemy wyżej
+					if rebirths.Value > 0 then
+						vipGui.StudsOffset = Vector3.new(0, 4.0, 0)
+					else
+						vipGui.StudsOffset = Vector3.new(0, 2.8, 0)
+					end
+					
+					vipGui.Adornee = head
+					vipGui.AlwaysOnTop = true
+
+					local textLabel = Instance.new("TextLabel")
+					textLabel.Size = UDim2.fromScale(1, 1)
+					textLabel.BackgroundTransparency = 1
+					textLabel.Text = "VIP"
+					textLabel.TextColor3 = Color3.new(1, 1, 1)
+					textLabel.Font = Enum.Font.FredokaOne
+					textLabel.TextScaled = true
+					textLabel.Parent = vipGui
+
+					local gradient = Instance.new("UIGradient")
+					gradient.Color = ColorSequence.new({
+						ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 215, 0)), -- Złoto
+						ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 200)), -- Jasne złoto/Błysk
+						ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 150, 0)) -- Ciemne Złoto
+					})
+					gradient.Rotation = 90
+					gradient.Parent = textLabel
+
+					local stroke = Instance.new("UIStroke")
+					stroke.Color = Color3.new(0, 0, 0)
+					stroke.Thickness = 2.5
+					stroke.Parent = textLabel
+
+					vipGui.Parent = head
+				end
+			end
 		end
 
-		local baseSpeed = 16
-		local baseJump = 50
+		-- Wywołujemy od razu na wypadek gdy atrybut już jest
+		updateStatsAndVIP()
 		
-		if player:GetAttribute("HasVIP") then
-			baseSpeed = 32
-			baseJump = 100
-		else
-			if player:GetAttribute("HasSpeedBoost") then baseSpeed = 32 end
-			if player:GetAttribute("HasJumpBoost") then baseJump = 100 end
-		end
-
-		-- Modifikacja statystyk
-		humanoid.WalkSpeed = math.floor(baseSpeed * multiplier)
-		humanoid.JumpPower = math.floor(baseJump * multiplier)
-		humanoid.UseJumpPower = true 
+		-- Podpinamy dynamiczne nasłuchiwanie
+		player:GetAttributeChangedSignal("HasVIP"):Connect(updateStatsAndVIP)
+		player:GetAttributeChangedSignal("HasSpeedBoost"):Connect(updateStatsAndVIP)
+		player:GetAttributeChangedSignal("HasJumpBoost"):Connect(updateStatsAndVIP)
 
 		-- Napis PRESTIŻ nad głową (jeśli gracz ma powyżej 0 Rebirths)
 		if rebirths.Value > 0 then
@@ -549,8 +591,10 @@ game.Players.PlayerAdded:Connect(function(player)
 				-- Usunięto gwiazdki zgodnie z życzeniem
 
 				gui.Parent = head
+			end
+		end
 
-				-- === KROK 2: SZEROKA POŚWIATA (STYL COIN RAIN - TYLKO TRAIL) ===
+		-- === KROK 2: SZEROKA POŚWIATA (STYL COIN RAIN - TYLKO TRAIL) ===
 				if rebirths.Value >= 1 then
 					-- Tworzymy szerokie mocowanie po bokach gracza (Oś X) - rozstaw 2.25 studs
 					local att0 = Instance.new("Attachment")
@@ -610,7 +654,5 @@ game.Players.PlayerAdded:Connect(function(player)
 
 					trail.Parent = hrp
 				end
-			end
-		end
 	end)
 end)

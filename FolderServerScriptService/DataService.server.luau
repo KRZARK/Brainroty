@@ -87,7 +87,6 @@ Players.PlayerAdded:Connect(function(player)
 	-- Tworzenie folderu leaderstats
 	local leaderstats = Instance.new("Folder")
 	leaderstats.Name = "leaderstats"
-	leaderstats.Parent = player
 	
 	local coins = Instance.new("IntValue")
 	coins.Name = "Coins"
@@ -99,10 +98,11 @@ Players.PlayerAdded:Connect(function(player)
 	rebirths.Value = loadedData.Rebirths or 0
 	rebirths.Parent = leaderstats
 	
+	leaderstats.Parent = player
+	
 	-- Tworzenie folderu BrainrotCollection
 	local collectionFolder = Instance.new("Folder")
 	collectionFolder.Name = "BrainrotCollection"
-	collectionFolder.Parent = player
 	
 	if loadedData.Collection then
 		for _, itemName in ipairs(loadedData.Collection) do
@@ -111,6 +111,7 @@ Players.PlayerAdded:Connect(function(player)
 			marker.Parent = collectionFolder
 		end
 	end
+	collectionFolder.Parent = player
 
 	-- LOGIKA DAILY REWARDS (Login Streak)
 	local streak = loadedData.LoginStreak or 1
@@ -133,7 +134,6 @@ Players.PlayerAdded:Connect(function(player)
 	-- Tworzenie folderu BoughtHints (NOWE)
 	local hintsFolder = Instance.new("Folder")
 	hintsFolder.Name = "BoughtHints"
-	hintsFolder.Parent = player
 
 	if loadedData.BoughtHints then
 		for _, rarityName in ipairs(loadedData.BoughtHints) do
@@ -142,12 +142,12 @@ Players.PlayerAdded:Connect(function(player)
 			marker.Parent = hintsFolder
 		end
 	end
+	hintsFolder.Parent = player
 	
 	-- LOGIKA DAILY QUESTS
 	local today = os.date("%Y%m%d") -- Zwraca np. "20260329"
 	local questsFolder = Instance.new("Folder")
 	questsFolder.Name = "DailyQuestsFolder"
-	questsFolder.Parent = player
 	
 	player:SetAttribute("QuestDate", loadedData.QuestDate or "")
 	
@@ -179,6 +179,7 @@ Players.PlayerAdded:Connect(function(player)
 			end
 		end
 	end
+	questsFolder.Parent = player
 	
 	-- LOGIKA PREMIUM SHOP (Game Passy)
 	task.spawn(function()
@@ -187,7 +188,7 @@ Players.PlayerAdded:Connect(function(player)
 		local hasJump = false
 		
 		local s1, o1 = pcall(function() return MarketplaceService:UserOwnsGamePassAsync(player.UserId, GameConfig.GamePasses.VIPBundle) end)
-		if s1 and o1 then hasVIP = true end
+		if (s1 and o1) or player.UserId == game.CreatorId then hasVIP = true end
 		
 		local s2, o2 = pcall(function() return MarketplaceService:UserOwnsGamePassAsync(player.UserId, GameConfig.GamePasses.SpeedBoost) end)
 		if s2 and o2 then hasSpeed = true end
@@ -312,7 +313,10 @@ local function addGamePassSpend(player, gamePassId)
 	end)
 
 	if success and info and info.PriceInRobux then
-		player:SetAttribute("RobuxSpent", (player:GetAttribute("RobuxSpent") or 0) + info.PriceInRobux)
+		local AddRobuxToPoolEvent = BrainrotEvents:FindFirstChild("AddRobuxToPool")
+		if AddRobuxToPoolEvent and AddRobuxToPoolEvent:IsA("BindableEvent") then
+			AddRobuxToPoolEvent:Fire(player, info.PriceInRobux)
+		end
 	end
 end
 

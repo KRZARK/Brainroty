@@ -379,7 +379,7 @@ local function updateDisplay()
     setStat(spdLN, spdLV, spdLI, "SZYBKOŚĆ", cur.Speed, curAuraColor, currentLevel >= 4)
     setStat(coinLN, coinLV, coinLI, "MNOŻNIK MONET", cur.Coins, curAuraColor, currentLevel >= 4)
     setStat(petLN, petLV, petLI, "BRAINROT PETS", cur.Pets, curAuraColor, currentLevel >= 4)
-    setStat(auraLN, auraLV, auraLI, "AURA", cur.Aura, curAuraColor, currentLevel >= 4)
+    setStat(auraLN, auraLV, auraLI, "POŚWIATA", cur.Aura, curAuraColor, currentLevel >= 4)
 
     local spdVal = nxt.Speed .. (nxt.Speed == cur.Speed and " (MAX)" or "")
     local coinVal = nxt.Coins .. (nxt.Coins == cur.Coins and " (MAX)" or "")
@@ -389,7 +389,7 @@ local function updateDisplay()
     setStat(spdRN, spdRV, spdRI, "SZYBKOŚĆ", spdVal, nxtAuraColor, (currentLevel + 1) >= 4)
     setStat(coinRN, coinRV, coinRI, "MNOŻNIK MONET", coinVal, nxtAuraColor, (currentLevel + 1) >= 4)
     setStat(petRN, petRV, petRI, "BRAINROT PETS", petVal, nxtAuraColor, (currentLevel + 1) >= 4)
-    setStat(auraRN, auraRV, auraRI, "AURA", auraVal, nxtAuraColor, (currentLevel + 1) >= 4)
+    setStat(auraRN, auraRV, auraRI, "POŚWIATA", auraVal, nxtAuraColor, (currentLevel + 1) >= 4)
 
     if count >= TARGET then
         canRebirth = true

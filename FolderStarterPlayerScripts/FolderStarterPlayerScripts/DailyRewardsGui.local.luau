@@ -306,12 +306,14 @@ ClaimBtn.MouseButton1Click:Connect(function()
 	
 	if success then
 		-- Konfetti (dźwięk lokalny)
-		local sound = Instance.new("Sound")
-		sound.SoundId = "rbxassetid://13214811565" -- Tada / Success chime
-		sound.Volume = 2
-		sound.Parent = Workspace
-		sound:Play()
-		game.Debris:AddItem(sound, 3)
+		local soundTemplate = ReplicatedStorage:WaitForChild("Claimed")
+		if soundTemplate then
+			local sound = soundTemplate:Clone()
+			sound.Volume = 2
+			sound.Parent = workspace
+			sound:Play()
+			game.Debris:AddItem(sound, 3)
+		end
 		
 		updateUI()
 	end

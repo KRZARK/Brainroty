@@ -202,7 +202,7 @@ end
 
 local function setTrollButtonsLocked(locked)
     for _, button in ipairs(trollButtons) do
-        button.Active = not locked
+        button.Interactable = not locked
         button.AutoButtonColor = not locked
         button.BackgroundColor3 = locked and Color3.fromRGB(40, 40, 40) or Color3.fromRGB(70, 70, 70)
         button.TextColor3 = locked and Color3.fromRGB(110, 110, 110) or Color3.fromRGB(255, 255, 255)
@@ -217,14 +217,16 @@ local function getTargetStatusText(target)
     local statusBits = {}
     local locked = false
 
-    if BrainrotUtils.hasCompletedRarity(target, "Secret") then
-        table.insert(statusBits, "OG SEARCHER - IMMUNE")
-        locked = true
-    end
+    if target ~= LocalPlayer then
+        if BrainrotUtils.hasCompletedRarity(target, "Secret") then
+            table.insert(statusBits, "OG SEARCHER - IMMUNE")
+            locked = true
+        end
 
-    if isTargetVipProtected(target) then
-        table.insert(statusBits, "VIP PROTECTION ENABLED")
-        locked = true
+        if isTargetVipProtected(target) then
+            table.insert(statusBits, "VIP PROTECTION ENABLED")
+            locked = true
+        end
     end
 
     local text = "Spectating: " .. target.Name
@@ -263,7 +265,7 @@ local function stopSpectating()
     -- Zabezpieczające odblokowanie przycisków trolli
     for _, child in ipairs(MainFrame:GetChildren()) do
         if child:GetAttribute("IsTrollActionButton") then
-            child.Active = true
+            child.Interactable = true
             child.AutoButtonColor = true
             child.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
             child.TextColor3 = Color3.fromRGB(255, 255, 255)

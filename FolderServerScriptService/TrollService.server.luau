@@ -43,6 +43,8 @@ local function hasVIPProtectionEnabled(target)
 	return target and target:GetAttribute("HasVIP") == true and target:GetAttribute("VIPProtectionEnabled") == true
 end
 
+local executeTroll -- Czeka z definicją na później!
+
 -- RemoteFunction do sprawdzania ważności (Pojawia się zanim klient kupi)
 local CheckValidityRF = BrainrotEvents:FindFirstChild("CheckTrollValidity")
 if not CheckValidityRF then
@@ -53,13 +55,15 @@ end
 
 CheckValidityRF.OnServerInvoke = function(player, target, trollType)
 	if not target then return false, "No target selected!" end
-	-- 1. Sprawdź immunitet OG
-	if BrainrotUtils.hasCompletedRarity(target, "Secret") then
-		return false, "This player is IMMUNE (OG Searcher)!"
-	end
+	if target ~= player then
+		-- 1. Sprawdź immunitet OG
+		if BrainrotUtils.hasCompletedRarity(target, "Secret") then
+			return false, "This player is IMMUNE (OG Searcher)!"
+		end
 
-	if hasVIPProtectionEnabled(target) then
-		return false, "This player has VIP Protection enabled!"
+		if hasVIPProtectionEnabled(target) then
+			return false, "This player has VIP Troll Shield!"
+		end
 	end
 	
 	-- 2. Sprawdź oddzielny cooldown
@@ -70,7 +74,8 @@ CheckValidityRF.OnServerInvoke = function(player, target, trollType)
 		end
 		
 		local freeTrolls = player:GetAttribute("FreeFartTrolls") or 0
-		if freeTrolls > 0 then
+		local hasStarterPack = player:GetAttribute("HasBoughtStarterPack") == true
+		if hasStarterPack and freeTrolls > 0 then
 			player:SetAttribute("FreeFartTrolls", freeTrolls - 1)
 			
 			task.spawn(function()
@@ -441,7 +446,7 @@ local function executeTrollCore(player, trollType, targetChar, hrp, humanoid)
 	return true
 end
 
-local function executeTroll(player, trollType)
+executeTroll = function(player, trollType)
 	local targetChar, hrp, humanoid, targetPlayer = getTargetCharacter(player)
 
 	if not targetChar or not targetPlayer then
@@ -451,15 +456,17 @@ local function executeTroll(player, trollType)
 	
 	local targetName = targetPlayer.Name
 	
-	-- OCHRONA: Jeśli cel zebrał wszystkie Secret Brainroty
-	if BrainrotUtils.hasCompletedRarity(targetPlayer, "Secret") then
-		warn("Target " .. targetName .. " is IMMUNE to trolls. Consuming receipt.")
-		return true -- Zapobiega blokadzie kolejki
-	end
+	if targetPlayer ~= player then
+		-- OCHRONA: Jeśli cel zebrał wszystkie Secret Brainroty
+		if BrainrotUtils.hasCompletedRarity(targetPlayer, "Secret") then
+			warn("Target " .. targetName .. " is IMMUNE to trolls. Consuming receipt.")
+			return true -- Zapobiega blokadzie kolejki
+		end
 
-	if hasVIPProtectionEnabled(targetPlayer) then
-		warn("Target " .. targetName .. " has VIP protection enabled. Consuming receipt.")
-		return true
+		if hasVIPProtectionEnabled(targetPlayer) then
+			warn("Target " .. targetName .. " has VIP shield, trolling aborted.")
+			return true
+		end
 	end
 	
 	-- Ustawiamy OCHRONĘ po tym udanym trollu na konkretny slot (Fart uniezależniony od reszty)

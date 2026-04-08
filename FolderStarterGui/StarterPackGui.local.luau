@@ -364,6 +364,7 @@ end)
 LocalPlayer:GetAttributeChangedSignal("HasBoughtStarterPack"):Connect(function()
 	if LocalPlayer:GetAttribute("HasBoughtStarterPack") == true then
 		screenGui:Destroy()
+		ToggleGui:Destroy()
 	end
 end)
 
@@ -377,6 +378,7 @@ task.spawn(function()
 			local timeLeft = expiry - os.time()
 			if timeLeft <= 0 then
 				screenGui:Destroy()
+				ToggleGui:Destroy()
 				break
 			else
 				local h = math.floor(timeLeft / 3600)

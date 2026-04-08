@@ -68,6 +68,22 @@ CheckValidityRF.OnServerInvoke = function(player, target, trollType)
 			local timeLeft = ProtectionsFart[target.UserId] - os.time()
 			return false, string.format("Fart protection: %02d:%02d", math.floor(timeLeft / 60), timeLeft % 60)
 		end
+		
+		local freeTrolls = player:GetAttribute("FreeFartTrolls") or 0
+		if freeTrolls > 0 then
+			player:SetAttribute("FreeFartTrolls", freeTrolls - 1)
+			
+			task.spawn(function()
+				-- Lokalna wywoływanie executeTroll bez ProcessReceipt:
+				-- Przenosimy wywołanie na wyższy poziom (ponieważ CheckTrollValidity działa przed kupnem)
+				local TargetPlayerObj = PlayerTargets[player.UserId]
+				if TargetPlayerObj then
+					executeTroll(player, "Fart")
+				end
+			end)
+			
+			return false, "FREE_TROLL_USED"
+		end
 	else
 		-- Inne trolle (Bomb, Lava, Tornado)
 		if ProtectionsMajor[target.UserId] and os.time() < ProtectionsMajor[target.UserId] then

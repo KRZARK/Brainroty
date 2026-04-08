@@ -130,7 +130,13 @@ local function spawnPhysicalCoins(count)
 				local stats = p:FindFirstChild("leaderstats")
 				if stats and stats:FindFirstChild("Coins") then
 					local multi = p:GetAttribute("CoinMultiplier") or 1
-					stats.Coins.Value += (1 * multi)
+					local amountToAdd = math.ceil(COIN_REWARD * multi)
+					stats.Coins.Value += amountToAdd
+					
+					local ServerUpdateQuestProgress = BrainrotEvents:FindFirstChild("ServerUpdateQuestProgress")
+					if ServerUpdateQuestProgress then
+						ServerUpdateQuestProgress:Fire(p, "CollectCoins", 1)
+					end
 				end
 				coin:Destroy()
 			end
@@ -346,9 +352,49 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
 
 	-- Wysłanie info o modelu
 	BrainrotCollectedEvent:FireClient(player, wonModel.Name)
+	
+	local ServerUpdateQuestProgress = BrainrotEvents:FindFirstChild("ServerUpdateQuestProgress")
+	if ServerUpdateQuestProgress then
+		ServerUpdateQuestProgress:Fire(player, "CollectBrainrots", 1)
+	end
 
 	return Enum.ProductPurchaseDecision.PurchaseGranted
 end
+
+local OpenSpecificCaseEvent = BrainrotEvents:FindFirstChild("OpenSpecificCase") or Instance.new("BindableEvent", BrainrotEvents)
+OpenSpecificCaseEvent.Name = "OpenSpecificCase"
+OpenSpecificCaseEvent.Event:Connect(function(player, requestedRarity)
+	local missingItems = getMissingItems(player, requestedRarity)
+
+	if #missingItems == 0 then
+		warn("Gracz " .. player.Name .. " ma już wszystko z kategorii " .. requestedRarity .. " (StarterPack)")
+		return 
+	end
+
+	local wonModel = missingItems[math.random(1, #missingItems)]
+	local collection = getCollection(player)
+
+	if not collection:FindFirstChild(wonModel.Name) then
+		local marker = Instance.new("BoolValue")
+		marker.Name = wonModel.Name
+		marker.Parent = collection
+		
+		local hints = player:FindFirstChild("BoughtHints")
+		local rarity = wonModel:GetAttribute("Rarity") or "Common"
+		if hints and hints:FindFirstChild(rarity) then
+			hints[rarity]:Destroy()
+		end
+	end
+
+	BrainrotCollectedEvent:FireClient(player, "PLAY_ANIM")
+	task.wait(1.5) 
+	BrainrotCollectedEvent:FireClient(player, wonModel.Name)
+	
+	local ServerUpdateQuestProgress = BrainrotEvents:FindFirstChild("ServerUpdateQuestProgress")
+	if ServerUpdateQuestProgress then
+		ServerUpdateQuestProgress:Fire(player, "CollectBrainrots", 1)
+	end
+end)
 
 -- 2. OBSŁUGA ZBIERANIA Z MAPY (Szybki zapis na serwerze)
 BrainrotCollectedEvent.OnServerEvent:Connect(function(player, brainrotName)
@@ -404,6 +450,11 @@ BrainrotCollectedEvent.OnServerEvent:Connect(function(player, brainrotName)
 	local safeAttributeName = string.gsub(brainrotName, " ", "_")
 	safeAttributeName = string.gsub(safeAttributeName, "[^%w_]", "")
 	player:SetAttribute("Collected_" .. safeAttributeName, true)
+	
+	local ServerUpdateQuestProgress = BrainrotEvents:FindFirstChild("ServerUpdateQuestProgress")
+	if ServerUpdateQuestProgress then
+		ServerUpdateQuestProgress:Fire(player, "CollectBrainrots", 1)
+	end
 end)
 
 -- Synchronizacja Robuxów przy wejściu gracza
@@ -474,29 +525,7 @@ game.Players.PlayerAdded:Connect(function(player)
 		local function updateStatsAndVIP()
 			local humanoid = character:FindFirstChild("Humanoid")
 			if humanoid then
-				local multiplier = 1
-				if rebirths.Value == 1 then
-					multiplier = 1.25 -- Było 1.5
-				elseif rebirths.Value == 2 then
-					multiplier = 1.5 -- Było 2.0
-				elseif rebirths.Value >= 3 then
-					multiplier = 2 -- Było 3.0
-				end
-
-				local baseSpeed = 16
-				local baseJump = 50
-				
-				if player:GetAttribute("HasVIP") then
-					baseSpeed = 32
-					baseJump = 100
-				else
-					if player:GetAttribute("HasSpeedBoost") then baseSpeed = 32 end
-					if player:GetAttribute("HasJumpBoost") then baseJump = 100 end
-				end
-
-				-- Modifikacja statystyk
-				humanoid.WalkSpeed = math.floor(baseSpeed * multiplier)
-				humanoid.JumpPower = math.floor(baseJump * multiplier)
+				-- Usunięto nadpisywanie statystyk (teraz w całości obsługuje to SettingsService.server.luau)
 				humanoid.UseJumpPower = true 
 			end
 
@@ -595,6 +624,8 @@ game.Players.PlayerAdded:Connect(function(player)
 		end
 
 		-- === KROK 2: SZEROKA POŚWIATA (STYL COIN RAIN - TYLKO TRAIL) ===
+		-- (Przeniesione do SettingsService.server.luau by umożliwić wybór traila)
+		--[[
 				if rebirths.Value >= 1 then
 					-- Tworzymy szerokie mocowanie po bokach gracza (Oś X) - rozstaw 2.25 studs
 					local att0 = Instance.new("Attachment")
@@ -654,5 +685,6 @@ game.Players.PlayerAdded:Connect(function(player)
 
 					trail.Parent = hrp
 				end
+		]]
 	end)
 end)

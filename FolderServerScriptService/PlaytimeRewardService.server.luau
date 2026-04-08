@@ -76,17 +76,8 @@ claimEvent.OnServerInvoke = function(player, rewardIndex)
 	-- Obliczanie nagrody
 	local baseReward = rewardData.Reward
 	
-	-- 1. Mnożnik za Rebirth
-	local multiplier = 1
-	local leaderstats = player:FindFirstChild("leaderstats")
-	local rebirthsVal = leaderstats and leaderstats:FindFirstChild("Rebirths")
-	if rebirthsVal then
-		local rb = rebirthsVal.Value
-		if rb == 1 then multiplier = 1.25
-		elseif rb == 2 then multiplier = 1.5
-		elseif rb >= 3 then multiplier = 2.0
-		end
-	end
+	-- 1. Mnożnik za Rebirth i inne (Pobierany z atrybutu)
+	local multiplier = player:GetAttribute("CoinMultiplier") or 1
 	
 	-- 2. Bonus za Znajomego (+20%)
 	local hasFriendBonus = false
@@ -109,13 +100,31 @@ claimEvent.OnServerInvoke = function(player, rewardIndex)
 	local finalReward = math.floor(baseReward * multiplier)
 	
 	-- Przyznanie nagrody
+	local leaderstats = player:FindFirstChild("leaderstats")
 	local coinsVal = leaderstats and leaderstats:FindFirstChild("Coins")
 	if coinsVal then
 		coinsVal.Value = coinsVal.Value + finalReward
 		claimed[rewardIndex] = true -- Oznacz jako odebrane
 		
+		local allClaimed = true
+		for i = 1, #GameConfig.PlaytimeRewards do
+			if not claimed[i] then
+				allClaimed = false
+				break
+			end
+		end
+		
+		local restart = false
+		if allClaimed then
+			SessionStartTimes[player.UserId] = os.time()
+			for i = 1, #GameConfig.PlaytimeRewards do
+				claimed[i] = nil
+			end
+			restart = true
+		end
+		
 		-- Odtworzenie dźwięku systemowego (Kaching) - opcjonalnie zrobimy to po stronie klienta
-		return true, finalReward, hasFriendBonus
+		return true, finalReward, hasFriendBonus, restart
 	else
 		return false, "Brak statystyki Coins."
 	end

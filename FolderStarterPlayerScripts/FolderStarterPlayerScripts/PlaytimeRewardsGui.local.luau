@@ -28,6 +28,12 @@ task.spawn(function()
 end)
 
 -- Zmiana rozmiaru i struktura UI
+local oldGui = playerGui:FindFirstChild("PlaytimeRewardsUI")
+if oldGui then oldGui:Destroy() end
+
+local oldToggle = playerGui:FindFirstChild("PlaytimeRewardsToggleUI")
+if oldToggle then oldToggle:Destroy() end
+
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "PlaytimeRewardsUI"
 screenGui.ResetOnSpawn = false
@@ -39,11 +45,17 @@ local Coin2D = ReplicatedStorage:WaitForChild("Coin2D")
 local Wykrzyknik = ReplicatedStorage:WaitForChild("Wykrzyknik")
 
 -- === 1. PRZYCISK Z LEWEJ STRONY ===
+local ToggleGui = Instance.new("ScreenGui")
+ToggleGui.Name = "PlaytimeRewardsToggleUI"
+ToggleGui.DisplayOrder = 200
+ToggleGui.ResetOnSpawn = false
+ToggleGui.Parent = playerGui
+
 local giftBtn = Instance.new("ImageButton")
 giftBtn.Name = "GiftButton"
 giftBtn.Position = HudTileStyle.getSlot("right", 2)
 giftBtn.ZIndex = 50
-giftBtn.Parent = screenGui
+giftBtn.Parent = ToggleGui
 
 local giftIcon = Instance.new("ImageLabel")
 giftIcon.Name = "GiftIcon"
@@ -266,6 +278,7 @@ for index, rewardData in ipairs(GameConfig.PlaytimeRewards) do
 	table.insert(rewardRows, {
 		Frame = row,
 		Button = actionBtn,
+		CoinLabel = coinLbl,
 		Data = rewardData,
 		Index = index
 	})
@@ -274,12 +287,22 @@ for index, rewardData in ipairs(GameConfig.PlaytimeRewards) do
 	actionBtn.MouseButton1Click:Connect(function()
 		if actionBtn.Text == "CLAIM" then
 			actionBtn.Text = "..."
-			local success, result, hadSocBonus = claimEvent:InvokeServer(index)
+			local success, result, hadSocBonus, shouldRestart = claimEvent:InvokeServer(index)
 			if success then
 				claimedRewards[tostring(index)] = true -- Czasem stringuje się przy jsonie
 				claimedRewards[index] = true
 				actionBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 				actionBtn.Text = "CLAIMED"
+				
+				if shouldRestart then
+					-- Jeżeli odebrano wszystkie nagrody, serwer restartuje cykl
+					sessionStartTime = os.time()
+					claimedRewards = {}
+					for _, r in ipairs(rewardRows) do
+						r.Button.Text = "LOCKED"
+						r.Button.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+					end
+				end
 				
 				-- Pokazanie popupu
 				local pop = Instance.new("TextLabel")
@@ -318,8 +341,25 @@ local function formatTime(seconds)
 	return string.format("%02d:%02d", m, s)
 end
 
--- Aktualizacja baneru zapraszania znajomych
+-- AKTUALIZACJA WARTOŚCI MONET W UI (Mnożnik VIP/Rebirth + FriendBonus)
 local isFriendBonusActive = false
+
+local function updateRewardValues()
+	local multi = player:GetAttribute("CoinMultiplier") or 1
+	if isFriendBonusActive then
+		multi = multi * 1.2
+	end
+	
+	for _, r in ipairs(rewardRows) do
+		local fRew = math.floor(r.Data.Reward * multi)
+		r.CoinLabel.Text = "💰 " .. fRew
+	end
+end
+
+player:GetAttributeChangedSignal("CoinMultiplier"):Connect(updateRewardValues)
+updateRewardValues() -- Inicjalne ustawienie
+
+-- Aktualizacja baneru zapraszania znajomych
 local function updateSocialBanner()
 	local foundFriend = false
 	for _, p in ipairs(Players:GetPlayers()) do
@@ -338,6 +378,7 @@ local function updateSocialBanner()
 			socialBtn.BackgroundColor3 = Color3.fromRGB(220, 180, 0) -- Złoty kolor
 			socialBtn.Text = "🤝 FRIEND BONUS ACTIVE! (+20%)"
 			socialStroke.Color = Color3.new(1, 1, 1)
+			updateRewardValues()
 		end
 	else
 		if isFriendBonusActive then
@@ -345,6 +386,7 @@ local function updateSocialBanner()
 			socialBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 200) -- Niebieski kolor
 			socialBtn.Text = "👥 INVITE FRIEND (+20% COINS)"
 			socialStroke.Color = Color3.new(0, 0, 0)
+			updateRewardValues()
 		end
 	end
 end
@@ -368,16 +410,35 @@ socialBtn.MouseButton1Click:Connect(function()
 	end
 end)
 
+_G.UiMenus = _G.UiMenus or {}
+_G.UiMenus["PlaytimeRewards"] = function()
+	if mainPanel and mainPanel.Visible then
+		mainPanel.Visible = false
+		TweenService:Create(giftBtn, TweenInfo.new(0.2), {Rotation = 0}):Play()
+	end
+end
+
 giftBtn.MouseButton1Click:Connect(function()
-	mainPanel.Visible = not mainPanel.Visible
+	local targetVisible = not mainPanel.Visible
+	if targetVisible then
+		for name, closeFunc in pairs(_G.UiMenus) do
+			if name ~= "PlaytimeRewards" then closeFunc() end
+		end
+	end
+	
+	mainPanel.Visible = targetVisible
 	if mainPanel.Visible then
+		TweenService:Create(giftBtn, TweenInfo.new(0.2), {Rotation = 15}):Play()
 		mainPanel.Size = UDim2.fromOffset(450, 550)
 		TweenService:Create(mainPanel, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.fromOffset(500, 600)}):Play()
+	else
+		TweenService:Create(giftBtn, TweenInfo.new(0.2), {Rotation = 0}):Play()
 	end
 end)
 
 closeBtn.MouseButton1Click:Connect(function()
 	mainPanel.Visible = false
+	TweenService:Create(giftBtn, TweenInfo.new(0.2), {Rotation = 0}):Play()
 end)
 
 -- Pętla RenderStepped do odświeżania odliczania i pulsującej ikonki powiadomień
@@ -410,7 +471,10 @@ RunService.RenderStepped:Connect(function(dt)
 				btn.Text = formatTime(left)
 				if left < lowestTimeLeft then
 					lowestTimeLeft = left
-					nextRewardAmount = rowObj.Data.Reward
+					
+					local multi = player:GetAttribute("CoinMultiplier") or 1
+					if isFriendBonusActive then multi = multi * 1.2 end
+					nextRewardAmount = math.floor(rowObj.Data.Reward * multi)
 				end
 			end
 		end
@@ -421,14 +485,18 @@ RunService.RenderStepped:Connect(function(dt)
 		giftNotif.Visible = true
 		local scale = 1 + math.sin(tick() * 8) * 0.2
 		giftNotif.Size = UDim2.fromOffset(35 * scale, 35 * scale)
-		giftBtn.Rotation = math.sin(tick() * 4) * 3
+		if not mainPanel.Visible then
+			giftBtn.Rotation = math.sin(tick() * 4) * 3
+		end
 		
 		giftTimerLbl.Text = "CLAIM!"
 		giftTimerLbl.TextColor3 = Color3.fromRGB(0, 255, 0)
 		giftAmountLbl.Text = ""
 	else
 		giftNotif.Visible = false
-		giftBtn.Rotation = 0
+		if not mainPanel.Visible then
+			giftBtn.Rotation = 0
+		end
 		
 		if lowestTimeLeft ~= math.huge then
 			giftTimerLbl.Text = formatTime(lowestTimeLeft)

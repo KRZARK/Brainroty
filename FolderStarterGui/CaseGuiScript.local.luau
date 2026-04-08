@@ -42,9 +42,10 @@ table.sort(CaseData, function(a, b) return a.Order < b.Order end)
 -- === 2. TWORZENIE BAZY UI ===
 -- Czyścimy ewentualny stary HUD przed stworzeniem nowego (np. po Rebirth)
 local oldShop = playerGui:FindFirstChild("CaseShopUI")
-if oldShop then 
-	oldShop:Destroy() 
-end
+if oldShop then oldShop:Destroy() end
+
+local oldToggle = playerGui:FindFirstChild("CaseToggleUI")
+if oldToggle then oldToggle:Destroy() end
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "CaseShopUI"
@@ -56,7 +57,13 @@ local glowEffect = Instance.new("ImageLabel", screenGui)
 glowEffect.Name = "Glow"
 glowEffect.Visible = false
 
-local mainBtn = Instance.new("TextButton", screenGui)
+local ToggleGui = Instance.new("ScreenGui")
+ToggleGui.Name = "CaseToggleUI"
+ToggleGui.DisplayOrder = 200
+ToggleGui.ResetOnSpawn = false
+ToggleGui.Parent = playerGui
+
+local mainBtn = Instance.new("TextButton", ToggleGui)
 mainBtn.Name = "MainShopButton"
 mainBtn.Position = HudTileStyle.getSlot("left", 2)
 mainBtn.Text = ""
@@ -656,7 +663,7 @@ local function refreshShop()
 		nameLabel.Size = UDim2.new(1, 0, 0.28, 0) -- Powiększone z 0.22 (teraz 1.5x zamiast 2x)
 		nameLabel.Position = UDim2.fromScale(0, 0)
 		nameLabel.Text = (#missing == 0 and "ALL COLLECTED!") or (data.Name)
-		if #missing == 0 then caseBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 20) end
+		if #missing == 0 then caseBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0) end
 		nameLabel.TextColor3 = data.Color
 		nameLabel.Font = Enum.Font.SourceSansBold
 		nameLabel.TextSize = 32 -- Subtelniejsza czcionka
@@ -762,6 +769,7 @@ local function refreshShop()
 			if #currentMissing == 0 then return end
 			shopContainer.Visible = false
 			closeButton.Visible = false
+			TweenService:Create(mainBtn, TweenInfo.new(0.2), {Rotation = 0}):Play()
 			local hudGui = playerGui:FindFirstChild("HUD_Standalone_UI")
 			if hudGui then hudGui.Enabled = true end
 			MarketplaceService:PromptProductPurchase(player, data.ID)
@@ -806,11 +814,33 @@ end)
 
 
 
+_G.UiMenus = _G.UiMenus or {}
+_G.UiMenus["CaseShop"] = function()
+	if shopContainer and shopContainer.Visible then
+		local hudGui = playerGui:FindFirstChild("HUD_Standalone_UI")
+		if hudGui then hudGui.Enabled = true end
+		shopContainer.Visible = false
+		closeButton.Visible = false
+		TweenService:Create(mainBtn, TweenInfo.new(0.2), {Rotation = 0}):Play()
+	end
+end
+
 local function toggleShop()
 	local isVisible = not shopContainer.Visible
-	if isVisible then refreshShop() end
+	if isVisible then 
+		for name, closeFunc in pairs(_G.UiMenus) do
+			if name ~= "CaseShop" then closeFunc() end
+		end
+		refreshShop() 
+	end
 	shopContainer.Visible = isVisible
 	closeButton.Visible = isVisible
+	
+	if isVisible then
+		TweenService:Create(mainBtn, TweenInfo.new(0.2), {Rotation = -15}):Play()
+	else
+		TweenService:Create(mainBtn, TweenInfo.new(0.2), {Rotation = 0}):Play()
+	end
 	
 	local hudGui = playerGui:FindFirstChild("HUD_Standalone_UI")
 	if hudGui then hudGui.Enabled = not isVisible end

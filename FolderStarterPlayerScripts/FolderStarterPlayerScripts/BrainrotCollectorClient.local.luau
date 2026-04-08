@@ -56,7 +56,16 @@ _G.CollectedBrainrotsTable = collectedBrainrots -- Udostępniamy tabelę dla skl
 local spinningModels = {} 
 
 -- UI Setup
+-- UI Setup
 local playerGui = player:WaitForChild("PlayerGui")
+
+-- === CZYSZCZENIE STARYCH INSTANCJI ===
+local oldGui = playerGui:FindFirstChild("BrainrotIndexUI")
+if oldGui then oldGui:Destroy() end
+
+local oldToggle = playerGui:FindFirstChild("BrainrotIndexToggleUI")
+if oldToggle then oldToggle:Destroy() end
+
 local screenGui = Instance.new("ScreenGui")
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.Name = "BrainrotIndexUI"
@@ -64,6 +73,12 @@ screenGui.DisplayOrder = 10
 screenGui.IgnoreGuiInset = true -- Pozwala na precyzyjne sterowanie szczytem ekranu
 screenGui.ResetOnSpawn = false
 screenGui.Parent = playerGui
+
+local ToggleGui = Instance.new("ScreenGui")
+ToggleGui.Name = "BrainrotIndexToggleUI"
+ToggleGui.DisplayOrder = 200
+ToggleGui.ResetOnSpawn = false
+ToggleGui.Parent = playerGui
 
 -- === NOWA SEKACJA: GŁÓWNY PASEK POSTĘPU NA SAMEJ GÓRZE ===
 local topProgressContainer = Instance.new("Frame")
@@ -375,14 +390,14 @@ local brainrots = discoverBrainrots()
 local indexGlow = Instance.new("ImageLabel")
 indexGlow.Name = "IndexGlow"
 indexGlow.Visible = false
-indexGlow.Parent = screenGui
+indexGlow.Parent = ToggleGui
 
 local openButton = Instance.new("TextButton")
 openButton.Name = "OpenButton"
 openButton.Position = HudTileStyle.getSlot("right", 1)
 openButton.Text = ""
 openButton.ZIndex = 11
-openButton.Parent = screenGui
+openButton.Parent = ToggleGui
 
 local indexImg = Instance.new("ImageLabel")
 indexImg.Name = "IndexIcon"
@@ -992,7 +1007,19 @@ local function refreshIndex(preserveScrollPosition)
 end
 
 local function toggleUI(visible)
+	if visible then
+		for name, closeFunc in pairs(_G.UiMenus) do
+			if name ~= "BrainrotCollector" then closeFunc() end
+		end
+	end
+	
 	indexBackdrop.Visible = visible
+	
+	if visible then
+		TweenService:Create(openButton, TweenInfo.new(0.2), {Rotation = 15}):Play()
+	else
+		TweenService:Create(openButton, TweenInfo.new(0.2), {Rotation = 0}):Play()
+	end
 	
 	-- Ukrywamy HUD (monety), by nie zaśmiecał ekranu przy Indeksie
 	local hudGui = playerGui:FindFirstChild("HUD_Standalone_UI")
@@ -1005,6 +1032,13 @@ local function toggleUI(visible)
 		updateProgressBar()
 		refreshIndex(false)
 		indexFrame.CanvasPosition = Vector2.zero
+	end
+end
+
+_G.UiMenus = _G.UiMenus or {}
+_G.UiMenus["BrainrotCollector"] = function()
+	if indexBackdrop and indexBackdrop.Visible then
+		toggleUI(false)
 	end
 end
 
@@ -1229,7 +1263,28 @@ task.spawn(function()
 		for _, child in ipairs(collection:GetChildren()) do
 			collectedBrainrots[child.Name] = true
 		end
+		
+		-- Czekamy by większość mapy się załadowała
+		task.wait(1)
 		updateProgressBar()
+		
+		-- Obsługa dosłanego strumieniowania mapy (StreamingEnabled)
+		if BrainrotyFolder then
+			BrainrotyFolder.ChildAdded:Connect(function(modelNaMapie)
+				if modelNaMapie:IsA("Model") and collectedBrainrots[modelNaMapie.Name] then
+					-- Czekamy na wczytanie partów modelu
+					task.wait(0.2)
+					for _, part in ipairs(modelNaMapie:GetDescendants()) do
+						if part:IsA("BasePart") then
+							if part.Transparency < 1 then
+								part.Transparency = 0.8
+							end
+							part.CanCollide = false
+						end
+					end
+				end
+			end)
+		end
 	end
 end)
 

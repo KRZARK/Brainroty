@@ -20,6 +20,68 @@ local localSettings = {
 	Performance = false,
 }
 
+local function getAvailableTrails()
+	local trails = {"OFF"}
+	if LocalPlayer:GetAttribute("HasVIP") then
+		table.insert(trails, "VIP")
+	end
+	
+	local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
+	local rebirths = leaderstats and leaderstats:FindFirstChild("Rebirths") and leaderstats.Rebirths.Value or 0
+	
+	for i = 1, math.min(rebirths, 4) do
+		table.insert(trails, "REBIRTH " .. i)
+	end
+	
+	return trails
+end
+
+local function getAvailableSpeeds()
+	local options = {"OFF"}
+	if LocalPlayer:GetAttribute("HasVIP") then
+		table.insert(options, "VIP")
+	end
+	if LocalPlayer:GetAttribute("HasSpeedBoost") then
+		table.insert(options, "GAMEPASS")
+	end
+	
+	local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
+	local rebirths = leaderstats and leaderstats:FindFirstChild("Rebirths") and leaderstats.Rebirths.Value or 0
+	
+	for i = 1, math.min(rebirths, 3) do
+		table.insert(options, "REBIRTH " .. i)
+	end
+	
+	if #options > 2 then
+		table.insert(options, "MAX")
+	end
+	
+	return options
+end
+
+local function getAvailableJumps()
+	local options = {"OFF"}
+	if LocalPlayer:GetAttribute("HasVIP") then
+		table.insert(options, "VIP")
+	end
+	if LocalPlayer:GetAttribute("HasJumpBoost") then
+		table.insert(options, "GAMEPASS")
+	end
+	
+	local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
+	local rebirths = leaderstats and leaderstats:FindFirstChild("Rebirths") and leaderstats.Rebirths.Value or 0
+	
+	for i = 1, math.min(rebirths, 3) do
+		table.insert(options, "REBIRTH " .. i)
+	end
+	
+	if #options > 2 then
+		table.insert(options, "MAX")
+	end
+	
+	return options
+end
+
 local settingDefinitions = {
 	{
 		id = "Music",
@@ -36,18 +98,29 @@ local settingDefinitions = {
 	{
 		id = "Speed",
 		title = "SZYBKOŚĆ",
-		kind = "server",
+		kind = "cycle",
 		remoteKey = "Speed",
 		attributeName = "SpeedSettingEnabled",
-		default = true,
+		default = "DEFAULT",
+		getOptions = getAvailableSpeeds,
 	},
 	{
 		id = "Jump",
 		title = "SKOK",
-		kind = "server",
+		kind = "cycle",
 		remoteKey = "Jump",
 		attributeName = "JumpSettingEnabled",
-		default = true,
+		default = "DEFAULT",
+		getOptions = getAvailableJumps,
+	},
+	{
+		id = "TrailColor",
+		title = "KOLOR ŚLADU",
+		kind = "cycle",
+		remoteKey = "SelectedTrail",
+		attributeName = "SelectedTrail",
+		default = "DEFAULT",
+		getOptions = getAvailableTrails,
 	},
 	{
 		id = "VIPProtection",
@@ -75,6 +148,12 @@ local performanceOverrides = {}
 local performanceScanConnection
 local performanceScanToken = 0
 
+local oldGui = PlayerGui:FindFirstChild("SettingsUI")
+if oldGui then oldGui:Destroy() end
+
+local oldToggle = PlayerGui:FindFirstChild("SettingsToggleUI")
+if oldToggle then oldToggle:Destroy() end
+
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "SettingsUI"
 ScreenGui.ResetOnSpawn = false
@@ -82,11 +161,18 @@ ScreenGui.DisplayOrder = 30
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.Parent = PlayerGui
 
+local ToggleGui = Instance.new("ScreenGui")
+ToggleGui.Name = "SettingsToggleUI"
+ToggleGui.DisplayOrder = 200
+ToggleGui.ResetOnSpawn = false
+ToggleGui.IgnoreGuiInset = true
+ToggleGui.Parent = PlayerGui
+
 local ToggleBtn = Instance.new("ImageButton")
 ToggleBtn.Name = "ToggleSettings"
 ToggleBtn.Position = HudTileStyle.getSlot("right", 5)
 ToggleBtn.ZIndex = 50
-ToggleBtn.Parent = ScreenGui
+ToggleBtn.Parent = ToggleGui
 
 local toggleIcon = Instance.new("ImageLabel")
 toggleIcon.Name = "SettingsIcon"
@@ -509,9 +595,9 @@ local function updateRowVisual(definition)
 	local isPending = pendingServerToggles[definition.id] == true
 
 	if isPending then
-		row.Toggle.Text = "..."
+		row.StatusLabel.Text = "..."
 		row.Toggle.BackgroundColor3 = Color3.fromRGB(86, 99, 112)
-		row.Toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+		row.StatusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 		row.Toggle.Active = false
 		row.Toggle.AutoButtonColor = false
 		row.Stroke.Color = Color3.fromRGB(137, 154, 171)
@@ -519,18 +605,45 @@ local function updateRowVisual(definition)
 	end
 
 	if not unlocked then
-		row.Toggle.Text = "LOCKED"
+		row.StatusLabel.Text = "LOCKED"
 		row.Toggle.BackgroundColor3 = Color3.fromRGB(90, 96, 104)
-		row.Toggle.TextColor3 = Color3.fromRGB(213, 216, 220)
+		row.StatusLabel.TextColor3 = Color3.fromRGB(213, 216, 220)
 		row.Toggle.Active = true
 		row.Toggle.AutoButtonColor = false
 		row.Stroke.Color = Color3.fromRGB(95, 104, 114)
 		return
 	end
 
-	row.Toggle.Text = currentValue and "ON" or "OFF"
+	if definition.kind == "cycle" then
+		if currentValue == "DEFAULT" or currentValue == true then
+			local options = definition.getOptions()
+			currentValue = options[#options] or "OFF"
+		elseif currentValue == false then
+			currentValue = "OFF"
+		end
+		row.StatusLabel.Text = tostring(currentValue)
+		row.StatusLabel.TextScaled = (string.len(tostring(currentValue)) > 8)
+		row.StatusLabel.TextSize = 14
+		
+		if currentValue == "OFF" then
+			row.Toggle.BackgroundColor3 = Color3.fromRGB(188, 68, 68)
+			row.Stroke.Color = Color3.fromRGB(214, 108, 108)
+		else
+			row.Toggle.BackgroundColor3 = Color3.fromRGB(48, 126, 186)
+			row.Stroke.Color = Color3.fromRGB(72, 160, 224)
+		end
+		
+		row.StatusLabel.TextColor3 = Color3.new(1, 1, 1)
+		row.Toggle.Active = true
+		row.Toggle.AutoButtonColor = false
+		return
+	end
+
+	row.StatusLabel.TextScaled = false
+	row.StatusLabel.TextSize = 18 
+	row.StatusLabel.Text = currentValue and "ON" or "OFF"
 	row.Toggle.BackgroundColor3 = currentValue and Color3.fromRGB(56, 182, 92) or Color3.fromRGB(188, 68, 68)
-	row.Toggle.TextColor3 = Color3.new(1, 1, 1)
+	row.StatusLabel.TextColor3 = Color3.new(1, 1, 1)
 	row.Toggle.Active = true
 	row.Toggle.AutoButtonColor = false
 	row.Stroke.Color = currentValue and Color3.fromRGB(86, 210, 123) or Color3.fromRGB(214, 108, 108)
@@ -566,7 +679,24 @@ local function toggleDefinition(definition)
 	pendingServerToggles[definition.id] = true
 	updateRowVisual(definition)
 
-	local targetValue = not getCurrentSettingValue(definition)
+	local targetValue
+	if definition.kind == "cycle" then
+		local options = definition.getOptions()
+		local currentValue = getCurrentSettingValue(definition)
+		
+		if currentValue == "DEFAULT" or currentValue == true then
+			currentValue = options[#options] or "OFF"
+		elseif currentValue == false then
+			currentValue = "OFF"
+		end
+		
+		local currentIndex = table.find(options, currentValue) or 1
+		local nextIndex = (currentIndex % #options) + 1
+		targetValue = options[nextIndex]
+	else
+		targetValue = not getCurrentSettingValue(definition)
+	end
+
 	pcall(function()
 		return UpdateGameplaySettingRF:InvokeServer(definition.remoteKey, targetValue)
 	end)
@@ -630,13 +760,27 @@ local function createSettingRow(order, definition)
 	toggleButton.Position = UDim2.new(1, -18, 0.5, 0)
 	toggleButton.AnchorPoint = Vector2.new(1, 0.5)
 	toggleButton.BackgroundColor3 = Color3.fromRGB(56, 182, 92)
-	toggleButton.Text = "ON"
-	toggleButton.TextColor3 = Color3.new(1, 1, 1)
-	toggleButton.Font = Enum.Font.GothamBold
-	toggleButton.TextSize = 18
+	toggleButton.Text = "" -- Usuwamy bezpośredni tekst
 	toggleButton.AutoButtonColor = false
 	toggleButton.ZIndex = 94
 	toggleButton.Parent = Row
+
+	local statusLabel = Instance.new("TextLabel")
+	statusLabel.Name = "StatusLabel"
+	statusLabel.Size = UDim2.fromScale(1, 1)
+	statusLabel.BackgroundTransparency = 1
+	statusLabel.Text = "ON"
+	statusLabel.TextColor3 = Color3.new(1, 1, 1)
+	statusLabel.Font = Enum.Font.GothamBold
+	statusLabel.TextSize = 18
+	statusLabel.ZIndex = 95
+	statusLabel.Parent = toggleButton
+
+	local textOutline = Instance.new("UIStroke")
+	textOutline.Thickness = 2.5
+	textOutline.Color = Color3.new(0, 0, 0)
+	textOutline.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+	textOutline.Parent = statusLabel
 
 	local toggleCorner = Instance.new("UICorner")
 	toggleCorner.CornerRadius = UDim.new(0, 16)
@@ -656,6 +800,7 @@ local function createSettingRow(order, definition)
 		Row = Row,
 		Stroke = rowStroke,
 		Toggle = toggleButton,
+		StatusLabel = statusLabel,
 	}
 end
 
@@ -714,13 +859,32 @@ local function updatePanelVisibility(open)
 	end
 end
 
+_G.UiMenus = _G.UiMenus or {}
+_G.UiMenus["SettingsGui"] = function()
+	if panelOpen then
+		updatePanelVisibility(false)
+		TweenService:Create(ToggleBtn, TweenInfo.new(0.2), {Rotation = 0}):Play()
+	end
+end
+
 ToggleBtn.Activated:Connect(function()
+	if not panelOpen then
+		for name, closeFunc in pairs(_G.UiMenus) do
+			if name ~= "SettingsGui" then closeFunc() end
+		end
+	end
 	updateAllRows()
 	updatePanelVisibility(not panelOpen)
+	if panelOpen then
+		TweenService:Create(ToggleBtn, TweenInfo.new(0.2), {Rotation = 15}):Play()
+	else
+		TweenService:Create(ToggleBtn, TweenInfo.new(0.2), {Rotation = 0}):Play()
+	end
 end)
 
 CloseBtn.Activated:Connect(function()
 	updatePanelVisibility(false)
+	TweenService:Create(ToggleBtn, TweenInfo.new(0.2), {Rotation = 0}):Play()
 end)
 
 local watchedAttributes = {
@@ -730,11 +894,33 @@ local watchedAttributes = {
 	"SpeedSettingEnabled",
 	"JumpSettingEnabled",
 	"VIPProtectionEnabled",
+	"SelectedTrail",
 }
 
 for _, attributeName in ipairs(watchedAttributes) do
 	LocalPlayer:GetAttributeChangedSignal(attributeName):Connect(function()
 		updateAllRows()
+	end)
+end
+
+-- Update when Rebirths change to recalculate available trails
+local function connectLeaderstats(leaderstats)
+	local rebirths = leaderstats:WaitForChild("Rebirths", 5)
+	if rebirths then
+		rebirths:GetPropertyChangedSignal("Value"):Connect(function()
+			updateAllRows()
+		end)
+	end
+end
+
+local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
+if leaderstats then
+	connectLeaderstats(leaderstats)
+else
+	LocalPlayer.ChildAdded:Connect(function(child)
+		if child.Name == "leaderstats" then
+			connectLeaderstats(child)
+		end
 	end)
 end
 

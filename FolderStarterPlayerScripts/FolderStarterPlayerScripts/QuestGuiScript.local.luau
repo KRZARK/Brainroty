@@ -15,17 +15,29 @@ local ClaimQuestReward = BrainrotEvents:WaitForChild("ClaimQuestReward")
 print("[QuestSystem] Events found. Creating GUI...")
 
 -- 1. Tworzenie GUI
+local oldGui = playerGui:FindFirstChild("QuestUI")
+if oldGui then oldGui:Destroy() end
+
+local oldToggle = playerGui:FindFirstChild("QuestToggleUI")
+if oldToggle then oldToggle:Destroy() end
+
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "QuestUI"
 screenGui.ResetOnSpawn = false
 screenGui.DisplayOrder = 10 -- Ta sama warstwa co reszta bocznych kafelków
 screenGui.Parent = playerGui
 
+local ToggleGui = Instance.new("ScreenGui")
+ToggleGui.Name = "QuestToggleUI"
+ToggleGui.DisplayOrder = 200
+ToggleGui.ResetOnSpawn = false
+ToggleGui.Parent = playerGui
+
 local questBtn = Instance.new("ImageButton")
 questBtn.Name = "OpenQuests"
 questBtn.Position = HudTileStyle.getSlot("left", 1)
 questBtn.ZIndex = 100
-questBtn.Parent = screenGui
+questBtn.Parent = ToggleGui
 
 local btnIcon = Instance.new("ImageLabel")
 btnIcon.Name = "QuestIcon"
@@ -298,13 +310,21 @@ local function refreshQuests()
 	end
 end
 
+
+
 -- Obsługa otwierania/zamykania z zabezpieczeniem
 local function toggleMenu()
 	print("[QuestSystem] Clicked Open Button!")
 	local targetVisible = not questPanel.Visible
+	if targetVisible then
+		for name, closeFunc in pairs(_G.UiMenus) do
+			if name ~= "QuestGui" then closeFunc() end
+		end
+	end
 	questPanel.Visible = targetVisible
 	
 	if targetVisible then
+		TweenService:Create(questBtn, TweenInfo.new(0.2), {Rotation = -15}):Play()
 		notifyBadge.Visible = false -- Chowanie powiadomienia przy otwarciu
 		task.spawn(function()
 			local success, err = pcall(function()
@@ -315,7 +335,15 @@ local function toggleMenu()
 			end
 		end)
 	else
+		TweenService:Create(questBtn, TweenInfo.new(0.2), {Rotation = 0}):Play()
 		updateNotifyBadge()
+	end
+end
+
+_G.UiMenus = _G.UiMenus or {}
+_G.UiMenus["QuestGui"] = function()
+	if questPanel and questPanel.Visible then
+		toggleMenu()
 	end
 end
 

@@ -11,17 +11,29 @@ local BrainrotEvents = ReplicatedStorage:WaitForChild("BrainrotEvents")
 local ClaimDailyRewardRF = BrainrotEvents:WaitForChild("ClaimDailyReward")
 
 -- Inicjalizacja Głównego Ekranu
+local oldGui = PlayerGui:FindFirstChild("DailyRewardsUI")
+if oldGui then oldGui:Destroy() end
+
+local oldToggle = PlayerGui:FindFirstChild("DailyRewardsToggleUI")
+if oldToggle then oldToggle:Destroy() end
+
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "DailyRewardsUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = PlayerGui
 
 -- Przycisk Kalendarza na ekranie (Prawy dolny sektor)
+local ToggleGui = Instance.new("ScreenGui")
+ToggleGui.Name = "DailyRewardsToggleUI"
+ToggleGui.DisplayOrder = 200
+ToggleGui.ResetOnSpawn = false
+ToggleGui.Parent = PlayerGui
+
 local ToggleBtn = Instance.new("ImageButton")
 ToggleBtn.Name = "ToggleDailyMenu"
 ToggleBtn.Position = HudTileStyle.getSlot("right", 3)
 ToggleBtn.ZIndex = 50
-ToggleBtn.Parent = ScreenGui
+ToggleBtn.Parent = ToggleGui
 
 local dailyIcon = Instance.new("ImageLabel")
 dailyIcon.Name = "DailyIcon"
@@ -283,19 +295,39 @@ local function updateUI()
 	end
 end
 
+_G.UiMenus = _G.UiMenus or {}
+_G.UiMenus["DailyRewards"] = function()
+	if MainFrame and MainFrame.Visible then
+		MainFrame.Visible = false
+		DarkBg.Visible = false
+		TweenService:Create(ToggleBtn, TweenInfo.new(0.2), {Rotation = 0}):Play()
+	end
+end
+
 ToggleBtn.MouseButton1Click:Connect(function()
-	MainFrame.Visible = not MainFrame.Visible
+	local targetVisible = not MainFrame.Visible
+	if targetVisible then
+		for name, closeFunc in pairs(_G.UiMenus) do
+			if name ~= "DailyRewards" then closeFunc() end
+		end
+	end
+	
+	MainFrame.Visible = targetVisible
 	DarkBg.Visible = MainFrame.Visible
 	if MainFrame.Visible then
+		TweenService:Create(ToggleBtn, TweenInfo.new(0.2), {Rotation = 15}):Play()
 		updateUI()
 		MainFrame.Position = UDim2.new(0.5, -450, 1.5, -337)
 		TweenService:Create(MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Position = UDim2.new(0.5, -450, 0.5, -337)}):Play()
+	else
+		TweenService:Create(ToggleBtn, TweenInfo.new(0.2), {Rotation = 0}):Play()
 	end
 end)
 
 CloseBtn.MouseButton1Click:Connect(function()
 	MainFrame.Visible = false
 	DarkBg.Visible = false
+	TweenService:Create(ToggleBtn, TweenInfo.new(0.2), {Rotation = 0}):Play()
 end)
 
 local isClaiming = false

@@ -18,7 +18,10 @@ local DEFAULT_DATA = {
 	QuestDate = "", -- Data ostatniego losowania zadań
 	DailyQuests = {}, -- Aktualne zadania i postęp
 	LoginStreak = 1,
-	LastClaimedDate = ""
+	LastClaimedDate = "",
+	HasBoughtStarterPack = false,
+	FreeFartTrolls = 0,
+	StarterPackExpiry = 0
 }
 
 -- Funkcja pomocnicza do bezpiecznego zapisu
@@ -37,7 +40,10 @@ local function saveData(player)
 		QuestDate = player:GetAttribute("QuestDate") or "",
 		DailyQuests = {},
 		LoginStreak = player:GetAttribute("LoginStreak") or 1,
-		LastClaimedDate = player:GetAttribute("LastClaimedDate") or ""
+		LastClaimedDate = player:GetAttribute("LastClaimedDate") or "",
+		HasBoughtStarterPack = player:GetAttribute("HasBoughtStarterPack") or false,
+		FreeFartTrolls = player:GetAttribute("FreeFartTrolls") or 0,
+		StarterPackExpiry = player:GetAttribute("StarterPackExpiry") or 0
 	}
 	
 	local questsFolder = player:FindFirstChild("DailyQuestsFolder")
@@ -64,6 +70,25 @@ local function saveData(player)
 	else
 		warn("Failed to save data for " .. player.Name .. ": " .. err)
 	end
+end
+
+-- Aktualizacja Mnożnika Monet
+local function updateCoinMultiplier(player)
+	local multi = 1
+	if player:GetAttribute("HasVIP") then
+		multi = multi * 2
+	end
+	
+	local leaderstats = player:FindFirstChild("leaderstats")
+	local rebirths = leaderstats and leaderstats:FindFirstChild("Rebirths")
+	local rb = rebirths and rebirths.Value or 0
+	
+	if rb == 1 then multi = multi * 1.25
+	elseif rb == 2 then multi = multi * 1.5
+	elseif rb >= 3 then multi = multi * 2.0
+	end
+	
+	player:SetAttribute("CoinMultiplier", multi)
 end
 
 -- 2. Funkcja PlayerAdded (Ładowanie Danych)
@@ -100,6 +125,14 @@ Players.PlayerAdded:Connect(function(player)
 	
 	leaderstats.Parent = player
 	
+	-- Nasłuchiwanie zmian w Rebirths
+	rebirths:GetPropertyChangedSignal("Value"):Connect(function()
+		updateCoinMultiplier(player)
+	end)
+	player:GetAttributeChangedSignal("HasVIP"):Connect(function()
+		updateCoinMultiplier(player)
+	end)
+	
 	-- Tworzenie folderu BrainrotCollection
 	local collectionFolder = Instance.new("Folder")
 	collectionFolder.Name = "BrainrotCollection"
@@ -130,6 +163,16 @@ Players.PlayerAdded:Connect(function(player)
 	
 	player:SetAttribute("LoginStreak", streak)
 	player:SetAttribute("LastClaimedDate", lastClaim)
+	
+	player:SetAttribute("HasBoughtStarterPack", loadedData.HasBoughtStarterPack or false)
+	player:SetAttribute("FreeFartTrolls", loadedData.FreeFartTrolls or 0)
+	
+	-- Inicjowanie wygasania Starter Packa dla nowych i starych graczy bez tej wartości
+	local expiry = loadedData.StarterPackExpiry or 0
+	if expiry == 0 then
+		expiry = os.time() + (24 * 60 * 60) -- 24 godziny od pierwszego dołączenia
+	end
+	player:SetAttribute("StarterPackExpiry", expiry)
 
 	-- Tworzenie folderu BoughtHints (NOWE)
 	local hintsFolder = Instance.new("Folder")
@@ -198,14 +241,16 @@ Players.PlayerAdded:Connect(function(player)
 		
 		if hasVIP then
 			player:SetAttribute("HasVIP", true)
-			player:SetAttribute("CoinMultiplier", 2)
 		end
 		
 		if hasSpeed then player:SetAttribute("HasSpeedBoost", true) end
 		if hasJump then player:SetAttribute("HasJumpBoost", true) end
+		
+		updateCoinMultiplier(player)
 	end)
 	
-	-- Nakładanie wizualnych efektów VIP na postać (np. Srebrna Ścieżka)
+	-- Nakładanie wizualnych efektów VIP na postać (przeniesione do SettingsService)
+	--[[ 
 	player.CharacterAdded:Connect(function(character)
 		-- Dajemy chwilę na załadowanie atrybutów, jeśli to pierwsze dołączenie
 		task.wait(1)
@@ -250,6 +295,7 @@ Players.PlayerAdded:Connect(function(player)
 			end
 		end
 	end)
+	]]
 	
 end)
 
@@ -300,6 +346,11 @@ buyHintEvent.OnServerInvoke = function(player, rarityName)
 			marker.Parent = hintsFolder
 		end
 		
+		local ServerUpdateQuestProgress = BrainrotEvents:FindFirstChild("ServerUpdateQuestProgress")
+		if ServerUpdateQuestProgress then
+			ServerUpdateQuestProgress:Fire(player, "UseReveal", 1)
+		end
+		
 		return true -- Zakup udany
 	end
 
@@ -325,7 +376,6 @@ MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gameP
 		addGamePassSpend(player, gamePassId)
 		if gamePassId == GameConfig.GamePasses.VIPBundle then
 			player:SetAttribute("HasVIP", true)
-			player:SetAttribute("CoinMultiplier", 2)
 			-- Wymuszamy reset postaci żeby aktywować fizykę i Trail (lub można aplikować w locie)
 			local char = player.Character
 			if char then
@@ -345,6 +395,37 @@ MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gameP
 			if char and char:FindFirstChild("Humanoid") then
 				char.Humanoid.JumpPower = 100
 			end
+		end
+	end
+end)
+
+MarketplaceService.PromptProductPurchaseFinished:Connect(function(userId, productId, wasPurchased)
+	if wasPurchased and productId == GameConfig.StarterPack.ProductID then
+		local player = Players:GetPlayerByUserId(userId)
+		if player and player:GetAttribute("HasBoughtStarterPack") ~= true then
+			-- a) Zmień atrybut HasBoughtStarterPack na true
+			player:SetAttribute("HasBoughtStarterPack", true)
+			
+			-- b) Dodaj graczowi 1000 monet
+			local stats = player:FindFirstChild("leaderstats")
+			if stats and stats:FindFirstChild("Coins") then
+				stats.Coins.Value += GameConfig.StarterPack.CoinsReward
+			end
+			
+			-- c) Zwiększ atrybut FreeFartTrolls
+			local currentFreeTrolls = player:GetAttribute("FreeFartTrolls") or 0
+			player:SetAttribute("FreeFartTrolls", currentFreeTrolls + GameConfig.StarterPack.FreeFartTrolls)
+			
+			-- d) Otwórz skrzynkę "Secret"
+			local BrainrotEvents = ReplicatedStorage:WaitForChild("BrainrotEvents")
+			local OpenCaseEvent = BrainrotEvents:FindFirstChild("OpenSpecificCase")
+			if OpenCaseEvent then
+				OpenCaseEvent:Fire(player, GameConfig.StarterPack.CrateReward)
+			end
+			
+			-- e) Zapisz dane
+			saveData(player)
+			print("[StarterPack] Przyznano nagrody dla gracza " .. player.Name)
 		end
 	end
 end)

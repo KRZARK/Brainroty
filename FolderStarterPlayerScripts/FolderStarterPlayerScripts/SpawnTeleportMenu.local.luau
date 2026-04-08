@@ -7,6 +7,12 @@ local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local HudTileStyle = require(ReplicatedStorage:WaitForChild("FolderReplicatedStorage"):WaitForChild("HudTileStyle"))
 
+local oldGui = PlayerGui:FindFirstChild("SpawnTeleportUI")
+if oldGui then oldGui:Destroy() end
+
+local oldToggle = PlayerGui:FindFirstChild("SpawnToggleUI")
+if oldToggle then oldToggle:Destroy() end
+
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "SpawnTeleportUI"
 ScreenGui.ResetOnSpawn = false
@@ -15,11 +21,17 @@ ScreenGui.Parent = PlayerGui
 -- Poszukiwanie grafiki domku w ReplicatedStorage
 local HomeImage = ReplicatedStorage:FindFirstChild("Domek")
 
+local ToggleGui = Instance.new("ScreenGui")
+ToggleGui.Name = "SpawnToggleUI"
+ToggleGui.DisplayOrder = 200
+ToggleGui.ResetOnSpawn = false
+ToggleGui.Parent = PlayerGui
+
 local TeleportBtn = Instance.new("ImageButton")
 TeleportBtn.Name = "TeleportBtn"
 TeleportBtn.Position = HudTileStyle.getSlot("left", 4)
 TeleportBtn.ZIndex = 50
-TeleportBtn.Parent = ScreenGui
+TeleportBtn.Parent = ToggleGui
 
 local teleportIcon = Instance.new("ImageLabel")
 teleportIcon.Name = "TeleportIcon"
@@ -75,7 +87,21 @@ end
 local YesBtn = createButton("YesBtn", "YES", Color3.fromRGB(60, 200, 60), 0.08)
 local CancelBtn = createButton("CancelBtn", "NO", Color3.fromRGB(200, 60, 60), 0.52)
 
+_G.UiMenus = _G.UiMenus or {}
+_G.UiMenus["SpawnTeleport"] = function()
+	if ConfirmFrame and ConfirmFrame.Visible then
+		ConfirmFrame.Visible = false
+		TweenService:Create(TeleportBtn, TweenInfo.new(0.2), {Rotation = 0}):Play()
+	end
+end
+
 TeleportBtn.MouseButton1Click:Connect(function()
+	if not ConfirmFrame.Visible then
+		for name, closeFunc in pairs(_G.UiMenus) do
+			if name ~= "SpawnTeleport" then closeFunc() end
+		end
+	end
+	TweenService:Create(TeleportBtn, TweenInfo.new(0.2), {Rotation = -15}):Play()
 	ConfirmFrame.Visible = true
 	local t = TweenService:Create(ConfirmFrame, TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 330, 0, 145)})
 	t:Play()
@@ -84,12 +110,15 @@ TeleportBtn.MouseButton1Click:Connect(function()
 	end)
 end)
 
-CancelBtn.MouseButton1Click:Connect(function()
+local function closeConfirmFrame()
 	ConfirmFrame.Visible = false
-end)
+	TweenService:Create(TeleportBtn, TweenInfo.new(0.2), {Rotation = 0}):Play()
+end
+
+CancelBtn.MouseButton1Click:Connect(closeConfirmFrame)
 
 YesBtn.MouseButton1Click:Connect(function()
-	ConfirmFrame.Visible = false
+	closeConfirmFrame()
 	
 	-- Znajdź blok SpawnLocation w Workspace
 	local spawnLoc = nil

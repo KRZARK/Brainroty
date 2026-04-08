@@ -13,17 +13,29 @@ local BrainrotEvents = ReplicatedStorage:WaitForChild("BrainrotEvents")
 local RebirthEvent = BrainrotEvents:WaitForChild("RebirthEvent")
 
 -- Tworzenie GUI z poziomu kodu (pewność i czystość w eksploratorze)
+local oldGui = playerGui:FindFirstChild("RebirthGui")
+if oldGui then oldGui:Destroy() end
+
+local oldToggle = playerGui:FindFirstChild("RebirthToggleUI")
+if oldToggle then oldToggle:Destroy() end
+
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "RebirthGui"
 screenGui.ResetOnSpawn = false
 screenGui.DisplayOrder = 10 
 screenGui.Parent = playerGui
 
+local ToggleGui = Instance.new("ScreenGui")
+ToggleGui.Name = "RebirthToggleUI"
+ToggleGui.DisplayOrder = 200
+ToggleGui.ResetOnSpawn = false
+ToggleGui.Parent = playerGui
+
 local rebirthBtn = Instance.new("ImageButton")
 rebirthBtn.Name = "RebirthButton"
 rebirthBtn.Position = HudTileStyle.getSlot("left", 3)
 rebirthBtn.ZIndex = 50
-rebirthBtn.Parent = screenGui
+rebirthBtn.Parent = ToggleGui
 
 local icon = Instance.new("ImageLabel")
 icon.Name = "RebirthIconImage"
@@ -104,10 +116,35 @@ rebirthBtn.MouseButton1Click:Connect(function()
     if debounce then return end
 	debounce = true
 	
+	TweenService:Create(rebirthBtn, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Rotation = -15}):Play()
+	
+_G.UiMenus = _G.UiMenus or {}
+_G.UiMenus["RebirthPrompt"] = function()
+	local rpGui = playerGui:FindFirstChild("RebirthPromptGui")
+	if rpGui and rpGui.Enabled then
+		rpGui.Enabled = false
+	end
+end
+
 	-- ZAWSZE OTWIERAMY PROMPT (Służy teraz jako pasek postępu)
     if _G.OpenRebirthPrompt then
+		for name, closeFunc in pairs(_G.UiMenus) do
+			if name ~= "RebirthPrompt" then closeFunc() end
+		end
         _G.OpenRebirthPrompt()
+        
+        local rpGui = playerGui:FindFirstChild("RebirthPromptGui")
+        if rpGui then
+            local conn
+            conn = rpGui:GetPropertyChangedSignal("Enabled"):Connect(function()
+                if not rpGui.Enabled then
+                    TweenService:Create(rebirthBtn, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Rotation = 0}):Play()
+                    if conn then conn:Disconnect() end
+                end
+            end)
+        end
     else
+        TweenService:Create(rebirthBtn, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Rotation = 0}):Play()
         -- Fallback jeśli skrypt promptu jeszcze się nie załadował
         local collection = player:FindFirstChild("BrainrotCollection")
         local count = collection and #collection:GetChildren() or 0

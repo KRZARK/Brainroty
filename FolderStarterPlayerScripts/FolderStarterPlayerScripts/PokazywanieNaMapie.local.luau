@@ -25,7 +25,12 @@ local buyHintEvent = brainrotEvents and brainrotEvents:WaitForChild("BuyHintEven
 local brainrotyFolder = workspace:WaitForChild("Brainroty", 10)
 
 -- KONFIGURACJA
-local GameConfig = require(ReplicatedStorage:WaitForChild("FolderReplicatedStorage"):WaitForChild("GameConfig"))
+local FolderReplicatedStorage = ReplicatedStorage:WaitForChild("FolderReplicatedStorage")
+local GameConfig = require(FolderReplicatedStorage:WaitForChild("GameConfig"))
+local HudTileStyle = require(FolderReplicatedStorage:WaitForChild("HudTileStyle"))
+
+local greenStudsImage = HudTileStyle.getImage(ReplicatedStorage, "GreenStuds", "")
+local kompasImage = HudTileStyle.getImage(ReplicatedStorage, "Kompas", "rbxassetid://3944676352")
 
 local activeHighlight = nil
 local activeBeamRoot = nil
@@ -34,47 +39,45 @@ local currentTarget, currentRarity = nil, nil -- CACHE DLA OPTYMALIZACJI
 local isStatusOverridden = false -- Zapobiega nadpisywaniu tekstu przez RunService
 
 -- GUI SETUP
--- SIŁOWE ODCIĘCIE: Czyścimy ewentualny stary HUD przed stworzeniem nowego
-local oldHud = player:WaitForChild("PlayerGui"):FindFirstChild("HUD_Standalone_UI")
-if oldHud then oldHud:Destroy() end
+local oldBtnGui = player:WaitForChild("PlayerGui"):FindFirstChild("RevealButton_UI")
+if oldBtnGui then oldBtnGui:Destroy() end
 
-local hudGui = Instance.new("ScreenGui")
-hudGui.Name = "HUD_Standalone_UI"
-hudGui.IgnoreGuiInset = true -- Kluczowe dla pozycji Y na samej górze
-hudGui.DisplayOrder = 5 -- Najniższa warstwa (HUD)
-hudGui.ResetOnSpawn = false
-hudGui.Parent = player:WaitForChild("PlayerGui")
+local oldPromptGui = player:WaitForChild("PlayerGui"):FindFirstChild("RevealPrompt_UI")
+if oldPromptGui then oldPromptGui:Destroy() end
 
-local helperFrame = Instance.new("Frame")
-helperFrame.Name = "HelperFrame"
-helperFrame.Size = UDim2.fromScale(0.13, 0.13) 
-helperFrame.Position = UDim2.new(1, -15, 0, 25)
-helperFrame.AnchorPoint = Vector2.new(1, 0)
-helperFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-helperFrame.BackgroundTransparency = 0.5 -- FALLBACK: Półprzezroczysty czarny
-helperFrame.ZIndex = 1
-helperFrame.Parent = hudGui
+local revealBtnGui = Instance.new("ScreenGui")
+revealBtnGui.Name = "RevealButton_UI"
+revealBtnGui.IgnoreGuiInset = true
+revealBtnGui.DisplayOrder = 200 -- Zawsze na wierzchu (jak ToggleGui w ustawieniach)
+revealBtnGui.ResetOnSpawn = false
+revealBtnGui.Parent = player:WaitForChild("PlayerGui")
 
--- NOWE TŁO Z ASSETEM (ID 11520144123)
-local bgImage = Instance.new("ImageLabel")
-bgImage.Name = "Background"
-bgImage.Image = "rbxassetid://11520144123"
-bgImage.ImageTransparency = 0
-bgImage.BackgroundTransparency = 1
-bgImage.Size = UDim2.fromScale(1, 1)
-bgImage.ScaleType = Enum.ScaleType.Stretch
-bgImage.ZIndex = 0
-bgImage.Visible = true
-bgImage.Parent = helperFrame
+local promptGui = Instance.new("ScreenGui")
+promptGui.Name = "RevealPrompt_UI"
+promptGui.IgnoreGuiInset = true
+promptGui.DisplayOrder = 30 -- Backdrop pod przyciskami!
+promptGui.ResetOnSpawn = false
+promptGui.Parent = player:WaitForChild("PlayerGui")
 
-Instance.new("UICorner", helperFrame).CornerRadius = UDim.new(0, 8)
-local stroke = Instance.new("UIStroke", helperFrame)
+-- ESTETYCZNA RAMKA NA MONETY
+local coinsFrame = Instance.new("Frame")
+coinsFrame.Name = "CoinsFrame"
+coinsFrame.Size = UDim2.fromOffset(200, 45) 
+coinsFrame.Position = UDim2.new(1, -20, 0, 20) -- Prawy górny róg
+coinsFrame.AnchorPoint = Vector2.new(1, 0)
+coinsFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+coinsFrame.BackgroundTransparency = 0.4
+coinsFrame.ZIndex = 1
+coinsFrame.Parent = revealBtnGui
+
+Instance.new("UICorner", coinsFrame).CornerRadius = UDim.new(0, 8)
+local stroke = Instance.new("UIStroke", coinsFrame)
 stroke.Color = Color3.new(1,1,1)
 stroke.Thickness = 2
 
 local coinsDisplay = Instance.new("TextLabel")
 coinsDisplay.Name = "CoinsDisplay"
-coinsDisplay.Size = UDim2.new(1, -10, 0.35, 0)
+coinsDisplay.Size = UDim2.new(1, -10, 1, -10)
 coinsDisplay.Position = UDim2.new(0, 5, 0, 5)
 coinsDisplay.BackgroundTransparency = 1
 coinsDisplay.Font = Enum.Font.FredokaOne -- Nowoczesny font
@@ -82,81 +85,214 @@ coinsDisplay.TextScaled = true
 coinsDisplay.TextColor3 = Color3.fromRGB(255, 215, 0) -- Złoty kolor
 coinsDisplay.TextStrokeTransparency = 0 -- Czytelna obwódka
 coinsDisplay.TextStrokeColor3 = Color3.new(0, 0, 0)
-coinsDisplay.Text = "💰 COINS: 0"
+coinsDisplay.Text = "💰 0"
 coinsDisplay.ZIndex = 10 -- NA WIERZCHU
-coinsDisplay.Parent = helperFrame
-local coinsConstraint = Instance.new("UITextSizeConstraint")
-coinsConstraint.MaxTextSize = 28 -- Przewrócone do balansu
-coinsConstraint.Parent = coinsDisplay
+coinsDisplay.Parent = coinsFrame
 
-local statusLabel = Instance.new("TextLabel")
-statusLabel.Size = UDim2.new(1, -10, 0.38, 0) -- Powiększony do 38% wysokości dla "STUCK?"
-statusLabel.Position = UDim2.new(0.5, 0, 0.45, 0) -- Nieco wyżej
-statusLabel.AnchorPoint = Vector2.new(0.5, 0.5)
-statusLabel.BackgroundTransparency = 1
-statusLabel.Font = Enum.Font.FredokaOne
-statusLabel.TextScaled = true
-statusLabel.TextColor3 = Color3.new(1, 1, 1) -- BIAŁY
-statusLabel.TextStrokeTransparency = 0
-statusLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
-statusLabel.Text = "READY?"
-statusLabel.ZIndex = 10
-statusLabel.Parent = helperFrame
-local statusConstraint = Instance.new("UITextSizeConstraint")
-statusConstraint.MaxTextSize = 40 -- 2 razy większy dla "STUCK?"
-statusConstraint.Parent = statusLabel
+local revealBtn = Instance.new("ImageButton")
+revealBtn.Name = "RevealButton"
+revealBtn.Position = HudTileStyle.getSlot("right", 0)
+revealBtn.ZIndex = 50
+revealBtn.Visible = true -- ZAWSZE WIDOCZNY
+revealBtn.Parent = revealBtnGui
 
-local buyBtn = Instance.new("TextButton")
-buyBtn.Size = UDim2.new(0.9, 0, 0.35, 0)
-buyBtn.Position = UDim2.fromScale(0.5, 0.78) -- Podniesiony, żeby był zapas na dole
-buyBtn.AnchorPoint = Vector2.new(0.5, 0.5)
-buyBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-buyBtn.Font = Enum.Font.FredokaOne
-buyBtn.TextScaled = true
-buyBtn.TextColor3 = Color3.new(1, 1, 1)
-buyBtn.TextStrokeTransparency = 0
-buyBtn.TextStrokeColor3 = Color3.new(0, 0, 0)
-buyBtn.TextXAlignment = Enum.TextXAlignment.Center
-buyBtn.TextYAlignment = Enum.TextYAlignment.Center
-buyBtn.Visible = false
-buyBtn.ZIndex = 11 -- NA SAMYM WIERZCHU
-buyBtn.Parent = helperFrame
-Instance.new("UICorner", buyBtn)
-local btnConstraint = Instance.new("UITextSizeConstraint")
-btnConstraint.MaxTextSize = 22 -- Przewrócone do balansu
-btnConstraint.Parent = buyBtn
+local revealIcon = Instance.new("ImageLabel")
+revealIcon.Name = "RevealIcon"
+revealIcon.Image = kompasImage -- Kompas z ReplicatedStorage
+revealIcon.Parent = revealBtn
+
+local revealLabel = Instance.new("TextLabel")
+revealLabel.Text = "HINT"
+revealLabel.Parent = revealBtn
+
+HudTileStyle.apply(revealBtn, revealIcon, revealLabel, {
+	side = "right",
+	slotIndex = 0,
+	zIndex = 50,
+})
+
+-- WAŻNE: Dodajemy wywołanie, żeby ikona zachowywała się prawidłowo gdy otwierane jest inne UI z _G.UiMenus
+_G.UiMenus = _G.UiMenus or {}
+
+local promptBackdrop = Instance.new("Frame")
+promptBackdrop.Name = "PromptBackdrop"
+promptBackdrop.Size = UDim2.fromScale(1, 1)
+promptBackdrop.BackgroundColor3 = Color3.fromRGB(5, 7, 10)
+promptBackdrop.BackgroundTransparency = 0.38
+promptBackdrop.Visible = false
+promptBackdrop.ZIndex = 89
+promptBackdrop.Parent = promptGui
+
+local promptFrame = Instance.new("Frame")
+promptFrame.Name = "RevealPromptFrame"
+promptFrame.Size = UDim2.fromOffset(400, 220)
+promptFrame.Position = UDim2.fromScale(0.5, 0.5)
+promptFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+promptFrame.BackgroundColor3 = Color3.new(1, 1, 1) -- MUSI BYĆ BIAŁE BY UIGRADIENT DZIAŁAŁ POPRAWNIE!
+promptFrame.BorderSizePixel = 0
+promptFrame.Visible = false
+promptFrame.ZIndex = 90
+promptFrame.Parent = promptGui
+
+local promptCorner = Instance.new("UICorner")
+promptCorner.CornerRadius = UDim.new(0, 26)
+promptCorner.Parent = promptFrame
+
+local promptStroke = Instance.new("UIStroke")
+promptStroke.Color = Color3.fromRGB(221, 236, 225)
+promptStroke.Thickness = 3
+promptStroke.Transparency = 0.06
+promptStroke.Parent = promptFrame
+
+local promptGradient = Instance.new("UIGradient")
+promptGradient.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(240, 90, 90)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 30, 30)),
+})
+promptGradient.Rotation = 90
+promptGradient.Parent = promptFrame
+
+local promptPattern = Instance.new("ImageLabel")
+promptPattern.Name = "Pattern"
+promptPattern.Size = UDim2.fromScale(1, 1)
+promptPattern.BackgroundTransparency = 1
+promptPattern.Image = greenStudsImage
+promptPattern.ImageColor3 = Color3.fromRGB(240, 90, 90) -- Dopasowane do jasnoczerwonego gradientu
+promptPattern.ImageTransparency = 0.85
+promptPattern.ScaleType = Enum.ScaleType.Tile
+promptPattern.TileSize = UDim2.fromOffset(128, 128)
+promptPattern.ZIndex = 90
+promptPattern.Parent = promptFrame
+
+local patternCorner = Instance.new("UICorner")
+patternCorner.CornerRadius = UDim.new(0, 26)
+patternCorner.Parent = promptPattern
+
+local promptLabel = Instance.new("TextLabel")
+promptLabel.Size = UDim2.new(0.9, 0, 0.5, 0)
+promptLabel.Position = UDim2.fromScale(0.5, 0.3)
+promptLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+promptLabel.BackgroundTransparency = 1
+promptLabel.TextScaled = true
+promptLabel.Font = Enum.Font.FredokaOne
+promptLabel.TextColor3 = Color3.new(1, 1, 1)
+promptLabel.Text = "Czy chcesz kupić podpowiedź do Brainrota za 50 monet?"
+promptLabel.ZIndex = 91
+promptLabel.Parent = promptFrame
+
+local promptTextStroke = Instance.new("UIStroke", promptLabel)
+promptTextStroke.Thickness = 2
+promptTextStroke.Color = Color3.new(0, 0, 0)
+
+local promptLabelConstraint = Instance.new("UITextSizeConstraint")
+promptLabelConstraint.MaxTextSize = 24
+promptLabelConstraint.Parent = promptLabel
+
+local confirmBtn = Instance.new("TextButton")
+confirmBtn.Size = UDim2.new(0.35, 0, 0.25, 0)
+confirmBtn.Position = UDim2.fromScale(0.3, 0.75)
+confirmBtn.AnchorPoint = Vector2.new(0.5, 0.5)
+confirmBtn.BackgroundColor3 = Color3.fromRGB(56, 182, 92)
+confirmBtn.Font = Enum.Font.FredokaOne
+confirmBtn.TextScaled = true
+confirmBtn.TextColor3 = Color3.new(1, 1, 1)
+confirmBtn.Text = "KUP"
+confirmBtn.ZIndex = 91
+confirmBtn.Parent = promptFrame
+Instance.new("UICorner", confirmBtn).CornerRadius = UDim.new(0, 16)
+local confirmStroke = Instance.new("UIStroke", confirmBtn)
+confirmStroke.Thickness = 2
+confirmStroke.Color = Color3.new(0, 0, 0)
+confirmStroke.Transparency = 0
+confirmStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+local confirmTextStroke = Instance.new("UIStroke", confirmBtn)
+confirmTextStroke.Thickness = 2
+confirmTextStroke.Color = Color3.new(0, 0, 0)
+confirmTextStroke.Transparency = 0
+confirmTextStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+local confirmConstraint = Instance.new("UITextSizeConstraint")
+confirmConstraint.MaxTextSize = 20
+confirmConstraint.Parent = confirmBtn
+
+local cancelBtn = Instance.new("TextButton")
+cancelBtn.Size = UDim2.new(0.35, 0, 0.25, 0)
+cancelBtn.Position = UDim2.fromScale(0.7, 0.75)
+cancelBtn.AnchorPoint = Vector2.new(0.5, 0.5)
+cancelBtn.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
+cancelBtn.Font = Enum.Font.FredokaOne
+cancelBtn.TextScaled = true
+cancelBtn.TextColor3 = Color3.new(1, 1, 1)
+cancelBtn.Text = "ANULUJ"
+cancelBtn.ZIndex = 91
+cancelBtn.Parent = promptFrame
+Instance.new("UICorner", cancelBtn).CornerRadius = UDim.new(0, 16)
+local cancelStroke = Instance.new("UIStroke", cancelBtn)
+cancelStroke.Thickness = 2
+cancelStroke.Color = Color3.new(0, 0, 0)
+cancelStroke.Transparency = 0
+cancelStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+local cancelTextStroke = Instance.new("UIStroke", cancelBtn)
+cancelTextStroke.Thickness = 2
+cancelTextStroke.Color = Color3.new(0, 0, 0)
+cancelTextStroke.Transparency = 0
+cancelTextStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+local cancelConstraint = Instance.new("UITextSizeConstraint")
+cancelConstraint.MaxTextSize = 20
+cancelConstraint.Parent = cancelBtn
+
+-- Logika UI Menus i animacji
+local panelOpen = false
+
+local function updatePromptVisibility(open)
+	panelOpen = open
+	promptBackdrop.Visible = open
+	promptFrame.Visible = open
+
+	if open then
+		promptBackdrop.BackgroundTransparency = 1
+		promptFrame.Position = UDim2.new(0.5, 0, 0.54, 0)
+		TweenService:Create(promptBackdrop, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			BackgroundTransparency = 0.38,
+		}):Play()
+		TweenService:Create(promptFrame, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			Position = UDim2.new(0.5, 0, 0.5, 0),
+		}):Play()
+	else
+		local panelTween = TweenService:Create(promptFrame, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+			Position = UDim2.new(0.5, 0, 0.54, 0),
+		})
+		panelTween:Play()
+		TweenService:Create(promptBackdrop, TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+			BackgroundTransparency = 1,
+		}):Play()
+		panelTween.Completed:Connect(function()
+			if not panelOpen then
+				promptBackdrop.Visible = false
+				promptFrame.Visible = false
+			end
+		end)
+	end
+end
+
+_G.UiMenus = _G.UiMenus or {}
+_G.UiMenus["RevealPromptGui"] = function()
+	if panelOpen then
+		updatePromptVisibility(false)
+		TweenService:Create(revealBtn, TweenInfo.new(0.2), {Rotation = 0}):Play()
+	end
+end
 
 -- Animacyjna korutyna dla efektu "STUCK?" co 30 sekund
 task.spawn(function()
-	local originalBgColor = buyBtn.BackgroundColor3
 	while true do
 		task.wait(30)
-		
-		local tweenInfo = TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, 0, true)
-		
-		local tweenBtn = TweenService:Create(buyBtn, tweenInfo, {
-			Size = UDim2.new(0.9 * 1.25, 0, 0.35 * 1.25, 0)
-		})
-		local tweenLabel = TweenService:Create(statusLabel, tweenInfo, {
-			Size = UDim2.new(1 * 1.25, -10, 0.25 * 1.25, 0)
-		})
-		tweenBtn:Play()
-		tweenLabel:Play()
-
-		local startTime = tick()
-		local connection
-		connection = RunService.RenderStepped:Connect(function()
-			local t = tick()
-			if t - startTime > 3 then
-				connection:Disconnect()
-				statusLabel.TextColor3 = Color3.new(0.8, 0.8, 0.8)
-				buyBtn.BackgroundColor3 = originalBgColor
-			else
-				local rainbow = Color3.fromHSV(t % 1, 1, 1)
-				statusLabel.TextColor3 = rainbow
-				buyBtn.BackgroundColor3 = rainbow
-			end
-		end)
+		if revealLabel.Text == "HINT" then
+			local tweenInfo = TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, 0, true)
+			local tweenIcon = TweenService:Create(revealIcon, tweenInfo, {
+				Size = UDim2.fromScale(0.78 * 1.25, 0.78 * 1.25)
+			})
+			tweenIcon:Play()
+		end
 	end
 end)
 
@@ -167,7 +303,7 @@ local function showCoinPopup(amount)
 	popup.Size = UDim2.new(0, 80, 0, 25)
 
 	-- Startuje po LEWEJ stronie kafelka (by nic nie zasłaniać - precyzyjne!)
-	popup.Position = UDim2.fromScale(-0.35, 0.45) 
+	popup.Position = UDim2.new(0, -50, 0.5, 0)
 	popup.BackgroundTransparency = 1
 	popup.Font = Enum.Font.FredokaOne
 	popup.TextSize = 24
@@ -176,7 +312,7 @@ local function showCoinPopup(amount)
 	popup.TextColor3 = Color3.fromRGB(255, 215, 0) -- Złoty
 	-- TEKST Z PLUSIKIEM I WORKIEM
 	popup.Text = "+" .. amount .. " 💰"
-	popup.Parent = helperFrame -- DODAWANIE DO NOWEJ RAMKI MONET
+	popup.Parent = coinsFrame -- DODAWANIE DO NOWEJ RAMKI MONET
 
 	-- DODAJEMY OBRYS (żeby był widoczny na każdym tle)
 	local popupStroke = Instance.new("UIStroke")
@@ -186,7 +322,7 @@ local function showCoinPopup(amount)
 	popupStroke.Parent = popup
 
 	-- === WOLNA ANIMACJA (3 SEKUNDY) ===
-	local targetPos = UDim2.new(-0.35, 0, -0.6, 0) -- Leci prosto w górę z nowej pozycji
+	local targetPos = UDim2.new(0, -50, -0.5, 0) -- Leci prosto w górę z nowej pozycji
 	local tweenInfo = TweenInfo.new(3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
 
 	local tween = TweenService:Create(popup, tweenInfo, {
@@ -265,7 +401,46 @@ local function getLowestRarityMissing()
 	return nil, nil
 end
 
-buyBtn.MouseButton1Click:Connect(function()
+revealBtn.Activated:Connect(function()
+	if not panelOpen then
+		for name, closeFunc in pairs(_G.UiMenus) do
+			if name ~= "RevealPromptGui" then closeFunc() end
+		end
+	end
+	local target, rarity = currentTarget, currentRarity
+	if not target then return end
+	
+	local price = GameConfig.Rarities[rarity] and GameConfig.Rarities[rarity].Price or 100
+	
+	if activeHighlight then
+		promptLabel.Text = "Obecnie podążasz już śladem Brainrota (" .. rarity:upper() .. ")!"
+		confirmBtn.Text = "SZUKAJ!"
+		confirmBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255) -- Niebieski kolor
+	else
+		promptLabel.Text = "Czy chcesz kupić podpowiedź do Brainrota ("..rarity:upper()..") za " .. price .. " monet?"
+		confirmBtn.Text = "KUP"
+		confirmBtn.BackgroundColor3 = Color3.fromRGB(56, 182, 92) -- Zielony (oryginalny)
+	end
+	
+	updatePromptVisibility(not panelOpen)
+	if panelOpen then
+		TweenService:Create(revealBtn, TweenInfo.new(0.2), {Rotation = 15}):Play()
+	else
+		TweenService:Create(revealBtn, TweenInfo.new(0.2), {Rotation = 0}):Play()
+	end
+end)
+
+cancelBtn.Activated:Connect(function()
+	updatePromptVisibility(false)
+	TweenService:Create(revealBtn, TweenInfo.new(0.2), {Rotation = 0}):Play()
+end)
+
+confirmBtn.Activated:Connect(function()
+	updatePromptVisibility(false)
+	TweenService:Create(revealBtn, TweenInfo.new(0.2), {Rotation = 0}):Play()
+	
+	if activeHighlight then return end -- Zabezpieczenie przed pobraniem środków
+	
 	local target, rarity = currentTarget, currentRarity
 	if not target or not buyHintEvent then return end
 	local success = buyHintEvent:InvokeServer(rarity)
@@ -281,10 +456,9 @@ buyBtn.MouseButton1Click:Connect(function()
 		createWayfinder(target)
 	else
 		isStatusOverridden = true
-		statusLabel.Text = "NEED MORE COINS!"
-		buyBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+		revealLabel.Text = "No Coins!"
 		task.wait(3)
-		buyBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+		revealLabel.Text = "HINT"
 		isStatusOverridden = false
 	end
 end)
@@ -333,34 +507,20 @@ RunService.RenderStepped:Connect(function()
 		end
 		
 		if target then
-			buyBtn.Visible = true
-			local price = GameConfig.Rarities[rarity] and GameConfig.Rarities[rarity].Price or 100
-			buyBtn.Text = "REVEAL " .. rarity:upper() .. " (" .. price .. ")"
+			revealBtn.Visible = true
 			if not isStatusOverridden then
-				statusLabel.Text = "STUCK?"
-				-- STYL DLA STUCK (Biały, Duży, Wyżej)
-				statusLabel.TextColor3 = Color3.new(1, 1, 1)
-				statusLabel.Position = UDim2.new(0.5, 0, 0.45, 0)
-				statusConstraint.MaxTextSize = 40
+				revealLabel.Text = "HINT"
 			end
 		else
 			if not isStatusOverridden then
-				statusLabel.Text = "AREA CLEAR!"
-				-- STYL STANDARDOWY (Biały, 2x WIĘKSZY, Niżej o 10px)
-				statusLabel.TextColor3 = Color3.new(1, 1, 1)
-				statusLabel.Position = UDim2.new(0.5, 0, 0.45, 10)
-				statusConstraint.MaxTextSize = 44 -- Zwiększony 2 razy z 22
+				revealLabel.Text = "CLEAR"
 			end
-			buyBtn.Visible = false
+			revealBtn.Visible = true
 		end
 	else
-		buyBtn.Visible = false
+		revealBtn.Visible = true
 		if not isStatusOverridden then
-			statusLabel.Text = "FOLLOW THE LIGHT!"
-			-- STYL DLA FOLLOW (Biały, 2x WIĘKSZY, Niżej o 10px)
-			statusLabel.TextColor3 = Color3.new(1, 1, 1)
-			statusLabel.Position = UDim2.new(0.5, 0, 0.45, 10)
-			statusConstraint.MaxTextSize = 44 -- Zwiększony 2 razy z 22
+			revealLabel.Text = "FOLLOW"
 		end
 	end
 end)

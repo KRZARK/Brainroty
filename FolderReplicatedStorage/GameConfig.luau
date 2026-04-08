@@ -85,4 +85,13 @@ GameConfig.CoinPacks = {
 	Pack1000 = { ID = 3568786016, Amount = 1000, Price = 149 }
 }
 
+-- STARTER PACK
+GameConfig.StarterPack = {
+	ProductID = 3571796279,
+	Price = 99,
+	CoinsReward = 1000,
+	FreeFartTrolls = 3,
+	CrateReward = "Secret"
+}
+
 return GameConfig

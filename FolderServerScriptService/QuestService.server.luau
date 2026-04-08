@@ -6,13 +6,16 @@ local UpdateQuestProgress = BrainrotEvents:FindFirstChild("UpdateQuestProgress")
 UpdateQuestProgress.Name = "UpdateQuestProgress"
 UpdateQuestProgress.Parent = BrainrotEvents
 
+local ServerUpdateQuestProgress = BrainrotEvents:FindFirstChild("ServerUpdateQuestProgress") or Instance.new("BindableEvent")
+ServerUpdateQuestProgress.Name = "ServerUpdateQuestProgress"
+ServerUpdateQuestProgress.Parent = BrainrotEvents
+
 local ClaimQuestReward = BrainrotEvents:FindFirstChild("ClaimQuestReward") or Instance.new("RemoteEvent")
 ClaimQuestReward.Name = "ClaimQuestReward"
 ClaimQuestReward.Parent = BrainrotEvents
 
--- Zabezpieczone dodawanie postępu z klienta
-UpdateQuestProgress.OnServerEvent:Connect(function(player, questID, amount)
-	if type(amount) ~= "number" or amount <= 0 or amount > 5000 then return end -- Anti-exploit
+local function addQuestProgress(player, questID, amount)
+	if type(amount) ~= "number" or amount <= 0 or amount > 5000 then return end
 	
 	local questsFolder = player:FindFirstChild("DailyQuestsFolder")
 	if not questsFolder then return end
@@ -28,6 +31,16 @@ UpdateQuestProgress.OnServerEvent:Connect(function(player, questID, amount)
 			questVal.Value = math.min(questVal.Value + amount, req)
 		end
 	end
+end
+
+-- Zabezpieczone dodawanie postępu z klienta
+UpdateQuestProgress.OnServerEvent:Connect(function(player, questID, amount)
+	addQuestProgress(player, questID, amount)
+end)
+
+-- Wewnętrzne dodawanie postępu przez serwer
+ServerUpdateQuestProgress.Event:Connect(function(player, questID, amount)
+	addQuestProgress(player, questID, amount)
 end)
 
 -- Odbieranie nagrody

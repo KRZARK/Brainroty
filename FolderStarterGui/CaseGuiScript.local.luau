@@ -28,6 +28,19 @@ local FolderReplicatedStorage = ReplicatedStorage:WaitForChild("FolderReplicated
 local GameConfig = require(FolderReplicatedStorage:WaitForChild("GameConfig"))
 local HudTileStyle = require(FolderReplicatedStorage:WaitForChild("HudTileStyle"))
 
+local function getAssetImage(asset)
+	if not asset then
+		return nil
+	end
+	if asset:IsA("Decal") then
+		return asset.Texture
+	end
+	if asset:IsA("ImageLabel") or asset:IsA("ImageButton") then
+		return asset.Image
+	end
+	return nil
+end
+
 local CaseData = {}
 for name, data in pairs(GameConfig.Rarities) do
 	table.insert(CaseData, {
@@ -86,11 +99,21 @@ local shopContainer = Instance.new("Frame", screenGui)
 shopContainer.Size = UDim2.fromScale(0.8, 0.8)
 shopContainer.Position = UDim2.fromScale(0.5, 0.5)
 shopContainer.AnchorPoint = Vector2.new(0.5, 0.5)
-shopContainer.BackgroundColor3 = Color3.fromRGB(180, 140, 255) -- Jasnofioletowy
+shopContainer.BackgroundColor3 = Color3.fromRGB(43, 61, 63)
 shopContainer.Visible = false
 shopContainer.ZIndex = 100
 Instance.new("UICorner", shopContainer).CornerRadius = UDim.new(0, 20)
-Instance.new("UIStroke", shopContainer).Thickness = 4
+local shopStroke = Instance.new("UIStroke", shopContainer)
+shopStroke.Thickness = 4
+shopStroke.Color = Color3.fromRGB(166, 210, 192)
+
+local shopGradient = Instance.new("UIGradient", shopContainer)
+shopGradient.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(29, 39, 53)),
+	ColorSequenceKeypoint.new(0.45, Color3.fromRGB(43, 61, 63)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(73, 101, 78))
+})
+shopGradient.Rotation = 125
 
 -- TŁO GreenStuds dla shopContainer
 local shopBg = Instance.new("ImageLabel", shopContainer)
@@ -100,7 +123,8 @@ shopBg.BackgroundTransparency = 1
 shopBg.ZIndex = 100 -- To samo co shopContainer, ale elementy wewnątrz będą miały wyższy ZIndex
 local gs = ReplicatedStorage:FindFirstChild("GreenStuds")
 if gs then shopBg.Image = gs:IsA("Decal") and gs.Texture or gs.Image end
-shopBg.ImageTransparency = 0.8 -- Subtelny wzorek
+shopBg.ImageColor3 = Color3.fromRGB(196, 235, 214)
+shopBg.ImageTransparency = 0.86 -- Subtelny wzorek
 shopBg.ScaleType = Enum.ScaleType.Tile
 shopBg.TileSize = UDim2.fromOffset(128, 128)
 Instance.new("UICorner", shopBg).CornerRadius = UDim.new(0, 20)
@@ -282,7 +306,7 @@ local vipOrigSize = UDim2.new(0.9, 0, 0.45, 0)
 VIPBtn.Size = vipOrigSize
 VIPBtn.Position = UDim2.new(0.05, 0, 0.15, 0)
 VIPBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-VIPBtn.Text = "ULTIMATE VIP BUNDLE\n[x2 Coins, +Speed, +Jump, VIP Tag]\n\n"
+VIPBtn.Text = ""
 VIPBtn.Font = Enum.Font.LuckiestGuy
 VIPBtn.TextSize = 25
 VIPBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -315,6 +339,73 @@ vipBg.ImageTransparency = 0.6
 vipBg.ScaleType = Enum.ScaleType.Tile
 vipBg.TileSize = UDim2.fromOffset(128, 128)
 Instance.new("UICorner", vipBg).CornerRadius = UDim.new(0, 15)
+
+local vipBackdropAssets = {
+	{ name = "Coin2D", position = UDim2.new(0.16, 0, 0.27, 0), size = UDim2.fromOffset(84, 84), rotation = -18, color = Color3.fromRGB(255, 226, 104), transparency = 0.78 },
+	{ name = "Crown", position = UDim2.new(0.82, 0, 0.24, 0), size = UDim2.fromOffset(96, 96), rotation = 16, color = Color3.fromRGB(255, 247, 221), transparency = 0.8 },
+	{ name = "speed", position = UDim2.new(0.18, 0, 0.57, 0), size = UDim2.fromOffset(78, 78), rotation = -12, color = Color3.fromRGB(145, 236, 255), transparency = 0.82 },
+	{ name = "Jump", position = UDim2.new(0.82, 0, 0.58, 0), size = UDim2.fromOffset(78, 78), rotation = 12, color = Color3.fromRGB(181, 255, 198), transparency = 0.82 },
+}
+
+for _, config in ipairs(vipBackdropAssets) do
+	local iconAsset = ReplicatedStorage:FindFirstChild(config.name)
+	local iconImage = getAssetImage(iconAsset)
+	if iconImage then
+		local vipIcon = Instance.new("ImageLabel", VIPBtn)
+		vipIcon.Name = config.name .. "Backdrop"
+		vipIcon.Size = config.size
+		vipIcon.Position = config.position
+		vipIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+		vipIcon.BackgroundTransparency = 1
+		vipIcon.Image = iconImage
+		vipIcon.ImageColor3 = config.color
+		vipIcon.ImageTransparency = config.transparency
+		vipIcon.Rotation = config.rotation
+		vipIcon.ZIndex = 103
+	end
+end
+
+local vipTitle = Instance.new("TextLabel", VIPBtn)
+vipTitle.Name = "VipTitle"
+vipTitle.Size = UDim2.new(0.9, 0, 0, 62)
+vipTitle.Position = UDim2.new(0.5, 0, 0.12, 0)
+vipTitle.AnchorPoint = Vector2.new(0.5, 0)
+vipTitle.BackgroundTransparency = 1
+vipTitle.Text = "ULTIMATE VIP BUNDLE"
+vipTitle.Font = Enum.Font.LuckiestGuy
+vipTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+vipTitle.TextScaled = true
+vipTitle.ZIndex = 109
+local vipTitleConstraint = Instance.new("UITextSizeConstraint", vipTitle)
+vipTitleConstraint.MinTextSize = 28
+vipTitleConstraint.MaxTextSize = 40
+local vipTitleStroke = Instance.new("UIStroke", vipTitle)
+vipTitleStroke.Thickness = 3
+vipTitleStroke.Color = Color3.fromRGB(86, 47, 0)
+
+local vipTitleGradient = Instance.new("UIGradient", vipTitle)
+vipTitleGradient.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 234, 153)),
+	ColorSequenceKeypoint.new(0.55, Color3.fromRGB(255, 255, 255)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 210, 108))
+})
+vipTitleGradient.Rotation = 12
+
+local vipPerks = Instance.new("TextLabel", VIPBtn)
+vipPerks.Name = "VipPerks"
+vipPerks.Size = UDim2.new(0.86, 0, 0.3, 0)
+vipPerks.Position = UDim2.new(0.5, 0, 0.39, 0)
+vipPerks.AnchorPoint = Vector2.new(0.5, 0)
+vipPerks.BackgroundTransparency = 1
+vipPerks.Text = "(x2 Coins, +Speed, +Jump, VIP Tag,\nSilver Aura, Troll Shield)"
+vipPerks.Font = Enum.Font.FredokaOne
+vipPerks.TextSize = 22
+vipPerks.TextWrapped = true
+vipPerks.TextColor3 = Color3.fromRGB(255, 249, 228)
+vipPerks.ZIndex = 109
+local vipPerksStroke = Instance.new("UIStroke", vipPerks)
+vipPerksStroke.Thickness = 2
+vipPerksStroke.Color = Color3.fromRGB(82, 49, 8)
 
 
 -- Przyciski mniejsze (Speed)
@@ -638,7 +729,7 @@ local function refreshShop()
 	for _, data in ipairs(CaseData) do
 		local missing = getMissingItems(data.Name)
 		local caseBtn = Instance.new("TextButton", gridFrame)
-		caseBtn.BackgroundColor3 = Color3.fromRGB(120, 110, 150) -- Szary fioletowy
+		caseBtn.BackgroundColor3 = Color3.fromRGB(56, 67, 79)
 		caseBtn.Text = ""
 		caseBtn.ZIndex = 102
 		Instance.new("UICorner", caseBtn).CornerRadius = UDim.new(0, 15)
@@ -650,6 +741,7 @@ local function refreshShop()
 		tileBg.BackgroundTransparency = 1
 		tileBg.ZIndex = 102
 		if gs then tileBg.Image = gs:IsA("Decal") and gs.Texture or gs.Image end
+		tileBg.ImageColor3 = Color3.fromRGB(120, 144, 160):Lerp(data.Color, 0.18)
 		tileBg.ImageTransparency = 0.7 -- Widoczny wzorek
 		tileBg.ScaleType = Enum.ScaleType.Tile
 		tileBg.TileSize = UDim2.fromOffset(64, 64)
@@ -663,7 +755,10 @@ local function refreshShop()
 		nameLabel.Size = UDim2.new(1, 0, 0.28, 0) -- Powiększone z 0.22 (teraz 1.5x zamiast 2x)
 		nameLabel.Position = UDim2.fromScale(0, 0)
 		nameLabel.Text = (#missing == 0 and "ALL COLLECTED!") or (data.Name)
-		if #missing == 0 then caseBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0) end
+		if #missing == 0 then
+			caseBtn.BackgroundColor3 = Color3.fromRGB(109, 34, 51)
+			tileBg.ImageColor3 = Color3.fromRGB(201, 120, 137)
+		end
 		nameLabel.TextColor3 = data.Color
 		nameLabel.Font = Enum.Font.SourceSansBold
 		nameLabel.TextSize = 32 -- Subtelniejsza czcionka

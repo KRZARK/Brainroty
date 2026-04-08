@@ -36,6 +36,7 @@ GameConfig.TrollProducts = {
 GameConfig.MaxCollectDistance = 15
 GameConfig.CoinRainTriggerAmount = 1000
 GameConfig.CoinRainDuration = 115
+GameConfig.CoinRainCoinReward = 1
 
 GameConfig.TotalBrainrots = 143
 

@@ -24,6 +24,8 @@ local DEFAULT_DATA = {
 	StarterPackExpiry = 0,
 	HasPurpleTrail = false,
 	LatestUnlockedTrail = "",
+	LatestUnlockedSpeedSetting = "",
+	LatestUnlockedJumpSetting = "",
 }
 
 -- Funkcja pomocnicza do bezpiecznego zapisu
@@ -48,6 +50,8 @@ local function saveData(player)
 		StarterPackExpiry = player:GetAttribute("StarterPackExpiry") or 0,
 		HasPurpleTrail = player:GetAttribute("HasPurpleTrail") or false,
 		LatestUnlockedTrail = player:GetAttribute("LatestUnlockedTrail") or "",
+		LatestUnlockedSpeedSetting = player:GetAttribute("LatestUnlockedSpeedSetting") or "",
+		LatestUnlockedJumpSetting = player:GetAttribute("LatestUnlockedJumpSetting") or "",
 	}
 	
 	local questsFolder = player:FindFirstChild("DailyQuestsFolder")
@@ -172,6 +176,8 @@ Players.PlayerAdded:Connect(function(player)
 	player:SetAttribute("FreeFartTrolls", loadedData.FreeFartTrolls or 0)
 	player:SetAttribute("HasPurpleTrail", loadedData.HasPurpleTrail or false)
 	player:SetAttribute("LatestUnlockedTrail", loadedData.LatestUnlockedTrail or "")
+	player:SetAttribute("LatestUnlockedSpeedSetting", loadedData.LatestUnlockedSpeedSetting or "")
+	player:SetAttribute("LatestUnlockedJumpSetting", loadedData.LatestUnlockedJumpSetting or "")
 	
 	-- Inicjowanie wygasania Starter Packa dla nowych i starych graczy bez tej wartości
 	local expiry = loadedData.StarterPackExpiry or 0

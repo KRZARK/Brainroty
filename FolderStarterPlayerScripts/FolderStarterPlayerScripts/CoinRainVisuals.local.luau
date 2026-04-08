@@ -20,6 +20,7 @@ local MUSIC_ASSET = "rbxassetid://140383003026220" -- NOWA MUZYKA
 local GameConfig = require(ReplicatedStorage:WaitForChild("FolderReplicatedStorage"):WaitForChild("GameConfig"))
 local CoinGrabSound = SoundService:WaitForChild("CoinGrab", 5)
 local RAIN_DURATION = GameConfig.CoinRainDuration
+local COIN_REWARD = GameConfig.CoinRainCoinReward or 1
 local activeRainCount = 0 -- NOWE: Licznik aktywnych deszczów (zapobiega konfliktom flag)
 local isEventActive = false -- Widoczne dla RenderStepped
 local currentQueued = 0 -- NOWE: Liczba zakolejkowanych deszczów
@@ -420,8 +421,9 @@ local function onCoinTouched(coin)
 			local p = Players:GetPlayerFromCharacter(char)
 			if p == player then
 				debounce = true
+				local rewardAmount = math.ceil(COIN_REWARD * (player:GetAttribute("CoinMultiplier") or 1))
 				if isEventActive then
-					coinsCollectedThisRain += 1
+					coinsCollectedThisRain += rewardAmount
 				end
 				-- 1. Sygnał do serwera (ZAKOMENTOWANY - serwer sam to teraz robi)
 				-- CoinCollected:FireServer()
@@ -440,7 +442,7 @@ local function onCoinTouched(coin)
 				popup.Position = UDim2.fromScale(0.5, 0.5)
 				popup.AnchorPoint = Vector2.new(0.5, 0.5)
 				popup.BackgroundTransparency = 1
-				popup.Text = "+1 💰"
+				popup.Text = "+" .. tostring(rewardAmount) .. " 💰"
 				popup.TextColor3 = Color3.fromRGB(255, 230, 0)
 				popup.Font = Enum.Font.FredokaOne
 				popup.TextSize = 45

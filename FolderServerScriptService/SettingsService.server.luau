@@ -28,6 +28,8 @@ local watchedAttributes = {
 	"HasJumpBoost",
 	"HasPurpleTrail",
 	"LatestUnlockedTrail",
+	"LatestUnlockedSpeedSetting",
+	"LatestUnlockedJumpSetting",
 	"SpeedSettingEnabled",
 	"JumpSettingEnabled",
 	"SpeedBoostEnds",
@@ -39,8 +41,12 @@ local playerConnections = {}
 local statMaintenanceTokens = {}
 local timedRefreshTokens = {}
 local playerTouchedTrail = {}
+local playerTouchedSpeed = {}
+local playerTouchedJump = {}
 local playerTouchedVIPProtection = {}
 local playerTrailUnlockState = {}
+local playerSpeedUnlockState = {}
+local playerJumpUnlockState = {}
 
 local function getRebirthMultiplier(player)
 	local leaderstats = player:FindFirstChild("leaderstats")
@@ -148,6 +154,200 @@ local function syncUnlockedTrailState(player)
 	if newestUnlockedTrail and isTrailAvailable(player, newestUnlockedTrail) then
 		player:SetAttribute("LatestUnlockedTrail", newestUnlockedTrail)
 		player:SetAttribute("SelectedTrail", newestUnlockedTrail)
+	end
+end
+
+local function isSpeedSettingAvailable(player, settingName)
+	if settingName == "OFF" or settingName == "DEFAULT" then
+		return true
+	end
+
+	if settingName == "VIP" then
+		return player:GetAttribute("HasVIP") == true
+	end
+
+	if settingName == "GAMEPASS" then
+		return player:GetAttribute("HasSpeedBoost") == true
+	end
+
+	local rebirthLevel = settingName and tonumber(string.match(settingName, "^REBIRTH (%d+)$"))
+	if rebirthLevel then
+		local leaderstats = player:FindFirstChild("leaderstats")
+		local rebirths = leaderstats and leaderstats:FindFirstChild("Rebirths")
+		local rebirthCount = rebirths and rebirths.Value or 0
+		return rebirthCount >= rebirthLevel and rebirthLevel >= 1 and rebirthLevel <= 3
+	end
+
+	return false
+end
+
+local function getFallbackSpeedSettingForPlayer(player)
+	local leaderstats = player:FindFirstChild("leaderstats")
+	local rebirths = leaderstats and leaderstats:FindFirstChild("Rebirths")
+	local rebirthCount = rebirths and rebirths.Value or 0
+
+	if player:GetAttribute("HasVIP") == true then
+		return "VIP"
+	end
+
+	if player:GetAttribute("HasSpeedBoost") == true then
+		return "GAMEPASS"
+	end
+
+	if rebirthCount >= 1 then
+		return "REBIRTH " .. math.min(rebirthCount, 3)
+	end
+
+	return "OFF"
+end
+
+local function getPreferredSpeedSettingForPlayer(player)
+	local latestUnlockedSpeedSetting = player:GetAttribute("LatestUnlockedSpeedSetting")
+	if type(latestUnlockedSpeedSetting) == "string" and latestUnlockedSpeedSetting ~= "" and isSpeedSettingAvailable(player, latestUnlockedSpeedSetting) then
+		return latestUnlockedSpeedSetting
+	end
+
+	return getFallbackSpeedSettingForPlayer(player)
+end
+
+local function syncUnlockedSpeedState(player)
+	local leaderstats = player:FindFirstChild("leaderstats")
+	local rebirths = leaderstats and leaderstats:FindFirstChild("Rebirths")
+	local rebirthCount = rebirths and rebirths.Value or 0
+	local hasVIP = player:GetAttribute("HasVIP") == true
+	local hasSpeedBoost = player:GetAttribute("HasSpeedBoost") == true
+
+	local state = playerSpeedUnlockState[player]
+	if not state then
+		playerSpeedUnlockState[player] = {
+			rebirthCount = rebirthCount,
+			hasVIP = hasVIP,
+			hasSpeedBoost = hasSpeedBoost,
+		}
+
+		if player:GetAttribute("LatestUnlockedSpeedSetting") == nil or player:GetAttribute("LatestUnlockedSpeedSetting") == "" then
+			player:SetAttribute("LatestUnlockedSpeedSetting", getFallbackSpeedSettingForPlayer(player))
+		end
+		return
+	end
+
+	local newestUnlockedSpeed
+	if rebirthCount > state.rebirthCount then
+		newestUnlockedSpeed = "REBIRTH " .. math.min(rebirthCount, 3)
+	end
+
+	if hasSpeedBoost and not state.hasSpeedBoost then
+		newestUnlockedSpeed = "GAMEPASS"
+	end
+
+	if hasVIP and not state.hasVIP then
+		newestUnlockedSpeed = "VIP"
+	end
+
+	state.rebirthCount = rebirthCount
+	state.hasVIP = hasVIP
+	state.hasSpeedBoost = hasSpeedBoost
+
+	if newestUnlockedSpeed and isSpeedSettingAvailable(player, newestUnlockedSpeed) then
+		player:SetAttribute("LatestUnlockedSpeedSetting", newestUnlockedSpeed)
+		player:SetAttribute("SpeedSettingEnabled", newestUnlockedSpeed)
+	end
+end
+
+local function isJumpSettingAvailable(player, settingName)
+	if settingName == "OFF" or settingName == "DEFAULT" then
+		return true
+	end
+
+	if settingName == "VIP" then
+		return player:GetAttribute("HasVIP") == true
+	end
+
+	if settingName == "GAMEPASS" then
+		return player:GetAttribute("HasJumpBoost") == true
+	end
+
+	local rebirthLevel = settingName and tonumber(string.match(settingName, "^REBIRTH (%d+)$"))
+	if rebirthLevel then
+		local leaderstats = player:FindFirstChild("leaderstats")
+		local rebirths = leaderstats and leaderstats:FindFirstChild("Rebirths")
+		local rebirthCount = rebirths and rebirths.Value or 0
+		return rebirthCount >= rebirthLevel and rebirthLevel >= 1 and rebirthLevel <= 3
+	end
+
+	return false
+end
+
+local function getFallbackJumpSettingForPlayer(player)
+	local leaderstats = player:FindFirstChild("leaderstats")
+	local rebirths = leaderstats and leaderstats:FindFirstChild("Rebirths")
+	local rebirthCount = rebirths and rebirths.Value or 0
+
+	if player:GetAttribute("HasVIP") == true then
+		return "VIP"
+	end
+
+	if player:GetAttribute("HasJumpBoost") == true then
+		return "GAMEPASS"
+	end
+
+	if rebirthCount >= 1 then
+		return "REBIRTH " .. math.min(rebirthCount, 3)
+	end
+
+	return "OFF"
+end
+
+local function getPreferredJumpSettingForPlayer(player)
+	local latestUnlockedJumpSetting = player:GetAttribute("LatestUnlockedJumpSetting")
+	if type(latestUnlockedJumpSetting) == "string" and latestUnlockedJumpSetting ~= "" and isJumpSettingAvailable(player, latestUnlockedJumpSetting) then
+		return latestUnlockedJumpSetting
+	end
+
+	return getFallbackJumpSettingForPlayer(player)
+end
+
+local function syncUnlockedJumpState(player)
+	local leaderstats = player:FindFirstChild("leaderstats")
+	local rebirths = leaderstats and leaderstats:FindFirstChild("Rebirths")
+	local rebirthCount = rebirths and rebirths.Value or 0
+	local hasVIP = player:GetAttribute("HasVIP") == true
+	local hasJumpBoost = player:GetAttribute("HasJumpBoost") == true
+
+	local state = playerJumpUnlockState[player]
+	if not state then
+		playerJumpUnlockState[player] = {
+			rebirthCount = rebirthCount,
+			hasVIP = hasVIP,
+			hasJumpBoost = hasJumpBoost,
+		}
+
+		if player:GetAttribute("LatestUnlockedJumpSetting") == nil or player:GetAttribute("LatestUnlockedJumpSetting") == "" then
+			player:SetAttribute("LatestUnlockedJumpSetting", getFallbackJumpSettingForPlayer(player))
+		end
+		return
+	end
+
+	local newestUnlockedJump
+	if rebirthCount > state.rebirthCount then
+		newestUnlockedJump = "REBIRTH " .. math.min(rebirthCount, 3)
+	end
+
+	if hasJumpBoost and not state.hasJumpBoost then
+		newestUnlockedJump = "GAMEPASS"
+	end
+
+	if hasVIP and not state.hasVIP then
+		newestUnlockedJump = "VIP"
+	end
+
+	state.rebirthCount = rebirthCount
+	state.hasVIP = hasVIP
+	state.hasJumpBoost = hasJumpBoost
+
+	if newestUnlockedJump and isJumpSettingAvailable(player, newestUnlockedJump) then
+		player:SetAttribute("LatestUnlockedJumpSetting", newestUnlockedJump)
+		player:SetAttribute("JumpSettingEnabled", newestUnlockedJump)
 	end
 end
 
@@ -464,6 +664,22 @@ local function normalizePlayerSettings(player)
 		player:SetAttribute("JumpSettingEnabled", "DEFAULT")
 	end
 
+	if not playerTouchedSpeed[player] then
+		local currentSpeed = player:GetAttribute("SpeedSettingEnabled")
+		local preferredSpeed = getPreferredSpeedSettingForPlayer(player)
+		if currentSpeed == nil or currentSpeed == true or currentSpeed == "DEFAULT" or (currentSpeed == "OFF" and preferredSpeed ~= "OFF") then
+			player:SetAttribute("SpeedSettingEnabled", preferredSpeed)
+		end
+	end
+
+	if not playerTouchedJump[player] then
+		local currentJump = player:GetAttribute("JumpSettingEnabled")
+		local preferredJump = getPreferredJumpSettingForPlayer(player)
+		if currentJump == nil or currentJump == true or currentJump == "DEFAULT" or (currentJump == "OFF" and preferredJump ~= "OFF") then
+			player:SetAttribute("JumpSettingEnabled", preferredJump)
+		end
+	end
+
 	if player:GetAttribute("HasVIP") ~= true and player:GetAttribute("VIPProtectionEnabled") == true then
 		player:SetAttribute("VIPProtectionEnabled", false)
 	end
@@ -493,8 +709,12 @@ local function disconnectPlayer(player)
 	statMaintenanceTokens[player] = nil
 	timedRefreshTokens[player] = nil
 	playerTouchedTrail[player] = nil
+	playerTouchedSpeed[player] = nil
+	playerTouchedJump[player] = nil
 	playerTouchedVIPProtection[player] = nil
 	playerTrailUnlockState[player] = nil
+	playerSpeedUnlockState[player] = nil
+	playerJumpUnlockState[player] = nil
 end
 
 local function bindRebirthListener(player, connections, leaderstats)
@@ -508,10 +728,14 @@ local function bindRebirthListener(player, connections, leaderstats)
 		attached = true
 		table.insert(connections, rebirths:GetPropertyChangedSignal("Value"):Connect(function()
 			syncUnlockedTrailState(player)
+			syncUnlockedSpeedState(player)
+			syncUnlockedJumpState(player)
 			normalizePlayerSettings(player)
 			applyCurrentCharacterStats(player)
 		end))
 		syncUnlockedTrailState(player)
+		syncUnlockedSpeedState(player)
+		syncUnlockedJumpState(player)
 		task.defer(normalizePlayerSettings, player)
 		task.defer(applyCurrentCharacterStats, player)
 	end
@@ -537,13 +761,19 @@ local function bindPlayer(player)
 	normalizePlayerSettings(player)
 	playerConnections[player] = {}
 	playerTouchedTrail[player] = false
+	playerTouchedSpeed[player] = false
+	playerTouchedJump[player] = false
 	playerTouchedVIPProtection[player] = false
 	syncUnlockedTrailState(player)
+	syncUnlockedSpeedState(player)
+	syncUnlockedJumpState(player)
 
 	local connections = playerConnections[player]
 	for _, attributeName in ipairs(watchedAttributes) do
 		table.insert(connections, player:GetAttributeChangedSignal(attributeName):Connect(function()
 			syncUnlockedTrailState(player)
+			syncUnlockedSpeedState(player)
+			syncUnlockedJumpState(player)
 			normalizePlayerSettings(player)
 			applyCurrentCharacterStats(player)
 			scheduleTimedRefresh(player)
@@ -596,6 +826,7 @@ UpdateGameplaySettingRF.OnServerInvoke = function(player, settingName, value)
 		if value == "MAX" then
 			value = "DEFAULT"
 		end
+		playerTouchedSpeed[player] = true
 		player:SetAttribute("SpeedSettingEnabled", value)
 		applyCurrentCharacterStats(player)
 		return true, value, ""
@@ -604,6 +835,7 @@ UpdateGameplaySettingRF.OnServerInvoke = function(player, settingName, value)
 		if value == "MAX" then
 			value = "DEFAULT"
 		end
+		playerTouchedJump[player] = true
 		player:SetAttribute("JumpSettingEnabled", value)
 		applyCurrentCharacterStats(player)
 		return true, value, ""

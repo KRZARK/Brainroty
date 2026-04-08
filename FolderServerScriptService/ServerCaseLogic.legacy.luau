@@ -68,7 +68,7 @@ local SponsorQueue = {} -- Kolejka tabel sponsorów
 -- === KONFIGURACJA MONET NA MAPIE ===
 local PHYSICAL_COIN_MESH = "rbxassetid://4937522724"
 local SPAWN_RANGE = 600 -- Zasięg 2x większy (600 studs)
-local COIN_REWARD = 1 -- Zmiana z 10 na 1
+local COIN_REWARD = GameConfig.CoinRainCoinReward or 1
 
 local function spawnPhysicalCoins(count)
 	local folder = PhysicalCoinsFolder

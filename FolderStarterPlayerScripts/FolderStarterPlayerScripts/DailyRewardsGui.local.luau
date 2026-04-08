@@ -244,7 +244,7 @@ local function updateUI()
 			auraGlow.Position = UDim2.new(0.5, 0, 0.5, -12)
 			auraGlow.AnchorPoint = Vector2.new(0.5, 0.5)
 			auraGlow.BackgroundTransparency = 1
-			auraGlow.Image = "rbxassetid://12030614838"
+			auraGlow.Image = iconFrame.Image
 			auraGlow.ImageColor3 = Color3.fromRGB(98, 28, 176)
 			auraGlow.ImageTransparency = 0.28
 			auraGlow.ZIndex = 2

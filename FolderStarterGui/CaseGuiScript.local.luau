@@ -341,10 +341,10 @@ vipBg.TileSize = UDim2.fromOffset(128, 128)
 Instance.new("UICorner", vipBg).CornerRadius = UDim.new(0, 15)
 
 local vipBackdropAssets = {
-	{ name = "Coin2D", position = UDim2.new(0.16, 0, 0.27, 0), size = UDim2.fromOffset(84, 84), rotation = -18, color = Color3.fromRGB(255, 226, 104), transparency = 0.78 },
-	{ name = "Crown", position = UDim2.new(0.82, 0, 0.24, 0), size = UDim2.fromOffset(96, 96), rotation = 16, color = Color3.fromRGB(255, 247, 221), transparency = 0.8 },
-	{ name = "speed", position = UDim2.new(0.18, 0, 0.57, 0), size = UDim2.fromOffset(78, 78), rotation = -12, color = Color3.fromRGB(145, 236, 255), transparency = 0.82 },
-	{ name = "Jump", position = UDim2.new(0.82, 0, 0.58, 0), size = UDim2.fromOffset(78, 78), rotation = 12, color = Color3.fromRGB(181, 255, 198), transparency = 0.82 },
+	{ name = "Coin2D", position = UDim2.new(0.11, 0, 0.26, 0), size = UDim2.fromOffset(96, 96), rotation = -18, color = Color3.fromRGB(255, 226, 104), transparency = 0.64 },
+	{ name = "Crown", position = UDim2.new(0.88, 0, 0.22, 0), size = UDim2.fromOffset(112, 112), rotation = 16, color = Color3.fromRGB(255, 247, 221), transparency = 0.66 },
+	{ name = "speed", position = UDim2.new(0.11, 0, 0.62, 0), size = UDim2.fromOffset(90, 90), rotation = -12, color = Color3.fromRGB(145, 236, 255), transparency = 0.68 },
+	{ name = "Jump", position = UDim2.new(0.89, 0, 0.62, 0), size = UDim2.fromOffset(90, 90), rotation = 12, color = Color3.fromRGB(181, 255, 198), transparency = 0.68 },
 }
 
 for _, config in ipairs(vipBackdropAssets) do
@@ -397,7 +397,7 @@ vipPerks.Size = UDim2.new(0.86, 0, 0.3, 0)
 vipPerks.Position = UDim2.new(0.5, 0, 0.39, 0)
 vipPerks.AnchorPoint = Vector2.new(0.5, 0)
 vipPerks.BackgroundTransparency = 1
-vipPerks.Text = "(x2 Coins, +Speed, +Jump, VIP Tag,\nSilver Aura, Troll Shield)"
+vipPerks.Text = "(x2 Coins, +Speed, +Jump, VIP Tag,\nSilver Trail, Troll Shield)"
 vipPerks.Font = Enum.Font.FredokaOne
 vipPerks.TextSize = 22
 vipPerks.TextWrapped = true
@@ -453,17 +453,6 @@ speedBg.ImageTransparency = 0.7
 speedBg.ScaleType = Enum.ScaleType.Tile
 speedBg.TileSize = UDim2.fromOffset(128, 128)
 Instance.new("UICorner", speedBg).CornerRadius = UDim.new(0, 15)
-
--- Miękki blask (Glow) pod ikonką Speed
-local speedGlow = Instance.new("ImageLabel", SpeedBtn)
-speedGlow.Name = "SpeedGlow"
-speedGlow.Size = UDim2.fromOffset(120, 120)
-speedGlow.Position = UDim2.new(0.5, 0, 0.35, 0)
-speedGlow.AnchorPoint = Vector2.new(0.5, 0.5)
-speedGlow.BackgroundTransparency = 1
-speedGlow.Image = "rbxassetid://12030614838" 
-speedGlow.ImageColor3 = Color3.fromRGB(0, 255, 255) 
-speedGlow.ZIndex = 103
 
 local speedIcon = Instance.new("ImageLabel", SpeedBtn)
 speedIcon.Name = "FloatingIcon"
@@ -523,17 +512,6 @@ jumpBg.ImageTransparency = 0.7
 jumpBg.ScaleType = Enum.ScaleType.Tile
 jumpBg.TileSize = UDim2.fromOffset(128, 128)
 Instance.new("UICorner", jumpBg).CornerRadius = UDim.new(0, 15)
-
--- Miękki blask (Glow) pod ikonką Jump
-local jumpGlow = Instance.new("ImageLabel", JumpBtn)
-jumpGlow.Name = "JumpGlow"
-jumpGlow.Size = UDim2.fromOffset(120, 120)
-jumpGlow.Position = UDim2.new(0.5, 0, 0.35, 0)
-jumpGlow.AnchorPoint = Vector2.new(0.5, 0.5)
-jumpGlow.BackgroundTransparency = 1
-jumpGlow.Image = "rbxassetid://12030614838" 
-jumpGlow.ImageColor3 = Color3.fromRGB(100, 255, 100) 
-jumpGlow.ZIndex = 103
 
 local jumpIcon = Instance.new("ImageLabel", JumpBtn)
 jumpIcon.Name = "FloatingIcon"
@@ -811,18 +789,6 @@ local function refreshShop()
 					vp.Ambient = Color3.fromRGB(150, 150, 150)
 					vp.LightColor = Color3.fromRGB(255, 255, 255)
 					vp.LightDirection = Vector3.new(-1, -1, -0.5)
-
-					-- TŁO (GLOW) DLA MODELU
-					local modelGlow = Instance.new("ImageLabel", itemFrame)
-					modelGlow.Name = "ModelGlow"
-					modelGlow.Size = UDim2.fromScale(0.8, 0.8)
-					modelGlow.Position = UDim2.fromScale(0.5, 0.5)
-					modelGlow.AnchorPoint = Vector2.new(0.5, 0.5)
-					modelGlow.BackgroundTransparency = 1
-					modelGlow.Image = "rbxassetid://12030614838"
-					modelGlow.ImageColor3 = data.Color
-					modelGlow.ImageTransparency = 0.6
-					modelGlow.ZIndex = 105
 
 					local cl = modelObj:Clone()
 					cl.Parent = vp

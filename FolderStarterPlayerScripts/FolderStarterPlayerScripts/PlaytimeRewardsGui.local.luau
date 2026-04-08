@@ -13,6 +13,7 @@ local getTimeEvent = BrainrotEvents:WaitForChild("GetPlaytimeData")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local HudTileStyle = require(ReplicatedStorage:WaitForChild("FolderReplicatedStorage"):WaitForChild("HudTileStyle"))
+local greenStudsImage = HudTileStyle.getImage(ReplicatedStorage, "GreenStuds", "")
 
 -- Inicjalizacja Danych z Serwera
 local sessionStartTime = os.time()
@@ -39,6 +40,15 @@ screenGui.Name = "PlaytimeRewardsUI"
 screenGui.ResetOnSpawn = false
 screenGui.DisplayOrder = 10
 screenGui.Parent = playerGui
+
+local backdrop = Instance.new("Frame")
+backdrop.Name = "Backdrop"
+backdrop.Size = UDim2.fromScale(1, 1)
+backdrop.BackgroundColor3 = Color3.fromRGB(5, 7, 10)
+backdrop.BackgroundTransparency = 1
+backdrop.Visible = false
+backdrop.ZIndex = 99
+backdrop.Parent = screenGui
 
 -- Pobranie zasobów wizualnych
 local Coin2D = ReplicatedStorage:WaitForChild("Coin2D")
@@ -97,7 +107,9 @@ giftTimerLbl.TextSize = 14
 giftTimerLbl.ZIndex = 53
 giftTimerLbl.Parent = giftBtn
 Instance.new("UICorner", giftTimerLbl).CornerRadius = UDim.new(0, 5)
-Instance.new("UIStroke", giftTimerLbl).Thickness = 1
+local giftTimerStroke = Instance.new("UIStroke", giftTimerLbl)
+giftTimerStroke.Thickness = 1
+giftTimerStroke.Color = Color3.new(0, 0, 0)
 
 -- Licznik monet NA DOLE obrazka
 local giftAmountLbl = Instance.new("TextLabel")
@@ -154,75 +166,150 @@ end)
 -- === 2. GŁÓWNY PANEL NAGRÓD ===
 local mainPanel = Instance.new("Frame")
 mainPanel.Name = "RewardsPanel"
-mainPanel.Size = UDim2.fromOffset(500, 600)
-mainPanel.Position = UDim2.fromScale(0.5, 0.5)
+mainPanel.Size = UDim2.fromOffset(620, 700)
+mainPanel.Position = UDim2.new(0.5, 0, 0.52, 0)
 mainPanel.AnchorPoint = Vector2.new(0.5, 0.5)
-mainPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+mainPanel.BackgroundColor3 = Color3.fromRGB(24, 31, 56)
 mainPanel.Visible = false
 mainPanel.ZIndex = 100
 mainPanel.Parent = screenGui
-Instance.new("UICorner", mainPanel).CornerRadius = UDim.new(0, 15)
+Instance.new("UICorner", mainPanel).CornerRadius = UDim.new(0, 26)
 local panelStroke = Instance.new("UIStroke", mainPanel)
-panelStroke.Thickness = 4
-panelStroke.Color = Color3.fromRGB(255, 215, 0)
+panelStroke.Thickness = 3
+panelStroke.Color = Color3.fromRGB(221, 236, 225)
+panelStroke.Transparency = 0.06
+
+local panelGradient = Instance.new("UIGradient", mainPanel)
+panelGradient.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(43, 55, 93)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(22, 28, 48)),
+})
+panelGradient.Rotation = 90
+
+local panelPattern = Instance.new("ImageLabel", mainPanel)
+panelPattern.Name = "GreenStudsPattern"
+panelPattern.Size = UDim2.fromScale(1, 1)
+panelPattern.BackgroundTransparency = 1
+panelPattern.Image = greenStudsImage
+panelPattern.ImageColor3 = Color3.fromRGB(113, 144, 214)
+panelPattern.ImageTransparency = 0.76
+panelPattern.ScaleType = Enum.ScaleType.Tile
+panelPattern.TileSize = UDim2.fromOffset(128, 128)
+panelPattern.ZIndex = 100
+Instance.new("UICorner", panelPattern).CornerRadius = UDim.new(0, 26)
+
+local header = Instance.new("Frame")
+header.Name = "Header"
+header.Size = UDim2.new(1, -28, 0, 64)
+header.Position = UDim2.new(0, 14, 0, 14)
+header.BackgroundColor3 = Color3.fromRGB(18, 24, 42)
+header.BackgroundTransparency = 0.12
+header.BorderSizePixel = 0
+header.ZIndex = 101
+header.Parent = mainPanel
+Instance.new("UICorner", header).CornerRadius = UDim.new(0, 20)
+
+local headerPattern = Instance.new("ImageLabel", header)
+headerPattern.Size = UDim2.fromScale(1, 1)
+headerPattern.BackgroundTransparency = 1
+headerPattern.Image = greenStudsImage
+headerPattern.ImageColor3 = Color3.fromRGB(94, 122, 196)
+headerPattern.ImageTransparency = 0.82
+headerPattern.ScaleType = Enum.ScaleType.Tile
+headerPattern.TileSize = UDim2.fromOffset(112, 112)
+headerPattern.ZIndex = 101
+Instance.new("UICorner", headerPattern).CornerRadius = UDim.new(0, 20)
+
+local accent = Instance.new("Frame", header)
+accent.Name = "Accent"
+accent.Size = UDim2.new(0, 12, 1, -18)
+accent.Position = UDim2.new(0, 10, 0, 9)
+accent.BackgroundColor3 = Color3.fromRGB(78, 136, 255)
+accent.BorderSizePixel = 0
+accent.ZIndex = 102
+Instance.new("UICorner", accent).CornerRadius = UDim.new(1, 0)
 
 -- Przycisk zamykania panelu
 local closeBtn = Instance.new("TextButton")
-closeBtn.Size = UDim2.fromOffset(50, 50)
-closeBtn.Position = UDim2.new(1, -10, 0, 10)
-closeBtn.AnchorPoint = Vector2.new(1, 0)
-closeBtn.BackgroundColor3 = Color3.fromRGB(220, 0, 0)
+closeBtn.Size = UDim2.fromOffset(44, 44)
+closeBtn.Position = UDim2.new(1, -10, 0.5, 0)
+closeBtn.AnchorPoint = Vector2.new(1, 0.5)
+closeBtn.BackgroundColor3 = Color3.fromRGB(196, 66, 66)
 closeBtn.Text = "X"
 closeBtn.TextColor3 = Color3.new(1, 1, 1)
-closeBtn.Font = Enum.Font.FredokaOne
-closeBtn.TextSize = 30
-closeBtn.ZIndex = 110
-closeBtn.Parent = mainPanel
-Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(1, 0)
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.TextSize = 22
+closeBtn.AutoButtonColor = false
+closeBtn.ZIndex = 104
+closeBtn.Parent = header
+Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 14)
+local closeStroke = Instance.new("UIStroke", closeBtn)
+closeStroke.Thickness = 2
+closeStroke.Color = Color3.fromRGB(255, 247, 244)
+closeStroke.Transparency = 0.08
 
 local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 0, 60)
-title.Position = UDim2.fromOffset(0, 15)
+title.Size = UDim2.new(1, -120, 1, 0)
+title.Position = UDim2.new(0, 38, 0, 0)
 title.BackgroundTransparency = 1
 title.Text = "PLAYTIME REWARDS"
 title.TextColor3 = Color3.new(1, 1, 1)
 title.Font = Enum.Font.LuckiestGuy
-title.TextSize = 40
-title.ZIndex = 101
-title.Parent = mainPanel
+title.TextSize = 38
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.ZIndex = 103
+title.Parent = header
+local titleStroke = Instance.new("UIStroke", title)
+titleStroke.Thickness = 2
+titleStroke.Color = Color3.new(0, 0, 0)
 
 -- Baner Społecznościowy
 local socialBtn = Instance.new("TextButton")
-socialBtn.Size = UDim2.new(0.9, 0, 0, 50)
-socialBtn.Position = UDim2.new(0.5, 0, 0, 80)
-socialBtn.AnchorPoint = Vector2.new(0.5, 0)
-socialBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
+socialBtn.Size = UDim2.new(1, -28, 0, 88)
+socialBtn.Position = UDim2.new(0, 14, 0, 92)
+socialBtn.AnchorPoint = Vector2.new(0, 0)
+socialBtn.BackgroundColor3 = Color3.fromRGB(22, 30, 52)
 socialBtn.Text = "👥 INVITE FRIEND (+20% COINS)"
 socialBtn.TextColor3 = Color3.new(1, 1, 1)
-socialBtn.Font = Enum.Font.FredokaOne
-socialBtn.TextSize = 20
+socialBtn.Font = Enum.Font.GothamBold
+socialBtn.TextSize = 34
+socialBtn.TextScaled = true
+socialBtn.TextWrapped = true
 socialBtn.ZIndex = 102
 socialBtn.Parent = mainPanel
-Instance.new("UICorner", socialBtn).CornerRadius = UDim.new(0, 10)
+Instance.new("UICorner", socialBtn).CornerRadius = UDim.new(0, 20)
 local socialStroke = Instance.new("UIStroke", socialBtn)
-socialStroke.Thickness = 3
-socialStroke.Color = Color3.new(0, 0, 0)
+socialStroke.Thickness = 2
+socialStroke.Color = Color3.fromRGB(116, 174, 255)
+socialStroke.Transparency = 0.08
+
+local socialPattern = Instance.new("ImageLabel", socialBtn)
+socialPattern.Size = UDim2.new(0, 56, 1, 0)
+socialPattern.BackgroundTransparency = 1
+socialPattern.Image = greenStudsImage
+socialPattern.ImageColor3 = Color3.fromRGB(90, 122, 198)
+socialPattern.ImageTransparency = 0.8
+socialPattern.ScaleType = Enum.ScaleType.Tile
+socialPattern.TileSize = UDim2.fromOffset(96, 96)
+socialPattern.ZIndex = 101
+Instance.new("UICorner", socialPattern).CornerRadius = UDim.new(0, 20)
 
 -- Lista nagród
 local listFrame = Instance.new("ScrollingFrame")
-listFrame.Size = UDim2.new(0.95, 0, 1, -150)
-listFrame.Position = UDim2.new(0.5, 0, 0, 140)
-listFrame.AnchorPoint = Vector2.new(0.5, 0)
+listFrame.Size = UDim2.new(1, -28, 1, -198)
+listFrame.Position = UDim2.new(0, 14, 0, 188)
+listFrame.AnchorPoint = Vector2.new(0, 0)
 listFrame.BackgroundTransparency = 1
 listFrame.BorderSizePixel = 0
 listFrame.ScrollBarThickness = 8
+listFrame.ScrollBarImageColor3 = Color3.fromRGB(170, 196, 255)
 listFrame.ZIndex = 101
 listFrame.Parent = mainPanel
 
 local listLayout = Instance.new("UIListLayout")
 listLayout.Parent = listFrame
 listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-listLayout.Padding = UDim.new(0, 8)
+listLayout.Padding = UDim.new(0, 12)
 listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
 -- === 3. BUDOWANIE ELEMENTÓW LISTY ===
@@ -230,50 +317,73 @@ local rewardRows = {}
 
 for index, rewardData in ipairs(GameConfig.PlaytimeRewards) do
 	local row = Instance.new("Frame")
-	row.Size = UDim2.new(1, -20, 0, 75)
-	row.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+	row.Size = UDim2.new(1, -4, 0, 84)
+	row.BackgroundColor3 = Color3.fromRGB(22, 28, 48)
+	row.BackgroundTransparency = 0.06
+	row.BorderSizePixel = 0
 	row.LayoutOrder = index
 	row.ZIndex = 102
 	row.Parent = listFrame
-	Instance.new("UICorner", row).CornerRadius = UDim.new(0, 10)
-	Instance.new("UIStroke", row).Thickness = 2
+	Instance.new("UICorner", row).CornerRadius = UDim.new(0, 20)
+	local rowStroke = Instance.new("UIStroke", row)
+	rowStroke.Thickness = 2
+	rowStroke.Color = Color3.fromRGB(95, 104, 114)
+	rowStroke.Transparency = 0.1
+
+	local rowPattern = Instance.new("ImageLabel", row)
+	rowPattern.Size = UDim2.new(0, 56, 1, 0)
+	rowPattern.BackgroundTransparency = 1
+	rowPattern.Image = greenStudsImage
+	rowPattern.ImageColor3 = Color3.fromRGB(90, 122, 198)
+	rowPattern.ImageTransparency = 0.8
+	rowPattern.ScaleType = Enum.ScaleType.Tile
+	rowPattern.TileSize = UDim2.fromOffset(96, 96)
+	rowPattern.ZIndex = 102
+	Instance.new("UICorner", rowPattern).CornerRadius = UDim.new(0, 20)
 	
 	local timeLbl = Instance.new("TextLabel")
-	timeLbl.Size = UDim2.new(0, 80, 1, 0)
+	timeLbl.Size = UDim2.new(0, 110, 1, 0)
 	timeLbl.Position = UDim2.fromOffset(20, 0)
 	timeLbl.BackgroundTransparency = 1
 	timeLbl.Text = rewardData.TimeMinutes .. " MIN"
-	timeLbl.TextColor3 = Color3.fromRGB(0, 255, 255)
-	timeLbl.Font = Enum.Font.FredokaOne
-	timeLbl.TextSize = 25
+	timeLbl.TextColor3 = Color3.fromRGB(202, 224, 205)
+	timeLbl.Font = Enum.Font.GothamBold
+	timeLbl.TextSize = 22
 	timeLbl.TextXAlignment = Enum.TextXAlignment.Left
 	timeLbl.ZIndex = 103
 	timeLbl.Parent = row
 	
 	local coinLbl = Instance.new("TextLabel")
-	coinLbl.Size = UDim2.new(0, 120, 1, 0)
-	coinLbl.Position = UDim2.fromOffset(120, 0)
+	coinLbl.Size = UDim2.new(0, 160, 1, 0)
+	coinLbl.Position = UDim2.fromOffset(138, 0)
 	coinLbl.BackgroundTransparency = 1
 	coinLbl.Text = "💰 " .. rewardData.Reward
 	coinLbl.TextColor3 = Color3.fromRGB(255, 215, 0)
 	coinLbl.Font = Enum.Font.FredokaOne
-	coinLbl.TextSize = 25
+	coinLbl.TextSize = 24
 	coinLbl.TextXAlignment = Enum.TextXAlignment.Left
 	coinLbl.ZIndex = 103
 	coinLbl.Parent = row
 	
 	local actionBtn = Instance.new("TextButton")
-	actionBtn.Size = UDim2.new(0, 140, 0, 50)
-	actionBtn.Position = UDim2.new(1, -15, 0.5, 0)
+	actionBtn.Size = UDim2.new(0, 144, 0, 48)
+	actionBtn.Position = UDim2.new(1, -18, 0.5, 0)
 	actionBtn.AnchorPoint = Vector2.new(1, 0.5)
-	actionBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+	actionBtn.BackgroundColor3 = Color3.fromRGB(90, 96, 104)
 	actionBtn.Text = "LOCKED"
 	actionBtn.TextColor3 = Color3.new(1, 1, 1)
-	actionBtn.Font = Enum.Font.FredokaOne
-	actionBtn.TextSize = 22
+	actionBtn.TextStrokeColor3 = Color3.new(0, 0, 0)
+	actionBtn.TextStrokeTransparency = 0
+	actionBtn.Font = Enum.Font.GothamBold
+	actionBtn.TextSize = 19
+	actionBtn.AutoButtonColor = false
 	actionBtn.ZIndex = 105
 	actionBtn.Parent = row
-	Instance.new("UICorner", actionBtn).CornerRadius = UDim.new(0, 8)
+	Instance.new("UICorner", actionBtn).CornerRadius = UDim.new(0, 16)
+	local actionStroke = Instance.new("UIStroke", actionBtn)
+	actionStroke.Thickness = 2
+	actionStroke.Color = Color3.new(0, 0, 0)
+	actionStroke.Transparency = 0.12
 	
 	table.insert(rewardRows, {
 		Frame = row,
@@ -291,7 +401,7 @@ for index, rewardData in ipairs(GameConfig.PlaytimeRewards) do
 			if success then
 				claimedRewards[tostring(index)] = true -- Czasem stringuje się przy jsonie
 				claimedRewards[index] = true
-				actionBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+				actionBtn.BackgroundColor3 = Color3.fromRGB(62, 70, 79)
 				actionBtn.Text = "CLAIMED"
 				
 				if shouldRestart then
@@ -300,7 +410,7 @@ for index, rewardData in ipairs(GameConfig.PlaytimeRewards) do
 					claimedRewards = {}
 					for _, r in ipairs(rewardRows) do
 						r.Button.Text = "LOCKED"
-						r.Button.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+						r.Button.BackgroundColor3 = Color3.fromRGB(90, 96, 104)
 					end
 				end
 				
@@ -375,17 +485,17 @@ local function updateSocialBanner()
 	if foundFriend then
 		if not isFriendBonusActive then
 			isFriendBonusActive = true
-			socialBtn.BackgroundColor3 = Color3.fromRGB(220, 180, 0) -- Złoty kolor
+			socialBtn.BackgroundColor3 = Color3.fromRGB(57, 81, 132)
 			socialBtn.Text = "🤝 FRIEND BONUS ACTIVE! (+20%)"
-			socialStroke.Color = Color3.new(1, 1, 1)
+			socialStroke.Color = Color3.fromRGB(123, 214, 114)
 			updateRewardValues()
 		end
 	else
 		if isFriendBonusActive then
 			isFriendBonusActive = false
-			socialBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 200) -- Niebieski kolor
+			socialBtn.BackgroundColor3 = Color3.fromRGB(22, 30, 52)
 			socialBtn.Text = "👥 INVITE FRIEND (+20% COINS)"
-			socialStroke.Color = Color3.new(0, 0, 0)
+			socialStroke.Color = Color3.fromRGB(72, 160, 224)
 			updateRewardValues()
 		end
 	end
@@ -410,34 +520,68 @@ socialBtn.MouseButton1Click:Connect(function()
 	end
 end)
 
+local panelOpen = false
+
+local function updatePanelVisibility(open)
+	panelOpen = open
+	backdrop.Visible = open
+	mainPanel.Visible = open
+
+	if open then
+		backdrop.BackgroundTransparency = 1
+		mainPanel.Position = UDim2.new(0.5, 0, 0.54, 0)
+		mainPanel.Size = UDim2.fromOffset(560, 650)
+		TweenService:Create(backdrop, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			BackgroundTransparency = 0.38,
+		}):Play()
+		TweenService:Create(mainPanel, TweenInfo.new(0.24, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			Position = UDim2.new(0.5, 0, 0.5, 0),
+			Size = UDim2.fromOffset(620, 700),
+		}):Play()
+	else
+		local panelTween = TweenService:Create(mainPanel, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+			Position = UDim2.new(0.5, 0, 0.54, 0),
+			Size = UDim2.fromOffset(560, 650),
+		})
+		panelTween:Play()
+		TweenService:Create(backdrop, TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+			BackgroundTransparency = 1,
+		}):Play()
+		panelTween.Completed:Connect(function()
+			if not panelOpen then
+				backdrop.Visible = false
+				mainPanel.Visible = false
+			end
+		end)
+	end
+end
+
 _G.UiMenus = _G.UiMenus or {}
 _G.UiMenus["PlaytimeRewards"] = function()
-	if mainPanel and mainPanel.Visible then
-		mainPanel.Visible = false
+	if panelOpen then
+		updatePanelVisibility(false)
 		TweenService:Create(giftBtn, TweenInfo.new(0.2), {Rotation = 0}):Play()
 	end
 end
 
 giftBtn.MouseButton1Click:Connect(function()
-	local targetVisible = not mainPanel.Visible
+	local targetVisible = not panelOpen
 	if targetVisible then
 		for name, closeFunc in pairs(_G.UiMenus) do
 			if name ~= "PlaytimeRewards" then closeFunc() end
 		end
 	end
 	
-	mainPanel.Visible = targetVisible
-	if mainPanel.Visible then
+	updatePanelVisibility(targetVisible)
+	if targetVisible then
 		TweenService:Create(giftBtn, TweenInfo.new(0.2), {Rotation = 15}):Play()
-		mainPanel.Size = UDim2.fromOffset(450, 550)
-		TweenService:Create(mainPanel, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.fromOffset(500, 600)}):Play()
 	else
 		TweenService:Create(giftBtn, TweenInfo.new(0.2), {Rotation = 0}):Play()
 	end
 end)
 
 closeBtn.MouseButton1Click:Connect(function()
-	mainPanel.Visible = false
+	updatePanelVisibility(false)
 	TweenService:Create(giftBtn, TweenInfo.new(0.2), {Rotation = 0}):Play()
 end)
 
@@ -455,7 +599,7 @@ RunService.RenderStepped:Connect(function(dt)
 		-- Jeśli już odebrane (indeks może być przekazany przez serwer w różnej formie)
 		if claimedRewards[rowObj.Index] or claimedRewards[tostring(rowObj.Index)] then
 			if btn.Text ~= "CLAIMED" then
-				btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+				btn.BackgroundColor3 = Color3.fromRGB(62, 70, 79)
 				btn.Text = "CLAIMED"
 			end
 		else
@@ -463,7 +607,7 @@ RunService.RenderStepped:Connect(function(dt)
 			if elapsed >= reqSecs then
 				anyReadyToClaim = true
 				if btn.Text ~= "CLAIM" and btn.Text ~= "..." then
-					btn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+					btn.BackgroundColor3 = Color3.fromRGB(56, 182, 92)
 					btn.Text = "CLAIM"
 				end
 			else

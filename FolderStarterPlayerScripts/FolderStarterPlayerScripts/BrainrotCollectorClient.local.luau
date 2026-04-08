@@ -4,6 +4,7 @@ local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService") -- Potrzebne do animacji
+local AvatarEditorService = game:GetService("AvatarEditorService")
 
 -- 1. USTAWIENIA KOLORÓW
 local RarityColors = {
@@ -451,6 +452,7 @@ globalSubText.TextXAlignment = Enum.TextXAlignment.Left
 local notificationQueue = {}
 local isShowingNow = false
 local activeNotifyRarity = ""
+local hasPromptedFavorite = false
 local globalAnnouncementQueue = {}
 local isGlobalAnnouncementShowing = false
 
@@ -524,9 +526,24 @@ local function createViewport(model, parent, isCollected)
 	return viewport
 end
 
+local function promptFavorite()
+	pcall(function()
+		AvatarEditorService:PromptSetFavorite(game.PlaceId, Enum.AvatarItemType.Asset, true)
+	end)
+end
+
 local function showCollectionEffect(name, rarity)
 	isShowingNow = true
 	activeNotifyRarity = rarity
+
+	if rarity ~= "Common" and rarity ~= "Rare" and not hasPromptedFavorite then
+		hasPromptedFavorite = true
+		task.delay(5, function()
+			if player and player.Parent then
+				promptFavorite()
+			end
+		end)
+	end
 
 	local modelTemplate = BrainrotStorage:FindFirstChild(name)
 	if modelTemplate then

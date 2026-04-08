@@ -22,6 +22,9 @@ local localSettings = {
 
 local function getAvailableTrails()
 	local trails = {"OFF"}
+	if LocalPlayer:GetAttribute("HasPurpleTrail") then
+		table.insert(trails, "PURPLE")
+	end
 	if LocalPlayer:GetAttribute("HasVIP") then
 		table.insert(trails, "VIP")
 	end
@@ -52,10 +55,6 @@ local function getAvailableSpeeds()
 		table.insert(options, "REBIRTH " .. i)
 	end
 	
-	if #options > 2 then
-		table.insert(options, "MAX")
-	end
-	
 	return options
 end
 
@@ -73,10 +72,6 @@ local function getAvailableJumps()
 	
 	for i = 1, math.min(rebirths, 3) do
 		table.insert(options, "REBIRTH " .. i)
-	end
-	
-	if #options > 2 then
-		table.insert(options, "MAX")
 	end
 	
 	return options
@@ -891,6 +886,7 @@ local watchedAttributes = {
 	"HasVIP",
 	"HasSpeedBoost",
 	"HasJumpBoost",
+	"HasPurpleTrail",
 	"SpeedSettingEnabled",
 	"JumpSettingEnabled",
 	"VIPProtectionEnabled",

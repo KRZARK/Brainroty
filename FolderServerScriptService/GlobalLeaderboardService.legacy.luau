@@ -26,7 +26,7 @@ local LeaderboardConfigs = {
 			return player:GetAttribute("RobuxSpent") or 0
 		end,
 		formatValue = function(value)
-			return value .. " R$"
+			return value .. " " .. utf8.char(0xE002)
 		end,
 	},
 	{

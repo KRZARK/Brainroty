@@ -26,6 +26,8 @@ local watchedAttributes = {
 	"HasVIP",
 	"HasSpeedBoost",
 	"HasJumpBoost",
+	"HasPurpleTrail",
+	"LatestUnlockedTrail",
 	"SpeedSettingEnabled",
 	"JumpSettingEnabled",
 	"SpeedBoostEnds",
@@ -36,6 +38,9 @@ local watchedAttributes = {
 local playerConnections = {}
 local statMaintenanceTokens = {}
 local timedRefreshTokens = {}
+local playerTouchedTrail = {}
+local playerTouchedVIPProtection = {}
+local playerTrailUnlockState = {}
 
 local function getRebirthMultiplier(player)
 	local leaderstats = player:FindFirstChild("leaderstats")
@@ -51,6 +56,99 @@ local function getRebirthMultiplier(player)
 	end
 
 	return 1
+end
+
+local function isTrailAvailable(player, trailName)
+	if trailName == "OFF" then
+		return true
+	end
+
+	if trailName == "PURPLE" then
+		return player:GetAttribute("HasPurpleTrail") == true
+	end
+
+	if trailName == "VIP" then
+		return player:GetAttribute("HasVIP") == true
+	end
+
+	local rebirthLevel = trailName and tonumber(string.match(trailName, "^REBIRTH (%d+)$"))
+	if rebirthLevel then
+		local leaderstats = player:FindFirstChild("leaderstats")
+		local rebirths = leaderstats and leaderstats:FindFirstChild("Rebirths")
+		local rebirthCount = rebirths and rebirths.Value or 0
+		return rebirthCount >= rebirthLevel and rebirthLevel >= 1 and rebirthLevel <= 4
+	end
+
+	return false
+end
+
+local function getFallbackTrailForPlayer(player)
+	local leaderstats = player:FindFirstChild("leaderstats")
+	local rebirths = leaderstats and leaderstats:FindFirstChild("Rebirths")
+	local rebirthCount = rebirths and rebirths.Value or 0
+
+	if rebirthCount >= 1 then
+		return "REBIRTH " .. math.min(rebirthCount, 4)
+	end
+
+	if player:GetAttribute("HasPurpleTrail") == true then
+		return "PURPLE"
+	end
+
+	if player:GetAttribute("HasVIP") == true then
+		return "VIP"
+	end
+
+	return "OFF"
+end
+
+local function getPreferredTrailForPlayer(player)
+	local latestUnlockedTrail = player:GetAttribute("LatestUnlockedTrail")
+	if type(latestUnlockedTrail) == "string" and latestUnlockedTrail ~= "" and isTrailAvailable(player, latestUnlockedTrail) then
+		return latestUnlockedTrail
+	end
+
+	return getFallbackTrailForPlayer(player)
+end
+
+local function syncUnlockedTrailState(player)
+	local leaderstats = player:FindFirstChild("leaderstats")
+	local rebirths = leaderstats and leaderstats:FindFirstChild("Rebirths")
+	local rebirthCount = rebirths and rebirths.Value or 0
+	local hasVIP = player:GetAttribute("HasVIP") == true
+	local hasPurpleTrail = player:GetAttribute("HasPurpleTrail") == true
+
+	local state = playerTrailUnlockState[player]
+	if not state then
+		playerTrailUnlockState[player] = {
+			rebirthCount = rebirthCount,
+			hasVIP = hasVIP,
+			hasPurpleTrail = hasPurpleTrail,
+		}
+		return
+	end
+
+	local newestUnlockedTrail
+	if rebirthCount > state.rebirthCount then
+		newestUnlockedTrail = "REBIRTH " .. math.min(rebirthCount, 4)
+	end
+
+	if hasPurpleTrail and not state.hasPurpleTrail then
+		newestUnlockedTrail = "PURPLE"
+	end
+
+	if hasVIP and not state.hasVIP then
+		newestUnlockedTrail = "VIP"
+	end
+
+	state.rebirthCount = rebirthCount
+	state.hasVIP = hasVIP
+	state.hasPurpleTrail = hasPurpleTrail
+
+	if newestUnlockedTrail and isTrailAvailable(player, newestUnlockedTrail) then
+		player:SetAttribute("LatestUnlockedTrail", newestUnlockedTrail)
+		player:SetAttribute("SelectedTrail", newestUnlockedTrail)
+	end
 end
 
 local function computeMovementStats(player)
@@ -74,7 +172,7 @@ local function computeMovementStats(player)
 	end
 
 	local walkSpeed = 16
-	if speedEnabled == true or speedEnabled == "MAX" or speedEnabled == "DEFAULT" then
+	if speedEnabled == true or speedEnabled == "DEFAULT" then
 		local baseSpeed = ownsSpeedBoost and 32 or 16
 		walkSpeed = math.floor(baseSpeed * speedMultiplier * rebirthMultiplier)
 	elseif speedEnabled == "VIP" or speedEnabled == "GAMEPASS" then
@@ -91,7 +189,7 @@ local function computeMovementStats(player)
 	end
 
 	local jumpPower = 50
-	if jumpEnabled == true or jumpEnabled == "MAX" or jumpEnabled == "DEFAULT" then
+	if jumpEnabled == true or jumpEnabled == "DEFAULT" then
 		local baseJump = ownsJumpBoost and 100 or 50
 		jumpPower = math.floor(baseJump * jumpMultiplier * rebirthMultiplier)
 	elseif jumpEnabled == "VIP" or jumpEnabled == "GAMEPASS" then
@@ -120,15 +218,10 @@ local function applyCurrentTrail(player)
 	local leaderstats = player:FindFirstChild("leaderstats")
 	local rebirths = leaderstats and leaderstats:FindFirstChild("Rebirths") and leaderstats.Rebirths.Value or 0
 	local hasVIP = player:GetAttribute("HasVIP") == true
+	local hasPurpleTrail = player:GetAttribute("HasPurpleTrail") == true
 
 	if selectedTrail == "DEFAULT" then
-		if rebirths >= 1 then
-			selectedTrail = "REBIRTH " .. math.min(rebirths, 4)
-		elseif hasVIP then
-			selectedTrail = "VIP"
-		else
-			selectedTrail = "OFF"
-		end
+		selectedTrail = getPreferredTrailForPlayer(player)
 		player:SetAttribute("SelectedTrail", selectedTrail)
 	end
 
@@ -192,23 +285,38 @@ local function applyCurrentTrail(player)
 		trail.LightInfluence = 0
 
 		if rebirthLevel == 1 then
-			trail.Color = ColorSequence.new(Color3.fromRGB(0, 255, 0))
+			trail.Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(64, 255, 170)),
+				ColorSequenceKeypoint.new(0.22, Color3.fromRGB(0, 132, 62)),
+				ColorSequenceKeypoint.new(0.5, Color3.fromRGB(212, 255, 239)),
+				ColorSequenceKeypoint.new(0.78, Color3.fromRGB(0, 74, 28)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(32, 230, 118))
+			})
 		elseif rebirthLevel == 2 then
-			trail.Color = ColorSequence.new(Color3.fromRGB(255, 215, 0))
+			trail.Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 222, 88)),
+				ColorSequenceKeypoint.new(0.2, Color3.fromRGB(198, 110, 0)),
+				ColorSequenceKeypoint.new(0.48, Color3.fromRGB(255, 250, 202)),
+				ColorSequenceKeypoint.new(0.76, Color3.fromRGB(156, 70, 0)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 187, 24))
+			})
 		elseif rebirthLevel == 3 then
 			trail.Color = ColorSequence.new({
-				ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
-				ColorSequenceKeypoint.new(0.5, Color3.fromRGB(130, 0, 0)),
-				ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0))
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 88, 120)),
+				ColorSequenceKeypoint.new(0.24, Color3.fromRGB(132, 0, 20)),
+				ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 34, 74)),
+				ColorSequenceKeypoint.new(0.78, Color3.fromRGB(84, 0, 10)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(210, 0, 56))
 			})
 		else
 			trail.Color = ColorSequence.new({
-				ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
-				ColorSequenceKeypoint.new(0.2, Color3.fromRGB(255, 255, 0)),
-				ColorSequenceKeypoint.new(0.4, Color3.fromRGB(0, 255, 0)),
-				ColorSequenceKeypoint.new(0.6, Color3.fromRGB(0, 255, 255)),
-				ColorSequenceKeypoint.new(0.8, Color3.fromRGB(0, 0, 255)),
-				ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 255))
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 62, 174)),
+				ColorSequenceKeypoint.new(0.18, Color3.fromRGB(255, 174, 18)),
+				ColorSequenceKeypoint.new(0.36, Color3.fromRGB(68, 255, 90)),
+				ColorSequenceKeypoint.new(0.54, Color3.fromRGB(34, 231, 255)),
+				ColorSequenceKeypoint.new(0.72, Color3.fromRGB(70, 96, 255)),
+				ColorSequenceKeypoint.new(0.88, Color3.fromRGB(196, 72, 255)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 82, 196))
 			})
 		end
 		trail.Parent = hrp
@@ -239,10 +347,49 @@ local function applyCurrentTrail(player)
 			NumberSequenceKeypoint.new(1, 0)
 		})
 		trail.LightEmission = 1
+		trail.LightInfluence = 0
 		trail.Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(200, 200, 200)),
-			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 150, 150))
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+			ColorSequenceKeypoint.new(0.16, Color3.fromRGB(22, 22, 22)),
+			ColorSequenceKeypoint.new(0.34, Color3.fromRGB(240, 240, 240)),
+			ColorSequenceKeypoint.new(0.52, Color3.fromRGB(8, 8, 8)),
+			ColorSequenceKeypoint.new(0.74, Color3.fromRGB(255, 255, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(28, 28, 28))
+		})
+		trail.Parent = hrp
+	elseif selectedTrail == "PURPLE" and hasPurpleTrail then
+		local att0 = Instance.new("Attachment")
+		att0.Name = "TrailAtt0"
+		att0.Position = Vector3.new(1.125, 0, 0)
+		att0.Parent = hrp
+
+		local att1 = Instance.new("Attachment")
+		att1.Name = "TrailAtt1"
+		att1.Position = Vector3.new(-1.125, 0, 0)
+		att1.Parent = hrp
+
+		local trail = Instance.new("Trail")
+		trail.Name = "SelectedPlayerTrail"
+		trail.Attachment0 = att0
+		trail.Attachment1 = att1
+		trail.Lifetime = 0.8
+		trail.FaceCamera = true
+		trail.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0),
+			NumberSequenceKeypoint.new(1, 1)
+		})
+		trail.WidthScale = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(1, 0)
+		})
+		trail.LightEmission = 1
+		trail.LightInfluence = 0
+		trail.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(98, 28, 176)),
+			ColorSequenceKeypoint.new(0.22, Color3.fromRGB(62, 0, 118)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(145, 70, 220)),
+			ColorSequenceKeypoint.new(0.78, Color3.fromRGB(48, 0, 96)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(118, 42, 188))
 		})
 		trail.Parent = hrp
 	else
@@ -309,8 +456,28 @@ local function normalizePlayerSettings(player)
 		end
 	end
 
+	if player:GetAttribute("SpeedSettingEnabled") == "MAX" then
+		player:SetAttribute("SpeedSettingEnabled", "DEFAULT")
+	end
+
+	if player:GetAttribute("JumpSettingEnabled") == "MAX" then
+		player:SetAttribute("JumpSettingEnabled", "DEFAULT")
+	end
+
 	if player:GetAttribute("HasVIP") ~= true and player:GetAttribute("VIPProtectionEnabled") == true then
 		player:SetAttribute("VIPProtectionEnabled", false)
+	end
+
+	if player:GetAttribute("HasVIP") == true and not playerTouchedVIPProtection[player] and player:GetAttribute("VIPProtectionEnabled") ~= true then
+		player:SetAttribute("VIPProtectionEnabled", true)
+	end
+
+	if not playerTouchedTrail[player] then
+		local currentTrail = player:GetAttribute("SelectedTrail")
+		local preferredTrail = getPreferredTrailForPlayer(player)
+		if currentTrail == nil or currentTrail == "DEFAULT" or (currentTrail == "OFF" and preferredTrail ~= "OFF") then
+			player:SetAttribute("SelectedTrail", preferredTrail)
+		end
 	end
 end
 
@@ -325,6 +492,9 @@ local function disconnectPlayer(player)
 	playerConnections[player] = nil
 	statMaintenanceTokens[player] = nil
 	timedRefreshTokens[player] = nil
+	playerTouchedTrail[player] = nil
+	playerTouchedVIPProtection[player] = nil
+	playerTrailUnlockState[player] = nil
 end
 
 local function bindRebirthListener(player, connections, leaderstats)
@@ -337,8 +507,12 @@ local function bindRebirthListener(player, connections, leaderstats)
 
 		attached = true
 		table.insert(connections, rebirths:GetPropertyChangedSignal("Value"):Connect(function()
+			syncUnlockedTrailState(player)
+			normalizePlayerSettings(player)
 			applyCurrentCharacterStats(player)
 		end))
+		syncUnlockedTrailState(player)
+		task.defer(normalizePlayerSettings, player)
 		task.defer(applyCurrentCharacterStats, player)
 	end
 
@@ -362,10 +536,14 @@ local function bindPlayer(player)
 
 	normalizePlayerSettings(player)
 	playerConnections[player] = {}
+	playerTouchedTrail[player] = false
+	playerTouchedVIPProtection[player] = false
+	syncUnlockedTrailState(player)
 
 	local connections = playerConnections[player]
 	for _, attributeName in ipairs(watchedAttributes) do
 		table.insert(connections, player:GetAttributeChangedSignal(attributeName):Connect(function()
+			syncUnlockedTrailState(player)
 			normalizePlayerSettings(player)
 			applyCurrentCharacterStats(player)
 			scheduleTimedRefresh(player)
@@ -415,16 +593,23 @@ UpdateGameplaySettingRF.OnServerInvoke = function(player, settingName, value)
 
 	if settingName == "Speed" then
 		if type(value) ~= "boolean" and type(value) ~= "string" then return false, nil, "INVALID_TYPE" end
+		if value == "MAX" then
+			value = "DEFAULT"
+		end
 		player:SetAttribute("SpeedSettingEnabled", value)
 		applyCurrentCharacterStats(player)
 		return true, value, ""
 	elseif settingName == "Jump" then
 		if type(value) ~= "boolean" and type(value) ~= "string" then return false, nil, "INVALID_TYPE" end
+		if value == "MAX" then
+			value = "DEFAULT"
+		end
 		player:SetAttribute("JumpSettingEnabled", value)
 		applyCurrentCharacterStats(player)
 		return true, value, ""
 	elseif settingName == "VIPProtection" then
 		if type(value) ~= "boolean" then return false, nil, "INVALID_TYPE" end
+		playerTouchedVIPProtection[player] = true
 		if not canUseVIPProtection(player) then
 			player:SetAttribute("VIPProtectionEnabled", false)
 			return false, false, "LOCKED"
@@ -434,6 +619,7 @@ UpdateGameplaySettingRF.OnServerInvoke = function(player, settingName, value)
 		return true, value, ""
 	elseif settingName == "SelectedTrail" then
 		if type(value) ~= "string" then return false, nil, "INVALID_TYPE" end
+		playerTouchedTrail[player] = true
 		player:SetAttribute("SelectedTrail", value)
 		applyCurrentCharacterStats(player)
 		return true, value, ""

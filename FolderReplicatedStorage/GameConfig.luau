@@ -68,7 +68,7 @@ GameConfig.DailyRewards = {
 	[4] = { Type = "Coin", Value = 500, Icon = "Coin2D" },
 	[5] = { Type = "Jump", Value = 2, Icon = "Jump" }, -- Jump Boost x2 (30 min)
 	[6] = { Type = "Coin", Value = 1000, Icon = "Coin2D" },
-	[7] = { Type = "Coin", Value = 2000, Icon = "Coin2D" }
+	[7] = { Type = "PurpleTrail", Value = 1, Icon = "Aura" }
 }
 
 -- PREMIUM SHOP CONFIGURATION

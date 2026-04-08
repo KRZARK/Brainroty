@@ -43,6 +43,7 @@ local BrainrotEvents = ReplicatedStorage:WaitForChild("BrainrotEvents")
 local GameConfig = require(FolderReplicatedStorage:WaitForChild("GameConfig"))
 local HudTileStyle = require(FolderReplicatedStorage:WaitForChild("HudTileStyle"))
 local BrainrotCollectedEvent = BrainrotEvents:WaitForChild("BrainrotCollected")
+local OgBrainrotDiscoveryAnnouncement = BrainrotEvents:WaitForChild("OgBrainrotDiscoveryAnnouncement")
 local TogglePetEvent = BrainrotEvents:WaitForChild("TogglePetEvent")
 local BrainrotStorage = ReplicatedStorage:WaitForChild("BrainrotStorage") 
 local BrainrotyFolder = Workspace:WaitForChild("Brainroty") 
@@ -244,9 +245,222 @@ notifyViewport.BackgroundTransparency = 1
 notifyViewport.ImageTransparency = 1 
 notifyViewport.Parent = notifyFrame
 
+local globalAnnouncementOverlay = Instance.new("Frame")
+globalAnnouncementOverlay.Name = "GlobalAnnouncementOverlay"
+globalAnnouncementOverlay.Size = UDim2.fromScale(1, 1)
+globalAnnouncementOverlay.BackgroundColor3 = Color3.fromRGB(6, 10, 18)
+globalAnnouncementOverlay.BackgroundTransparency = 1
+globalAnnouncementOverlay.Visible = false
+globalAnnouncementOverlay.ZIndex = 260
+globalAnnouncementOverlay.Parent = screenGui
+
+local overlayGlow = Instance.new("ImageLabel")
+overlayGlow.Name = "OverlayGlow"
+overlayGlow.AnchorPoint = Vector2.new(0.5, 0.5)
+overlayGlow.Position = UDim2.fromScale(0.5, 0.12)
+overlayGlow.Size = UDim2.fromOffset(1200, 420)
+overlayGlow.BackgroundTransparency = 1
+overlayGlow.Image = "rbxassetid://4996891970"
+overlayGlow.ImageColor3 = Color3.fromRGB(0, 255, 221)
+overlayGlow.ImageTransparency = 1
+overlayGlow.ZIndex = 261
+overlayGlow.Parent = globalAnnouncementOverlay
+
+local topBeam = Instance.new("Frame")
+topBeam.Name = "TopBeam"
+topBeam.AnchorPoint = Vector2.new(0.5, 0)
+topBeam.Position = UDim2.fromScale(0.5, 0.03)
+topBeam.Size = UDim2.new(0.76, 0, 0, 6)
+topBeam.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+topBeam.BackgroundTransparency = 1
+topBeam.BorderSizePixel = 0
+topBeam.ZIndex = 262
+topBeam.Parent = globalAnnouncementOverlay
+Instance.new("UICorner", topBeam).CornerRadius = UDim.new(1, 0)
+
+local bottomBeam = Instance.new("Frame")
+bottomBeam.Name = "BottomBeam"
+bottomBeam.AnchorPoint = Vector2.new(0.5, 1)
+bottomBeam.Position = UDim2.fromScale(0.5, 0.25)
+bottomBeam.Size = UDim2.new(0.76, 0, 0, 6)
+bottomBeam.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+bottomBeam.BackgroundTransparency = 1
+bottomBeam.BorderSizePixel = 0
+bottomBeam.ZIndex = 262
+bottomBeam.Parent = globalAnnouncementOverlay
+Instance.new("UICorner", bottomBeam).CornerRadius = UDim.new(1, 0)
+
+local globalAnnouncementCard = Instance.new("Frame")
+globalAnnouncementCard.Name = "GlobalAnnouncementCard"
+globalAnnouncementCard.AnchorPoint = Vector2.new(0.5, 0.5)
+globalAnnouncementCard.Position = UDim2.fromScale(0.5, 0.14)
+globalAnnouncementCard.Size = UDim2.fromOffset(980, 220)
+globalAnnouncementCard.BackgroundColor3 = Color3.fromRGB(14, 18, 30)
+globalAnnouncementCard.BackgroundTransparency = 1
+globalAnnouncementCard.BorderSizePixel = 0
+globalAnnouncementCard.Visible = false
+globalAnnouncementCard.ZIndex = 265
+globalAnnouncementCard.Parent = globalAnnouncementOverlay
+Instance.new("UICorner", globalAnnouncementCard).CornerRadius = UDim.new(0, 28)
+
+local globalCardStroke = Instance.new("UIStroke")
+globalCardStroke.Thickness = 3
+globalCardStroke.Transparency = 1
+globalCardStroke.Color = Color3.fromRGB(0, 255, 221)
+globalCardStroke.Parent = globalAnnouncementCard
+
+local globalCardGradient = Instance.new("UIGradient")
+globalCardGradient.Rotation = 18
+globalCardGradient.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(8, 16, 35)),
+	ColorSequenceKeypoint.new(0.55, Color3.fromRGB(18, 27, 52)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(6, 12, 24))
+})
+globalCardGradient.Parent = globalAnnouncementCard
+
+local globalShine = Instance.new("Frame")
+globalShine.Name = "Shine"
+globalShine.AnchorPoint = Vector2.new(0.5, 0.5)
+globalShine.Position = UDim2.fromScale(-0.2, 0.5)
+globalShine.Size = UDim2.fromScale(0.18, 1.4)
+globalShine.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+globalShine.BackgroundTransparency = 1
+globalShine.Rotation = 18
+globalShine.BorderSizePixel = 0
+globalShine.ZIndex = 266
+globalShine.Parent = globalAnnouncementCard
+
+local globalShineGradient = Instance.new("UIGradient")
+globalShineGradient.Transparency = NumberSequence.new({
+	NumberSequenceKeypoint.new(0, 1),
+	NumberSequenceKeypoint.new(0.5, 0.68),
+	NumberSequenceKeypoint.new(1, 1)
+})
+globalShineGradient.Parent = globalShine
+
+local globalAnnouncementViewportHolder = Instance.new("Frame")
+globalAnnouncementViewportHolder.Name = "ViewportHolder"
+globalAnnouncementViewportHolder.AnchorPoint = Vector2.new(0.5, 0.5)
+globalAnnouncementViewportHolder.Position = UDim2.fromScale(0.12, 0.5)
+globalAnnouncementViewportHolder.Size = UDim2.fromOffset(120, 120)
+globalAnnouncementViewportHolder.BackgroundColor3 = Color3.fromRGB(10, 14, 28)
+globalAnnouncementViewportHolder.BackgroundTransparency = 0.15
+globalAnnouncementViewportHolder.BorderSizePixel = 0
+globalAnnouncementViewportHolder.ZIndex = 267
+globalAnnouncementViewportHolder.Parent = globalAnnouncementCard
+Instance.new("UICorner", globalAnnouncementViewportHolder).CornerRadius = UDim.new(1, 0)
+
+local globalViewportStroke = Instance.new("UIStroke")
+globalViewportStroke.Thickness = 4
+globalViewportStroke.Transparency = 0.08
+globalViewportStroke.Color = Color3.fromRGB(255, 214, 79)
+globalViewportStroke.Parent = globalAnnouncementViewportHolder
+
+local globalAnnouncementViewport = Instance.new("ViewportFrame")
+globalAnnouncementViewport.Name = "GlobalAnnouncementViewport"
+globalAnnouncementViewport.Size = UDim2.fromScale(1, 1)
+globalAnnouncementViewport.BackgroundTransparency = 1
+globalAnnouncementViewport.ImageTransparency = 1
+globalAnnouncementViewport.ZIndex = 268
+globalAnnouncementViewport.Parent = globalAnnouncementViewportHolder
+
+local globalBadge = Instance.new("TextLabel")
+globalBadge.Name = "Badge"
+globalBadge.AnchorPoint = Vector2.new(0, 0)
+globalBadge.Position = UDim2.fromScale(0.23, 0.12)
+globalBadge.Size = UDim2.fromOffset(220, 34)
+globalBadge.BackgroundColor3 = Color3.fromRGB(255, 214, 79)
+globalBadge.BackgroundTransparency = 1
+globalBadge.BorderSizePixel = 0
+globalBadge.Font = Enum.Font.FredokaOne
+globalBadge.Text = "GLOBAL DISCOVERY"
+globalBadge.TextColor3 = Color3.fromRGB(12, 20, 33)
+globalBadge.TextSize = 18
+globalBadge.TextTransparency = 1
+globalBadge.ZIndex = 268
+globalBadge.Parent = globalAnnouncementCard
+Instance.new("UICorner", globalBadge).CornerRadius = UDim.new(1, 0)
+
+local globalTitle = Instance.new("TextLabel")
+globalTitle.Name = "Title"
+globalTitle.AnchorPoint = Vector2.new(0, 0)
+globalTitle.Position = UDim2.fromScale(0.23, 0.3)
+globalTitle.Size = UDim2.fromOffset(650, 60)
+globalTitle.BackgroundTransparency = 1
+globalTitle.Font = Enum.Font.FredokaOne
+globalTitle.Text = "PLAYER JUST FOUND OG STRAWBERRY ELEPHANT"
+globalTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+globalTitle.TextSize = 34
+globalTitle.TextXAlignment = Enum.TextXAlignment.Left
+globalTitle.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+globalTitle.TextStrokeTransparency = 0.3
+globalTitle.TextTransparency = 1
+globalTitle.ZIndex = 268
+globalTitle.Parent = globalAnnouncementCard
+
+local globalRarity = Instance.new("TextLabel")
+globalRarity.Name = "Rarity"
+globalRarity.AnchorPoint = Vector2.new(0, 0)
+globalRarity.Position = UDim2.fromScale(0.23, 0.58)
+globalRarity.Size = UDim2.fromOffset(360, 32)
+globalRarity.BackgroundTransparency = 1
+globalRarity.Font = Enum.Font.FredokaOne
+globalRarity.Text = "OG BRAINROT FOUND"
+globalRarity.TextColor3 = Color3.fromRGB(0, 255, 221)
+globalRarity.TextSize = 20
+globalRarity.TextXAlignment = Enum.TextXAlignment.Left
+globalRarity.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+globalRarity.TextStrokeTransparency = 0.45
+globalRarity.TextTransparency = 1
+globalRarity.ZIndex = 268
+globalRarity.Parent = globalAnnouncementCard
+
+local globalFinder = Instance.new("TextLabel")
+globalFinder.Name = "Finder"
+globalFinder.AnchorPoint = Vector2.new(0, 0)
+globalFinder.Position = UDim2.fromScale(0.23, 0.3)
+globalFinder.Size = UDim2.fromOffset(660, 60)
+globalFinder.BackgroundTransparency = 1
+globalFinder.Font = Enum.Font.SourceSansBold
+globalFinder.Text = "PLAYER JUST FOUND OG STRAWBERRY ELEPHANT"
+globalFinder.TextColor3 = Color3.fromRGB(255, 244, 186)
+globalFinder.TextSize = 34
+globalFinder.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+globalFinder.TextStrokeTransparency = 0.5
+globalFinder.TextTransparency = 1
+globalFinder.ZIndex = 268
+globalFinder.Parent = globalAnnouncementCard
+globalFinder.TextXAlignment = Enum.TextXAlignment.Left
+
+local globalSubText = Instance.new("TextLabel")
+globalSubText.Name = "SubText"
+globalSubText.AnchorPoint = Vector2.new(0, 0)
+globalSubText.Position = UDim2.fromScale(0.23, 0.72)
+globalSubText.Size = UDim2.fromOffset(520, 40)
+globalSubText.BackgroundTransparency = 1
+globalSubText.Font = Enum.Font.GothamMedium
+globalSubText.Text = "You can still find it too!"
+globalSubText.TextWrapped = true
+globalSubText.TextColor3 = Color3.fromRGB(225, 236, 255)
+globalSubText.TextSize = 20
+globalSubText.TextTransparency = 1
+globalSubText.ZIndex = 268
+globalSubText.Parent = globalAnnouncementCard
+globalSubText.TextXAlignment = Enum.TextXAlignment.Left
+
 local notificationQueue = {}
 local isShowingNow = false
 local activeNotifyRarity = ""
+local globalAnnouncementQueue = {}
+local isGlobalAnnouncementShowing = false
+
+local function getAnnouncementDisplayName(brainrotName, rarity)
+	if (rarity or "") == "OG" and brainrotName == "Strawberry Elephant" then
+		return "OG Brainrot Strawberry Elephant"
+	end
+
+	return brainrotName or "Strawberry Elephant"
+end
 
 
 local function createViewport(model, parent, isCollected)
@@ -269,16 +483,24 @@ local function createViewport(model, parent, isCollected)
 
 	local cf, size = clone:GetBoundingBox()
 	local isNotify = (parent == notifyViewport)
-	local absSize = viewport.AbsoluteSize
-	local aspect = (absSize.X > 0 and absSize.Y > 0) and (absSize.X / absSize.Y) or (isNotify and 1 or 1.55)
-	local verticalHalfFov = math.rad(camera.FieldOfView * 0.5)
-	local horizontalHalfFov = math.atan(math.tan(verticalHalfFov) * aspect)
-	local fitHalfFov = math.min(verticalHalfFov, horizontalHalfFov)
-	local radius = math.max(size.Magnitude * 0.5, 0.1)
-	local distance = (radius / math.sin(fitHalfFov)) * (isNotify and 1.08 or 1.08)
-	local lookDirection = isNotify and Vector3.new(0, 0, 1) or Vector3.new(1, 0.48, 1).Unit
-	local cameraPosition = cf.Position + (lookDirection * distance)
-	camera.CFrame = CFrame.lookAt(cameraPosition, cf.Position)
+	local isGlobalAnnouncement = (parent == globalAnnouncementViewport)
+	if isGlobalAnnouncement then
+		camera.CFrame = CFrame.lookAt(
+			cf.Position + Vector3.new(size.X * 0.42, size.Y * 0.12, size.Z * 1.22),
+			cf.Position
+		)
+	else
+		local absSize = viewport.AbsoluteSize
+		local aspect = (absSize.X > 0 and absSize.Y > 0) and (absSize.X / absSize.Y) or (isNotify and 1 or 1.55)
+		local verticalHalfFov = math.rad(camera.FieldOfView * 0.5)
+		local horizontalHalfFov = math.atan(math.tan(verticalHalfFov) * aspect)
+		local fitHalfFov = math.min(verticalHalfFov, horizontalHalfFov)
+		local radius = math.max(size.Magnitude * 0.5, 0.1)
+		local distance = (radius / math.sin(fitHalfFov)) * 1.08
+		local lookDirection = isNotify and Vector3.new(0, 0, 1) or Vector3.new(1, 0.48, 1).Unit
+		local cameraPosition = cf.Position + (lookDirection * distance)
+		camera.CFrame = CFrame.lookAt(cameraPosition, cf.Position)
+	end
 
 	if not isCollected then
 		for _, item in clone:GetDescendants() do
@@ -296,7 +518,8 @@ local function createViewport(model, parent, isCollected)
 			end
 		end
 	else
-		spinningModels[viewport] = {Clone = clone, Center = cf.Position, Dist = distance, IsNotify = isNotify}
+		local spinDistance = (camera.CFrame.Position - cf.Position).Magnitude
+		spinningModels[viewport] = {Clone = clone, Center = cf.Position, Dist = spinDistance, IsNotify = (isNotify or isGlobalAnnouncement)}
 	end
 	return viewport
 end
@@ -351,11 +574,112 @@ local function showCollectionEffect(name, rarity)
 	isShowingNow = false 
 end
 
+local function showGlobalDiscoveryEffect(finderName, brainrotName, rarity)
+	isGlobalAnnouncementShowing = true
+	globalAnnouncementOverlay.Visible = true
+	globalAnnouncementCard.Visible = true
+
+	local announcementName = "OG STRAWBERRY ELEPHANT"
+	globalBadge.Text = "GLOBAL DISCOVERY"
+	globalRarity.Text = "OG BRAINROT FOUND"
+	globalFinder.Text = string.upper(tostring(finderName or "Someone") .. " JUST FOUND " .. announcementName)
+	globalSubText.Text = "You can still find it too!"
+
+	globalAnnouncementOverlay.BackgroundTransparency = 1
+	overlayGlow.ImageTransparency = 1
+	topBeam.BackgroundTransparency = 1
+	bottomBeam.BackgroundTransparency = 1
+	globalAnnouncementCard.BackgroundTransparency = 1
+	globalCardStroke.Transparency = 1
+	globalCardStroke.Thickness = 3
+	globalBadge.BackgroundTransparency = 1
+	globalBadge.TextTransparency = 1
+	globalTitle.TextTransparency = 1
+	globalRarity.TextTransparency = 1
+	globalFinder.TextTransparency = 1
+	globalSubText.TextTransparency = 1
+	globalAnnouncementViewport.ImageTransparency = 1
+	globalAnnouncementCard.Size = UDim2.fromOffset(900, 190)
+	globalAnnouncementCard.Position = UDim2.fromScale(0.5, 0.12)
+	globalAnnouncementViewportHolder.Size = UDim2.fromOffset(110, 110)
+	globalShine.Position = UDim2.fromScale(-0.2, 0.5)
+	globalShine.BackgroundTransparency = 1
+
+	local modelTemplate = BrainrotStorage:FindFirstChild(brainrotName or "")
+	if modelTemplate then
+		createViewport(modelTemplate, globalAnnouncementViewport, true)
+	end
+
+	TweenService:Create(globalAnnouncementOverlay, TweenInfo.new(0.3), {BackgroundTransparency = 0.22}):Play()
+	TweenService:Create(overlayGlow, TweenInfo.new(0.35), {ImageTransparency = 0.5}):Play()
+	TweenService:Create(topBeam, TweenInfo.new(0.35), {BackgroundTransparency = 0.12}):Play()
+	TweenService:Create(bottomBeam, TweenInfo.new(0.35), {BackgroundTransparency = 0.12}):Play()
+	TweenService:Create(globalAnnouncementCard, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		BackgroundTransparency = 0.12,
+		Size = UDim2.fromOffset(980, 220),
+		Position = UDim2.fromScale(0.5, 0.14),
+	}):Play()
+	TweenService:Create(globalCardStroke, TweenInfo.new(0.35), {Transparency = 0.05}):Play()
+	TweenService:Create(globalBadge, TweenInfo.new(0.35), {BackgroundTransparency = 0.02, TextTransparency = 0}):Play()
+	TweenService:Create(globalRarity, TweenInfo.new(0.35), {TextTransparency = 0}):Play()
+	TweenService:Create(globalFinder, TweenInfo.new(0.35), {TextTransparency = 0}):Play()
+	TweenService:Create(globalSubText, TweenInfo.new(0.35), {TextTransparency = 0}):Play()
+	TweenService:Create(globalAnnouncementViewport, TweenInfo.new(0.35), {ImageTransparency = 0}):Play()
+	TweenService:Create(globalAnnouncementViewportHolder, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Size = UDim2.fromOffset(120, 120)
+	}):Play()
+	TweenService:Create(globalShine, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Position = UDim2.fromScale(1.15, 0.5),
+		BackgroundTransparency = 0.55,
+	}):Play()
+
+	local pulseTween = TweenService:Create(globalCardStroke, TweenInfo.new(0.55, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, 3, true), {
+		Thickness = 7
+	})
+	pulseTween:Play()
+
+	task.wait(10)
+
+	TweenService:Create(globalAnnouncementOverlay, TweenInfo.new(0.35), {BackgroundTransparency = 1}):Play()
+	TweenService:Create(overlayGlow, TweenInfo.new(0.35), {ImageTransparency = 1}):Play()
+	TweenService:Create(topBeam, TweenInfo.new(0.35), {BackgroundTransparency = 1}):Play()
+	TweenService:Create(bottomBeam, TweenInfo.new(0.35), {BackgroundTransparency = 1}):Play()
+	TweenService:Create(globalAnnouncementCard, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+		BackgroundTransparency = 1,
+		Size = UDim2.fromOffset(930, 200),
+		Position = UDim2.fromScale(0.5, 0.11),
+	}):Play()
+	TweenService:Create(globalCardStroke, TweenInfo.new(0.35), {Transparency = 1}):Play()
+	TweenService:Create(globalBadge, TweenInfo.new(0.25), {BackgroundTransparency = 1, TextTransparency = 1}):Play()
+	TweenService:Create(globalRarity, TweenInfo.new(0.25), {TextTransparency = 1}):Play()
+	TweenService:Create(globalFinder, TweenInfo.new(0.25), {TextTransparency = 1}):Play()
+	TweenService:Create(globalSubText, TweenInfo.new(0.25), {TextTransparency = 1}):Play()
+	TweenService:Create(globalAnnouncementViewport, TweenInfo.new(0.25), {ImageTransparency = 1}):Play()
+
+	task.wait(0.4)
+
+	spinningModels[globalAnnouncementViewport] = nil
+	globalAnnouncementViewport:ClearAllChildren()
+	globalAnnouncementCard.Visible = false
+	globalAnnouncementOverlay.Visible = false
+	isGlobalAnnouncementShowing = false
+end
+
 task.spawn(function()
 	while true do
 		if #notificationQueue > 0 and not isShowingNow then
 			local nextNotify = table.remove(notificationQueue, 1)
 			showCollectionEffect(nextNotify.name, nextNotify.rarity)
+		end
+		task.wait(0.1)
+	end
+end)
+
+task.spawn(function()
+	while true do
+		if #globalAnnouncementQueue > 0 and not isGlobalAnnouncementShowing then
+			local nextAnnouncement = table.remove(globalAnnouncementQueue, 1)
+			showGlobalDiscoveryEffect(nextAnnouncement.finderName, nextAnnouncement.brainrotName, nextAnnouncement.rarity)
 		end
 		task.wait(0.1)
 	end
@@ -1331,6 +1655,14 @@ BrainrotCollectedEvent.OnClientEvent:Connect(function(name)
 	end)
 end)
 
+OgBrainrotDiscoveryAnnouncement.OnClientEvent:Connect(function(finderName, brainrotName, rarity)
+	table.insert(globalAnnouncementQueue, {
+		finderName = tostring(finderName or "Someone"),
+		brainrotName = tostring(brainrotName or "Strawberry Elephant"),
+		rarity = tostring(rarity or "OG"),
+	})
+end)
+
 -- === EVENT ROBUX PROGRESS BAR ===
 local robuxContainer = Instance.new("Frame")
 robuxContainer.Name = "RobuxProgressContainer"
@@ -1354,7 +1686,7 @@ Instance.new("UICorner", robuxFill).CornerRadius = UDim.new(0.5, 0)
 local robuxLabel = Instance.new("TextLabel", robuxContainer)
 robuxLabel.Size = UDim2.fromScale(1, 1)
 robuxLabel.BackgroundTransparency = 1
-robuxLabel.Text = "COIN RAIN PROGRESS: 0 / 1000 R$"
+robuxLabel.Text = "COIN RAIN PROGRESS: 0 / 1000 " .. utf8.char(0xE002)
 robuxLabel.TextColor3 = Color3.new(1, 1, 1)
 robuxLabel.Font = Enum.Font.SourceSansBold
 robuxLabel.TextSize = 20
@@ -1367,6 +1699,6 @@ PoolUpdated.OnClientEvent:Connect(function(currentPool, queuedCount)
     local percentage = math.clamp(currentPool / maxPool, 0, 1)
     
     -- ZAWSZE AKTUALIZUJEMY (Zgodnie z życzeniem: "ma się pasek aktualizować ciągle")
-    robuxLabel.Text = "COIN RAIN PROGRESS: " .. currentPool .. " / " .. maxPool .. " R$"
+    robuxLabel.Text = "COIN RAIN PROGRESS: " .. currentPool .. " / " .. maxPool .. " " .. utf8.char(0xE002)
     TweenService:Create(robuxFill, TweenInfo.new(0.3), {Size = UDim2.fromScale(percentage, 1)}):Play()
 end)

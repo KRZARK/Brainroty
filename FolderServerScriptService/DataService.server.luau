@@ -21,7 +21,9 @@ local DEFAULT_DATA = {
 	LastClaimedDate = "",
 	HasBoughtStarterPack = false,
 	FreeFartTrolls = 0,
-	StarterPackExpiry = 0
+	StarterPackExpiry = 0,
+	HasPurpleTrail = false,
+	LatestUnlockedTrail = "",
 }
 
 -- Funkcja pomocnicza do bezpiecznego zapisu
@@ -43,7 +45,9 @@ local function saveData(player)
 		LastClaimedDate = player:GetAttribute("LastClaimedDate") or "",
 		HasBoughtStarterPack = player:GetAttribute("HasBoughtStarterPack") or false,
 		FreeFartTrolls = player:GetAttribute("FreeFartTrolls") or 0,
-		StarterPackExpiry = player:GetAttribute("StarterPackExpiry") or 0
+		StarterPackExpiry = player:GetAttribute("StarterPackExpiry") or 0,
+		HasPurpleTrail = player:GetAttribute("HasPurpleTrail") or false,
+		LatestUnlockedTrail = player:GetAttribute("LatestUnlockedTrail") or "",
 	}
 	
 	local questsFolder = player:FindFirstChild("DailyQuestsFolder")
@@ -166,6 +170,8 @@ Players.PlayerAdded:Connect(function(player)
 	
 	player:SetAttribute("HasBoughtStarterPack", loadedData.HasBoughtStarterPack or false)
 	player:SetAttribute("FreeFartTrolls", loadedData.FreeFartTrolls or 0)
+	player:SetAttribute("HasPurpleTrail", loadedData.HasPurpleTrail or false)
+	player:SetAttribute("LatestUnlockedTrail", loadedData.LatestUnlockedTrail or "")
 	
 	-- Inicjowanie wygasania Starter Packa dla nowych i starych graczy bez tej wartości
 	local expiry = loadedData.StarterPackExpiry or 0
@@ -376,12 +382,8 @@ MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gameP
 		addGamePassSpend(player, gamePassId)
 		if gamePassId == GameConfig.GamePasses.VIPBundle then
 			player:SetAttribute("HasVIP", true)
-			-- Wymuszamy reset postaci żeby aktywować fizykę i Trail (lub można aplikować w locie)
-			local char = player.Character
-			if char then
-				local humanoid = char:FindFirstChild("Humanoid")
-				if humanoid then humanoid.Health = 0 end
-			end
+			player:SetAttribute("LatestUnlockedTrail", "VIP")
+			player:SetAttribute("SelectedTrail", "VIP")
 		elseif gamePassId == GameConfig.GamePasses.SpeedBoost then
 			player:SetAttribute("HasSpeedBoost", true)
 			-- Uzupełnienie statystyk bez resetu

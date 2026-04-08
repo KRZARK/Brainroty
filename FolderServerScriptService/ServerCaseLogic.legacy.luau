@@ -8,7 +8,11 @@ local GameConfig = require(ReplicatedStorage:WaitForChild("FolderReplicatedStora
 local BrainrotStorage = ReplicatedStorage:WaitForChild("BrainrotStorage")
 local BrainrotEvents = ReplicatedStorage:WaitForChild("BrainrotEvents")
 local BrainrotCollectedEvent = BrainrotEvents:WaitForChild("BrainrotCollected")
+local OgBrainrotDiscoveryAnnouncement = BrainrotEvents:FindFirstChild("OgBrainrotDiscoveryAnnouncement") or Instance.new("RemoteEvent", BrainrotEvents)
+OgBrainrotDiscoveryAnnouncement.Name = "OgBrainrotDiscoveryAnnouncement"
 local BrainrotyFolder = Workspace:WaitForChild("Brainroty")
+
+local SPECIAL_ANNOUNCEMENT_BRAINROT = "Strawberry Elephant"
 
 -- DODAJEMY FOLDER NA MONETY OD RAZU, ABY KLIENT NIE CZEKAŁ W NIESKOŃCZONOŚĆ
 local PhysicalCoinsFolder = Workspace:FindFirstChild("PhysicalCoins")
@@ -44,6 +48,14 @@ local function addRobuxSpent(player, amount)
 	if amount > 0 then
 		player:SetAttribute("RobuxSpent", (player:GetAttribute("RobuxSpent") or 0) + amount)
 	end
+end
+
+local function announceRareDiscovery(player, brainrotName, rarity)
+	if brainrotName ~= SPECIAL_ANNOUNCEMENT_BRAINROT then
+		return
+	end
+
+	OgBrainrotDiscoveryAnnouncement:FireAllClients(player.Name, brainrotName, rarity or "OG")
 end
 
 -- NOWE: Kolejkowanie
@@ -195,7 +207,7 @@ local function addToGlobalRobuxPool(player, amount)
 	end
 	
 	Sponsors[player.Name] = true -- Dla starszych systemów
-	print("[COINRAIN] " .. player.Name .. " wydał " .. amount .. " R$. Nowa pula: " .. GlobalRobuxPool)
+	print("[COINRAIN] " .. player.Name .. " wydał " .. amount .. " " .. utf8.char(0xE002) .. ". Nowa pula: " .. GlobalRobuxPool)
 
 	if GlobalRobuxPool >= GameConfig.CoinRainTriggerAmount then
 		while GlobalRobuxPool >= GameConfig.CoinRainTriggerAmount do
@@ -344,6 +356,8 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
 		if hints and hints:FindFirstChild(rarity) then
 			hints[rarity]:Destroy()
 		end
+
+		announceRareDiscovery(player, wonModel.Name, rarity)
 	end
 
 	-- Efekt otwierania skrzyni
@@ -384,6 +398,8 @@ OpenSpecificCaseEvent.Event:Connect(function(player, requestedRarity)
 		if hints and hints:FindFirstChild(rarity) then
 			hints[rarity]:Destroy()
 		end
+
+		announceRareDiscovery(player, wonModel.Name, rarity)
 	end
 
 	BrainrotCollectedEvent:FireClient(player, "PLAY_ANIM")
@@ -446,6 +462,8 @@ BrainrotCollectedEvent.OnServerEvent:Connect(function(player, brainrotName)
 	if hints and hints:FindFirstChild(rarity) then
 		hints[rarity]:Destroy()
 	end
+
+	announceRareDiscovery(player, brainrotName, rarity)
 
 	local safeAttributeName = string.gsub(brainrotName, " ", "_")
 	safeAttributeName = string.gsub(safeAttributeName, "[^%w_]", "")

@@ -10,7 +10,7 @@ local GameConfig = require(ReplicatedStorage:WaitForChild("FolderReplicatedStora
 local BrainrotEvents = ReplicatedStorage:WaitForChild("BrainrotEvents")
 local ClaimDailyRewardRF = BrainrotEvents:WaitForChild("ClaimDailyReward")
 
--- Inicjalizacja Głównego Ekranu
+-- Inicjalizacja GĹ‚Ăłwnego Ekranu
 local oldGui = PlayerGui:FindFirstChild("DailyRewardsUI")
 if oldGui then oldGui:Destroy() end
 
@@ -52,7 +52,7 @@ HudTileStyle.apply(ToggleBtn, dailyIcon, btnLabel, {
 	zIndex = 50,
 })
 
--- Ciemne tło całego ekranu (Blur logic)
+-- Ciemne tĹ‚o caĹ‚ego ekranu (Blur logic)
 local DarkBg = Instance.new("Frame")
 DarkBg.Size = UDim2.new(1,0,1,0)
 DarkBg.BackgroundColor3 = Color3.new(0,0,0)
@@ -60,17 +60,17 @@ DarkBg.BackgroundTransparency = 0.5
 DarkBg.Visible = false
 DarkBg.Parent = ScreenGui
 
--- Panel Główny Kalendarza
+-- Panel GĹ‚Ăłwny Kalendarza
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 900, 0, 675)
 MainFrame.Position = UDim2.new(0.5, -450, 0.5, -337)
-MainFrame.BackgroundTransparency = 1 -- Przezroczyste tło, bo używamy ImageLabel pod spodem
+MainFrame.BackgroundTransparency = 1 -- Przezroczyste tĹ‚o, bo uĹĽywamy ImageLabel pod spodem
 MainFrame.Visible = false
 MainFrame.Parent = ScreenGui
 Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 20)
 
--- Tło GreenStuds dla MainFrame
+-- TĹ‚o GreenStuds dla MainFrame
 local MainBg = Instance.new("ImageLabel")
 MainBg.Name = "MainBg"
 MainBg.Size = UDim2.fromScale(1, 1)
@@ -132,7 +132,21 @@ ClaimBtn.TextSize = 40
 ClaimBtn.Parent = MainFrame
 Instance.new("UICorner", ClaimBtn).CornerRadius = UDim.new(0, 12)
 
--- Tętniąca animacja
+local function getRewardDescription(reward)
+	if reward.Type == "Coin" then
+		return tostring(reward.Value) .. " Coins"
+	elseif reward.Type == "Speed" then
+		return "Speed x2 (30m)"
+	elseif reward.Type == "Jump" then
+		return "Jump x2 (30m)"
+	elseif reward.Type == "PurpleTrail" then
+		return "Purple Aura"
+	end
+
+	return "Mystery Reward"
+end
+
+-- TÄ™tniÄ…ca animacja
 local pulseTween = TweenService:Create(ClaimBtn, TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {Size = UDim2.new(0.65, 0, 0, 90), Position = UDim2.new(0.175, 0, 1, -112.5)})
 pulseTween:Play()
 
@@ -147,7 +161,7 @@ local function updateUI()
 	
 	local claimedToday = (lastClaim == todayStr)
 	
-	-- Poprawka: jeśli odebrano dzień 7 dzisiaj, streak = 1, ale chcemy by na ekranie zaznaczyło że odebrano!
+	-- Poprawka: jeĹ›li odebrano dzieĹ„ 7 dzisiaj, streak = 1, ale chcemy by na ekranie zaznaczyĹ‚o ĹĽe odebrano!
 	local displayStreak = streak
 	if claimedToday and streak == 1 then
 		displayStreak = 8
@@ -157,11 +171,11 @@ local function updateUI()
 		local reward = GameConfig.DailyRewards[i]
 		
 		local tile = Instance.new("Frame")
-		tile.BackgroundTransparency = 1 -- Przezroczyste tło dla kafelka
+		tile.BackgroundTransparency = 1 -- Przezroczyste tĹ‚o dla kafelka
 		tile.Parent = GridContainer
 		Instance.new("UICorner", tile).CornerRadius = UDim.new(0, 8)
 		
-		-- Tło GreenStuds dla kafelka
+		-- TĹ‚o GreenStuds dla kafelka
 		local TileBg = Instance.new("ImageLabel")
 		TileBg.Name = "TileBg"
 		TileBg.Size = UDim2.fromScale(1, 1)
@@ -169,13 +183,13 @@ local function updateUI()
 		TileBg.BackgroundColor3 = Color3.fromRGB(40, 70, 40) -- Fallback
 		TileBg.ZIndex = 0
 		if gs then TileBg.Image = gs:IsA("Decal") and gs.Texture or gs.Image end
-		TileBg.ImageColor3 = Color3.fromRGB(60, 100, 60) -- Ciemniejsza zieleń
+		TileBg.ImageColor3 = Color3.fromRGB(60, 100, 60) -- Ciemniejsza zieleĹ„
 		TileBg.ScaleType = Enum.ScaleType.Tile
 		TileBg.TileSize = UDim2.fromOffset(64, 64)
 		TileBg.Parent = tile
 		Instance.new("UICorner", TileBg).CornerRadius = UDim.new(0, 8)
 		
-		-- Tytuł (Day 1)
+		-- TytuĹ‚ (Day 1)
 		local title = Instance.new("TextLabel")
 		title.Size = UDim2.new(1, 0, 0, 50)
 		title.BackgroundTransparency = 1
@@ -191,7 +205,7 @@ local function updateUI()
 		desc.Size = UDim2.new(1, 0, 0, 45)
 		desc.Position = UDim2.new(0, 0, 1, -55)
 		desc.BackgroundTransparency = 1
-		local strDesc = reward.Type == "Coin" and tostring(reward.Value).." Coins" or ((reward.Type == "Speed" and "Speed x2 (30m)") or "Jump x2 (30m)")
+		local strDesc = getRewardDescription(reward)
 		desc.Text = strDesc
 		desc.TextColor3 = Color3.fromRGB(200, 200, 200)
 		desc.Font = Enum.Font.GothamBold
@@ -199,12 +213,12 @@ local function updateUI()
 		desc.ZIndex = 2
 		desc.Parent = tile
 		
-		-- Ikona środkowa
+		-- Ikona Ĺ›rodkowa
 		local iconFrame = Instance.new("ImageLabel")
 		iconFrame.Size = UDim2.new(0, 65, 0, 65)
 		iconFrame.Position = UDim2.new(0.5, -32.5, 0.5, -12)
 		iconFrame.BackgroundTransparency = 1
-		iconFrame.ZIndex = 3 -- Wyżej niż tło ikony
+		iconFrame.ZIndex = 3 -- WyĹĽej niĹĽ tĹ‚o ikony
 		iconFrame.Parent = tile
 		
 		local rsIcon = ReplicatedStorage:FindFirstChild(reward.Icon)
@@ -212,11 +226,32 @@ local function updateUI()
 			iconFrame.Image = rsIcon.Texture
 		elseif rsIcon and rsIcon:IsA("ImageLabel") then
 			iconFrame.Image = rsIcon.Image
+		elseif reward.Type == "PurpleTrail" then
+			iconFrame.Image = "rbxassetid://13193264908"
 		else
 			iconFrame.Image = "rbxassetid://13193264908" -- fallback
 		end
+
+		if reward.Type == "PurpleTrail" then
+			iconFrame.ImageColor3 = Color3.fromRGB(128, 48, 205)
+			iconFrame.ImageTransparency = 0
+			iconFrame.Size = UDim2.new(0, 72, 0, 72)
+			iconFrame.Position = UDim2.new(0.5, -36, 0.5, -16)
+
+			local auraGlow = Instance.new("ImageLabel")
+			auraGlow.Name = "AuraGlow"
+			auraGlow.Size = UDim2.fromOffset(96, 96)
+			auraGlow.Position = UDim2.new(0.5, 0, 0.5, -12)
+			auraGlow.AnchorPoint = Vector2.new(0.5, 0.5)
+			auraGlow.BackgroundTransparency = 1
+			auraGlow.Image = "rbxassetid://12030614838"
+			auraGlow.ImageColor3 = Color3.fromRGB(98, 28, 176)
+			auraGlow.ImageTransparency = 0.28
+			auraGlow.ZIndex = 2
+			auraGlow.Parent = tile
+		end
 		
-		-- LOGIKA STANÓW
+		-- LOGIKA STANĂ“W
 		local isClaimed = (i < displayStreak)
 		local isToday = (i == displayStreak and not claimedToday)
 		local isLocked = (i > displayStreak)
@@ -253,27 +288,27 @@ local function updateUI()
 			stroke.Color = Color3.fromRGB(255, 215, 0)
 			stroke.Parent = tile
 		else
-			-- Przyszłe dni (zamiast Locked)
+			-- PrzyszĹ‚e dni (zamiast Locked)
 			TileBg.ImageColor3 = Color3.fromRGB(60, 100, 60) -- Standardowy zielony
 		end
 
-		-- WYMUSZENIE KOLORU I WIDOCZNOŚCI DLA SPEED/JUMP
+		-- WYMUSZENIE KOLORU I WIDOCZNOĹšCI DLA SPEED/JUMP
 		if reward.Type == "Speed" or reward.Type == "Jump" then
-			-- Przesuwamy wyżej żeby nie zasłaniał opisu
+			-- Przesuwamy wyĹĽej ĹĽeby nie zasĹ‚aniaĹ‚ opisu
 			iconFrame.Size = UDim2.new(0, 85, 0, 85)
 			iconFrame.Position = UDim2.new(0.5, -42.5, 0.5, -50)
 			
-			-- Skoro ikony są czarne, dodajemy pod nie jaskrawą czerwoną tarczę (koło)
+			-- Skoro ikony sÄ… czarne, dodajemy pod nie jaskrawÄ… czerwonÄ… tarczÄ™ (koĹ‚o)
 			local glow = Instance.new("Frame")
 			glow.Name = "IconGlow"
 			glow.Size = UDim2.new(0, 85, 0, 85)
 			glow.Position = iconFrame.Position
-			glow.BackgroundColor3 = Color3.fromRGB(220, 0, 0) -- JASKRAWA CZERWIEŃ
+			glow.BackgroundColor3 = Color3.fromRGB(220, 0, 0) -- JASKRAWA CZERWIEĹ
 			glow.ZIndex = 2
 			glow.Parent = tile
-			Instance.new("UICorner", glow).CornerRadius = UDim.new(1, 0) -- Robimy idealne koło
+			Instance.new("UICorner", glow).CornerRadius = UDim.new(1, 0) -- Robimy idealne koĹ‚o
 			
-			-- Sylwetkę ludzika wymuszamy na czarno żeby biła po oczach na czerwonym tle
+			-- SylwetkÄ™ ludzika wymuszamy na czarno ĹĽeby biĹ‚a po oczach na czerwonym tle
 			iconFrame.ImageColor3 = Color3.new(0, 0, 0)
 			iconFrame.ImageTransparency = isClaimed and 0.5 or 0
 			if isClaimed then glow.BackgroundTransparency = 0.5 end
@@ -337,7 +372,7 @@ ClaimBtn.MouseButton1Click:Connect(function()
 	local success, resultStreak, resultReward = ClaimDailyRewardRF:InvokeServer()
 	
 	if success then
-		-- Konfetti (dźwięk lokalny)
+		-- Konfetti (dĹşwiÄ™k lokalny)
 		local soundTemplate = ReplicatedStorage:WaitForChild("Claimed")
 		if soundTemplate then
 			local sound = soundTemplate:Clone()

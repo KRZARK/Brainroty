@@ -31,6 +31,10 @@ ClaimDailyRewardRF.OnServerInvoke = function(player)
 		player:SetAttribute("SpeedBoostEnds", os.time() + 1800) -- 30 min z zabezpieczeniem przed śmiercią
 	elseif reward.Type == "Jump" then
 		player:SetAttribute("JumpBoostEnds", os.time() + 1800) -- 30 min z zabezpieczeniem przed śmiercią
+	elseif reward.Type == "PurpleTrail" then
+		player:SetAttribute("HasPurpleTrail", true)
+		player:SetAttribute("LatestUnlockedTrail", "PURPLE")
+		player:SetAttribute("SelectedTrail", "PURPLE")
 	end
 	
 	-- Zapisujemy postęp

@@ -305,12 +305,36 @@ btnStroke.Color = Color3.new(0, 0, 0)
 
 -- === 2. LOGIKA ===
 local function getRebirthStats(level)
-    local stats = {Speed = "x1.0", Coins = "x1.0", Pets = "Brak", Aura = "Brak"}
-    if level == 1 then stats.Speed = "x1.25"; stats.Coins = "x1.25"; stats.Pets = "Common, Rare"; stats.Aura = "Zielona"
-    elseif level == 2 then stats.Speed = "x1.5"; stats.Coins = "x1.5"; stats.Pets = "Epic, Legendary"; stats.Aura = "Złota"
-    elseif level >= 3 then stats.Speed = "x2.0"; stats.Coins = "x2.0"; stats.Pets = "Mythic, Brainrot God"; stats.Aura = "Czerwona" end
-    if level == 4 then stats.Pets = "Secret"; stats.Aura = "Tęczowa" end
-    if level >= 5 then stats.Pets = "OG"; stats.Aura = "Tęczowa MAX" end
+    local stats = {
+        Speed = "x1.0",
+        Coins = "x1.0",
+        Pets = GameConfig.GetPetUnlocksLabelForRebirthLevel(level),
+        Aura = "Brak",
+    }
+
+    if level == 1 then
+        stats.Speed = "x1.25"
+        stats.Coins = "x1.25"
+        stats.Aura = "Zielona"
+    elseif level == 2 then
+        stats.Speed = "x1.5"
+        stats.Coins = "x1.5"
+        stats.Aura = "Złota"
+    elseif level >= 3 then
+        stats.Speed = "x2.0"
+        stats.Coins = "x2.0"
+        stats.Aura = "Czerwona"
+    end
+
+    if level == 4 then
+        stats.Aura = "Tęczowa"
+    end
+
+    if level >= 5 then
+        stats.Pets = GameConfig.GetPetUnlocksLabelForRebirthLevel(5)
+        stats.Aura = "Tęczowa MAX"
+    end
+
     return stats
 end
 

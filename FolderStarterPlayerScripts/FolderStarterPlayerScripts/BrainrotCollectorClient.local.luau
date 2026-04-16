@@ -1116,11 +1116,10 @@ local function refreshIndex(preserveScrollPosition)
 		local isCollected = collectedBrainrots[wzorzec.Name]
 		local accentColor = getCardAccentColor(rarity)
 		local tileColor = getCardTileColor(rarity)
-		local rarityConfig = GameConfig.Rarities[rarity] or {}
 		local leaderstats = player:FindFirstChild("leaderstats")
 		local rebirths = leaderstats and leaderstats:FindFirstChild("Rebirths")
 		local userRebirths = (rebirths and rebirths.Value) or 0
-		local reqLevel = rarityConfig.PetReqRebirth or 1
+		local reqLevel = GameConfig.GetPetRequirementForRarity(rarity)
 		local canEquipPet = userRebirths >= reqLevel
 		local isEquipped = isCollected and (getActivePetName() == wzorzec.Name)
 
@@ -1255,13 +1254,14 @@ local function refreshIndex(preserveScrollPosition)
 		nameStroke.Parent = nameLabel
 
 		if isCollected then
+			local lockedEquipText = reqLevel <= 0 and "EQUIP" or ("REBIRTH " .. reqLevel .. " REQUIRED")
 			local equipBtn = Instance.new("TextButton")
 			equipBtn.Name = "EquipButton"
 			equipBtn.Size = UDim2.new(1, 0, 0, 34)
 			equipBtn.Position = UDim2.new(0.5, 0, 1, 0)
 			equipBtn.AnchorPoint = Vector2.new(0.5, 1)
 			equipBtn.BackgroundColor3 = isEquipped and Color3.fromRGB(53, 156, 96) or (canEquipPet and Color3.fromRGB(57, 117, 194) or Color3.fromRGB(96, 101, 111))
-			equipBtn.Text = isEquipped and "EQUIPPED" or (canEquipPet and "EQUIP" or "NEED MORE REBIRTHS")
+			equipBtn.Text = isEquipped and "EQUIPPED" or (canEquipPet and "EQUIP" or lockedEquipText)
 			equipBtn.TextColor3 = Color3.new(1, 1, 1)
 			equipBtn.Font = Enum.Font.LuckiestGuy
 			equipBtn.TextScaled = true

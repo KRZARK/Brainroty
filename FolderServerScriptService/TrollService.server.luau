@@ -471,9 +471,9 @@ executeTroll = function(player, trollType)
 	
 	-- Ustawiamy OCHRONĘ po tym udanym trollu na konkretny slot (Fart uniezależniony od reszty)
 	if trollType == "Fart" then
-		ProtectionsFart[targetPlayer.UserId] = os.time() + 60
+		ProtectionsFart[targetPlayer.UserId] = os.time() + 15
 	else
-		ProtectionsMajor[targetPlayer.UserId] = os.time() + 600
+		ProtectionsMajor[targetPlayer.UserId] = os.time() + 300
 	end
 	
 	-- Ogłoszenie trolla wszystkim na serwerze!

@@ -2,7 +2,7 @@ local GameConfig = {}
 
 -- Ceny i Wymagania (Rzadkości)
 GameConfig.Rarities = {
-	["Common"] = { Price = 50, PetReqRebirth = 1, Color = Color3.fromRGB(163, 162, 165), Order = 1 },
+	["Common"] = { Price = 50, PetReqRebirth = 0, Color = Color3.fromRGB(163, 162, 165), Order = 1 },
 	["Rare"] = { Price = 150, PetReqRebirth = 1, Color = Color3.fromRGB(64, 255, 71), Order = 2 },
 	["Epic"] = { Price = 400, PetReqRebirth = 2, Color = Color3.fromRGB(180, 71, 255), Order = 3 },
 	["Legendary"] = { Price = 800, PetReqRebirth = 2, Color = Color3.fromRGB(255, 145, 0), Order = 4 },
@@ -94,5 +94,44 @@ GameConfig.StarterPack = {
 	FreeFartTrolls = 3,
 	CrateReward = "Secret"
 }
+
+function GameConfig.GetPetRequirementForRarity(rarityName)
+	local rarityConfig = rarityName and GameConfig.Rarities[rarityName]
+	if rarityConfig and rarityConfig.PetReqRebirth ~= nil then
+		return rarityConfig.PetReqRebirth
+	end
+
+	return 0
+end
+
+function GameConfig.GetPetUnlocksForRebirthLevel(rebirthLevel)
+	local unlocks = {}
+	local targetLevel = tonumber(rebirthLevel) or 0
+
+	for rarityName, rarityConfig in pairs(GameConfig.Rarities) do
+		if GameConfig.GetPetRequirementForRarity(rarityName) == targetLevel then
+			table.insert(unlocks, {
+				Name = rarityName,
+				Order = rarityConfig.Order or math.huge,
+			})
+		end
+	end
+
+	table.sort(unlocks, function(a, b)
+		return a.Order < b.Order
+	end)
+
+	local names = {}
+	for _, unlockData in ipairs(unlocks) do
+		table.insert(names, unlockData.Name)
+	end
+
+	return names
+end
+
+function GameConfig.GetPetUnlocksLabelForRebirthLevel(rebirthLevel)
+	local unlocks = GameConfig.GetPetUnlocksForRebirthLevel(rebirthLevel)
+	return #unlocks > 0 and table.concat(unlocks, ", ") or "Brak"
+end
 
 return GameConfig

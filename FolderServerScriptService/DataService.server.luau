@@ -26,6 +26,8 @@ local DEFAULT_DATA = {
 	LatestUnlockedTrail = "",
 	LatestUnlockedSpeedSetting = "",
 	LatestUnlockedJumpSetting = "",
+	SpeedBoostEnds = 0,
+	JumpBoostEnds = 0,
 }
 
 -- Funkcja pomocnicza do bezpiecznego zapisu
@@ -52,6 +54,8 @@ local function saveData(player)
 		LatestUnlockedTrail = player:GetAttribute("LatestUnlockedTrail") or "",
 		LatestUnlockedSpeedSetting = player:GetAttribute("LatestUnlockedSpeedSetting") or "",
 		LatestUnlockedJumpSetting = player:GetAttribute("LatestUnlockedJumpSetting") or "",
+		SpeedBoostEnds = player:GetAttribute("SpeedBoostEnds") or 0,
+		JumpBoostEnds = player:GetAttribute("JumpBoostEnds") or 0,
 	}
 	
 	local questsFolder = player:FindFirstChild("DailyQuestsFolder")
@@ -178,6 +182,8 @@ Players.PlayerAdded:Connect(function(player)
 	player:SetAttribute("LatestUnlockedTrail", loadedData.LatestUnlockedTrail or "")
 	player:SetAttribute("LatestUnlockedSpeedSetting", loadedData.LatestUnlockedSpeedSetting or "")
 	player:SetAttribute("LatestUnlockedJumpSetting", loadedData.LatestUnlockedJumpSetting or "")
+	player:SetAttribute("SpeedBoostEnds", loadedData.SpeedBoostEnds or 0)
+	player:SetAttribute("JumpBoostEnds", loadedData.JumpBoostEnds or 0)
 	
 	-- Inicjowanie wygasania Starter Packa dla nowych i starych graczy bez tej wartości
 	local expiry = loadedData.StarterPackExpiry or 0

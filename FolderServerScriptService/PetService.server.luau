@@ -79,10 +79,7 @@ end
 TogglePetEvent.OnServerInvoke = function(player, petName)
 	local leaderstats = player:FindFirstChild("leaderstats")
 	local rebirths = leaderstats and leaderstats:FindFirstChild("Rebirths")
-
-	if not rebirths or rebirths.Value < 1 then
-		return false, "Requires Rebirth 1+", nil
-	end
+	local userRebirths = rebirths and rebirths.Value or 0
 
 	local collection = player:FindFirstChild("BrainrotCollection")
 	if not collection or not collection:FindFirstChild(petName) then
@@ -93,9 +90,9 @@ TogglePetEvent.OnServerInvoke = function(player, petName)
 	if not template then return false, "Model not found", nil end
 
 	local rarity = template:GetAttribute("Rarity") or "Common"
-	local reqLevel = GameConfig.Rarities[rarity] and GameConfig.Rarities[rarity].PetReqRebirth or 1
+	local reqLevel = GameConfig.GetPetRequirementForRarity(rarity)
 
-	if rebirths.Value < reqLevel then
+	if userRebirths < reqLevel then
 		return false, "Requires Rebirth " .. reqLevel, reqLevel
 	end
 

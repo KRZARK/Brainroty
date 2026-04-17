@@ -14,6 +14,11 @@ local ClaimQuestReward = BrainrotEvents:FindFirstChild("ClaimQuestReward") or In
 ClaimQuestReward.Name = "ClaimQuestReward"
 ClaimQuestReward.Parent = BrainrotEvents
 
+local function bumpQuestAutosaveVersion(player)
+	local currentVersion = player:GetAttribute("QuestAutosaveVersion") or 0
+	player:SetAttribute("QuestAutosaveVersion", currentVersion + 1)
+end
+
 local function addQuestProgress(player, questID, amount)
 	if type(amount) ~= "number" or amount <= 0 or amount > 5000 then return end
 	
@@ -28,7 +33,11 @@ local function addQuestProgress(player, questID, amount)
 		end
 		
 		if questVal.Value < req then
-			questVal.Value = math.min(questVal.Value + amount, req)
+			local nextValue = math.min(questVal.Value + amount, req)
+			if nextValue ~= questVal.Value then
+				questVal.Value = nextValue
+				bumpQuestAutosaveVersion(player)
+			end
 		end
 	end
 end
@@ -64,6 +73,7 @@ ClaimQuestReward.OnServerEvent:Connect(function(player, questID)
 		if questVal.Value >= req then
 			questVal:SetAttribute("Claimed", true)
 			stats.Coins.Value += reward
+			bumpQuestAutosaveVersion(player)
 		end
 	end
 end)

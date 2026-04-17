@@ -5,9 +5,15 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local MarketplaceService = game:GetService("MarketplaceService")
 
 local GameConfig = require(ReplicatedStorage:WaitForChild("FolderReplicatedStorage"):WaitForChild("GameConfig"))
+local BrainrotEvents = ReplicatedStorage:WaitForChild("BrainrotEvents")
+local openDailyRewardsPanelEvent = BrainrotEvents:FindFirstChild("OpenDailyRewardsPanel") or Instance.new("RemoteEvent")
+openDailyRewardsPanelEvent.Name = "OpenDailyRewardsPanel"
+openDailyRewardsPanelEvent.Parent = BrainrotEvents
 
 -- 1. Inicjalizacja DataStore
 local BrainrotData = DataStoreService:GetDataStore("BrainrotData_V1")
+local QUEST_AUTOSAVE_INTERVAL = 60
+local lastQuestAutosaveVersionByUserId = {}
 
 -- Ustawienia domyślne dla nowych graczy
 local DEFAULT_DATA = {
@@ -19,6 +25,7 @@ local DEFAULT_DATA = {
 	DailyQuests = {}, -- Aktualne zadania i postęp
 	LoginStreak = 1,
 	LastClaimedDate = "",
+	LastDailyRewardPromptDate = "",
 	HasBoughtStarterPack = false,
 	FreeFartTrolls = 0,
 	StarterPackExpiry = 0,
@@ -36,7 +43,9 @@ local function saveData(player)
 	local collection = player:FindFirstChild("BrainrotCollection")
 	local boughtHints = player:FindFirstChild("BoughtHints") -- NOWE
 	
-	if not leaderstats or not collection or not boughtHints then return end
+	if not leaderstats or not collection or not boughtHints then
+		return false
+	end
 	
 	local dataToSave = {
 		Coins = leaderstats.Coins.Value,
@@ -47,6 +56,7 @@ local function saveData(player)
 		DailyQuests = {},
 		LoginStreak = player:GetAttribute("LoginStreak") or 1,
 		LastClaimedDate = player:GetAttribute("LastClaimedDate") or "",
+		LastDailyRewardPromptDate = player:GetAttribute("LastDailyRewardPromptDate") or "",
 		HasBoughtStarterPack = player:GetAttribute("HasBoughtStarterPack") or false,
 		FreeFartTrolls = player:GetAttribute("FreeFartTrolls") or 0,
 		StarterPackExpiry = player:GetAttribute("StarterPackExpiry") or 0,
@@ -79,8 +89,10 @@ local function saveData(player)
 	
 	if success then
 		print("Successfully saved data for " .. player.Name)
+		return true
 	else
 		warn("Failed to save data for " .. player.Name .. ": " .. err)
+		return false
 	end
 end
 
@@ -175,6 +187,24 @@ Players.PlayerAdded:Connect(function(player)
 	
 	player:SetAttribute("LoginStreak", streak)
 	player:SetAttribute("LastClaimedDate", lastClaim)
+	local lastDailyRewardPromptDate = loadedData.LastDailyRewardPromptDate or ""
+	local shouldScheduleDailyRewardPrompt = lastDailyRewardPromptDate ~= todayStr and lastClaim ~= todayStr
+	if lastDailyRewardPromptDate ~= todayStr then
+		player:SetAttribute("LastDailyRewardPromptDate", todayStr)
+	else
+		player:SetAttribute("LastDailyRewardPromptDate", lastDailyRewardPromptDate)
+	end
+	if shouldScheduleDailyRewardPrompt then
+		task.delay(180, function()
+			if player.Parent ~= Players then
+				return
+			end
+			if (player:GetAttribute("LastClaimedDate") or "") == todayStr then
+				return
+			end
+			openDailyRewardsPanelEvent:FireClient(player)
+		end)
+	end
 	
 	player:SetAttribute("HasBoughtStarterPack", loadedData.HasBoughtStarterPack or false)
 	player:SetAttribute("FreeFartTrolls", loadedData.FreeFartTrolls or 0)
@@ -184,6 +214,8 @@ Players.PlayerAdded:Connect(function(player)
 	player:SetAttribute("LatestUnlockedJumpSetting", loadedData.LatestUnlockedJumpSetting or "")
 	player:SetAttribute("SpeedBoostEnds", loadedData.SpeedBoostEnds or 0)
 	player:SetAttribute("JumpBoostEnds", loadedData.JumpBoostEnds or 0)
+	player:SetAttribute("QuestAutosaveVersion", 0)
+	lastQuestAutosaveVersionByUserId[player.UserId] = 0
 	
 	-- Inicjowanie wygasania Starter Packa dla nowych i starych graczy bez tej wartości
 	local expiry = loadedData.StarterPackExpiry or 0
@@ -228,6 +260,7 @@ Players.PlayerAdded:Connect(function(player)
 			qVal.Parent = questsFolder
 			qVal:SetAttribute("Claimed", false)
 		end
+		player:SetAttribute("QuestAutosaveVersion", 1)
 	else
 		-- Ładowanie zapisanych zadań
 		if loadedData.DailyQuests then
@@ -317,9 +350,30 @@ Players.PlayerAdded:Connect(function(player)
 	
 end)
 
+task.spawn(function()
+	while true do
+		task.wait(QUEST_AUTOSAVE_INTERVAL)
+		for _, player in ipairs(Players:GetPlayers()) do
+			local currentVersion = player:GetAttribute("QuestAutosaveVersion") or 0
+			local lastSavedVersion = lastQuestAutosaveVersionByUserId[player.UserId] or 0
+			if currentVersion > lastSavedVersion then
+				local saveTargetVersion = currentVersion
+				local saveSucceeded = saveData(player)
+				if saveSucceeded then
+					local latestVersion = player:GetAttribute("QuestAutosaveVersion") or 0
+					if latestVersion == saveTargetVersion then
+						lastQuestAutosaveVersionByUserId[player.UserId] = saveTargetVersion
+					end
+				end
+			end
+		end
+	end
+end)
+
 -- 3. Funkcja PlayerRemoving (Zapisywanie Danych)
 Players.PlayerRemoving:Connect(function(player)
 	saveData(player)
+	lastQuestAutosaveVersionByUserId[player.UserId] = nil
 end)
 
 -- 4. Zabezpieczenie BindToClose (Zamykanie serwera)
@@ -338,9 +392,10 @@ game:BindToClose(function()
 end)
 
 -- 5. Obsługa BuyHintEvent (Przeniesione z CoinService)
-local BrainrotEvents = ReplicatedStorage:WaitForChild("BrainrotEvents")
 local buyHintEvent = BrainrotEvents:FindFirstChild("BuyHintEvent") or Instance.new("RemoteFunction", BrainrotEvents)
 buyHintEvent.Name = "BuyHintEvent"
+local premiumPurchaseCelebrationEvent = BrainrotEvents:FindFirstChild("PremiumPurchaseCelebration") or Instance.new("RemoteEvent", BrainrotEvents)
+premiumPurchaseCelebrationEvent.Name = "PremiumPurchaseCelebration"
 
 buyHintEvent.OnServerInvoke = function(player, rarityName)
 	local coins = player.leaderstats.Coins
@@ -392,12 +447,15 @@ end
 MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gamePassId, wasPurchased)
 	if wasPurchased then
 		addGamePassSpend(player, gamePassId)
+		local notificationType
 		if gamePassId == GameConfig.GamePasses.VIPBundle then
 			player:SetAttribute("HasVIP", true)
 			player:SetAttribute("LatestUnlockedTrail", "VIP")
 			player:SetAttribute("SelectedTrail", "VIP")
+			notificationType = "VIP"
 		elseif gamePassId == GameConfig.GamePasses.SpeedBoost then
 			player:SetAttribute("HasSpeedBoost", true)
+			notificationType = "SpeedBoost"
 			-- Uzupełnienie statystyk bez resetu
 			local char = player.Character
 			if char and char:FindFirstChild("Humanoid") then
@@ -405,10 +463,15 @@ MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gameP
 			end
 		elseif gamePassId == GameConfig.GamePasses.JumpBoost then
 			player:SetAttribute("HasJumpBoost", true)
+			notificationType = "JumpBoost"
 			local char = player.Character
 			if char and char:FindFirstChild("Humanoid") then
 				char.Humanoid.JumpPower = 100
 			end
+		end
+
+		if notificationType then
+			premiumPurchaseCelebrationEvent:FireClient(player, notificationType)
 		end
 	end
 end)

@@ -12,6 +12,7 @@ local greenStudsImage = HudTileStyle.getImage(ReplicatedStorage, "GreenStuds", "
 local GameConfig = require(FolderReplicatedStorage:WaitForChild("GameConfig"))
 local BrainrotEvents = ReplicatedStorage:WaitForChild("BrainrotEvents")
 local ClaimDailyRewardRF = BrainrotEvents:WaitForChild("ClaimDailyReward")
+local OpenDailyRewardsPanelEvent = BrainrotEvents:WaitForChild("OpenDailyRewardsPanel")
 
 local oldGui = PlayerGui:FindFirstChild("DailyRewardsUI")
 if oldGui then
@@ -477,6 +478,15 @@ local function openPanel()
 	TweenService:Create(ToggleBtn, TweenInfo.new(0.2), {Rotation = 15}):Play()
 end
 
+local function showDailyRewardsPanel()
+	for name, closeFunc in pairs(_G.UiMenus) do
+		if name ~= "DailyRewards" then
+			closeFunc()
+		end
+	end
+	openPanel()
+end
+
 _G.UiMenus = _G.UiMenus or {}
 _G.UiMenus["DailyRewards"] = function()
 	closePanel()
@@ -485,12 +495,7 @@ end
 ToggleBtn.MouseButton1Click:Connect(function()
 	local targetVisible = not MainFrame.Visible
 	if targetVisible then
-		for name, closeFunc in pairs(_G.UiMenus) do
-			if name ~= "DailyRewards" then
-				closeFunc()
-			end
-		end
-		openPanel()
+		showDailyRewardsPanel()
 	else
 		closePanel()
 	end
@@ -527,4 +532,17 @@ LocalPlayer:GetAttributeChangedSignal("LoginStreak"):Connect(function()
 	if MainFrame.Visible then
 		updateUI()
 	end
+end)
+
+OpenDailyRewardsPanelEvent.OnClientEvent:Connect(function()
+	local todayStr = os.date("%Y%m%d")
+	if (LocalPlayer:GetAttribute("LastClaimedDate") or "") == todayStr then
+		return
+	end
+
+	if MainFrame.Visible then
+		return
+	end
+
+	showDailyRewardsPanel()
 end)

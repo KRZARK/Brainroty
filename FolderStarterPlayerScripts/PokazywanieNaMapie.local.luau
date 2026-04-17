@@ -38,6 +38,11 @@ local lastCoinsValue = 0 -- Do śledzenia przyrostu
 local currentTarget, currentRarity = nil, nil -- CACHE DLA OPTYMALIZACJI
 local isStatusOverridden = false -- Zapobiega nadpisywaniu tekstu przez RunService
 
+local function hasSavedHintForRarity(rarity)
+	local hintsFolder = player:FindFirstChild("BoughtHints")
+	return rarity ~= nil and hintsFolder ~= nil and hintsFolder:FindFirstChild(rarity) ~= nil
+end
+
 -- GUI SETUP
 local oldBtnGui = player:WaitForChild("PlayerGui"):FindFirstChild("RevealButton_UI")
 if oldBtnGui then oldBtnGui:Destroy() end
@@ -257,8 +262,8 @@ local function updatePromptVisibility(open)
 		TweenService:Create(promptFrame, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 			Position = UDim2.new(0.5, 0, 0.5, 0),
 		}):Play()
-	else
-		local panelTween = TweenService:Create(promptFrame, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+		else
+			local panelTween = TweenService:Create(promptFrame, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 			Position = UDim2.new(0.5, 0, 0.54, 0),
 		})
 		panelTween:Play()
@@ -416,6 +421,10 @@ revealBtn.Activated:Connect(function()
 		promptLabel.Text = "Obecnie podążasz już śladem Brainrota (" .. rarity:upper() .. ")!"
 		confirmBtn.Text = "SZUKAJ!"
 		confirmBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255) -- Niebieski kolor
+	elseif hasSavedHintForRarity(rarity) then
+		promptLabel.Text = "Masz juz podpowiedz do Brainrota (" .. rarity:upper() .. "). Chcesz jej uzyc?"
+		confirmBtn.Text = "SZUKAJ!"
+		confirmBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
 	else
 		promptLabel.Text = "Czy chcesz kupić podpowiedź do Brainrota ("..rarity:upper()..") za " .. price .. " monet?"
 		confirmBtn.Text = "KUP"
@@ -443,7 +452,7 @@ confirmBtn.Activated:Connect(function()
 	
 	local target, rarity = currentTarget, currentRarity
 	if not target or not buyHintEvent then return end
-	local success = buyHintEvent:InvokeServer(rarity)
+	local success = hasSavedHintForRarity(rarity) or buyHintEvent:InvokeServer(rarity)
 	if success then
 		local high = Instance.new("Highlight")
 		high.Name = "ActiveFinder"
@@ -492,19 +501,8 @@ RunService.RenderStepped:Connect(function()
 	if not activeHighlight then
 		local target, rarity = currentTarget, currentRarity
 		
-		-- NOWE: Automatyczna aktywacja, jeśli podpowiedź jest zapisana w DataStore
-		local hintsFolder = player:FindFirstChild("BoughtHints")
-		if target and hintsFolder and hintsFolder:FindFirstChild(rarity) then
-			local high = Instance.new("Highlight")
-			high.Name = "ActiveFinder"
-			high.Adornee = target
-			high.FillColor = Color3.fromRGB(255, 255, 0)
-			high.OutlineColor = Color3.new(1, 1, 1)
-			high.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-			high.Parent = target
-			activeHighlight = high
-			createWayfinder(target)
-		end
+		-- Zapisana podpowiedz uruchamia sie teraz tylko po kliknieciu gracza
+		
 		
 		if target then
 			revealBtn.Visible = true

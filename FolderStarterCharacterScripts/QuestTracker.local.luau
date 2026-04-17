@@ -16,6 +16,7 @@ local distanceWalked = 0
 local jumpsDone = 0
 local timePlayed = 0
 local fallDistance = 0
+local climbHeight = 0
 local swimTime = 0
 local socialTime = 0
 
@@ -32,11 +33,20 @@ RunService.Heartbeat:Connect(function(dt)
 	
 	local state = humanoid:GetState()
 	local currentPos = rootPart.Position
+	local verticalDelta = currentPos.Y - lastPos.Y
 	
 	-- 1. Bieganie/Chodzenie
 	if state == Enum.HumanoidStateType.Running or state == Enum.HumanoidStateType.RunningNoPhysics then
 		local dist = (Vector3.new(currentPos.X, 0, currentPos.Z) - Vector3.new(lastPos.X, 0, lastPos.Z)).Magnitude
 		distanceWalked += dist
+	end
+
+	-- 1.5. Laczna wysokosc wspinaczki / wskokow
+	if verticalDelta > 0
+		and state ~= Enum.HumanoidStateType.Swimming
+		and state ~= Enum.HumanoidStateType.Seated
+		and state ~= Enum.HumanoidStateType.Dead then
+		climbHeight += verticalDelta
 	end
 	
 	-- 2. Spadanie
@@ -72,6 +82,7 @@ RunService.Heartbeat:Connect(function(dt)
 		
 		if distanceWalked >= 5 then UpdateQuestProgress:FireServer("Walk", math.floor(distanceWalked)); distanceWalked = 0 end
 		if jumpsDone > 0 then UpdateQuestProgress:FireServer("Jump", jumpsDone); jumpsDone = 0 end
+		if climbHeight >= 5 then UpdateQuestProgress:FireServer("Climb", math.floor(climbHeight)); climbHeight = 0 end
 		if fallDistance >= 5 then UpdateQuestProgress:FireServer("Fall", math.floor(fallDistance)); fallDistance = 0 end
 		if math.floor(swimTime) > 0 then UpdateQuestProgress:FireServer("Swim", math.floor(swimTime)); swimTime -= math.floor(swimTime) end
 		if math.floor(socialTime) > 0 then UpdateQuestProgress:FireServer("Socialize", math.floor(socialTime)); socialTime -= math.floor(socialTime) end

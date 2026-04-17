@@ -13,6 +13,17 @@ local BrainrotEvents = ReplicatedStorage:WaitForChild("BrainrotEvents")
 local ClaimQuestReward = BrainrotEvents:WaitForChild("ClaimQuestReward")
 local greenStudsImage = HudTileStyle.getImage(ReplicatedStorage, "GreenStuds", "")
 
+local function playClaimRewardSound()
+	local soundTemplate = ReplicatedStorage:FindFirstChild("Claimed")
+	if soundTemplate and soundTemplate:IsA("Sound") then
+		local sound = soundTemplate:Clone()
+		sound.Volume = 2
+		sound.Parent = workspace
+		sound:Play()
+		game:GetService("Debris"):AddItem(sound, 3)
+	end
+end
+
 print("[QuestSystem] Events found. Creating GUI...")
 
 -- 1. Tworzenie GUI
@@ -437,6 +448,7 @@ local function refreshQuests()
 		claimBtn.MouseButton1Click:Connect(function()
 			if qVal.Value >= config.Req and not qVal:GetAttribute("Claimed") then
 				ClaimQuestReward:FireServer(qVal.Name)
+				playClaimRewardSound()
 				claimBtn.BackgroundColor3 = Color3.fromRGB(62, 70, 79)
 				claimBtn.Text = "DONE"
 				barFill.BackgroundColor3 = Color3.fromRGB(48, 126, 186)

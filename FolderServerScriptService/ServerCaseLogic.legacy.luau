@@ -38,6 +38,7 @@ local RebirthEffect = BrainrotEvents:FindFirstChild("RebirthEffect") or Instance
 RebirthEffect.Name = "RebirthEffect"
 
 local RebirthPositions = {} -- [UserId] = CFrame
+local collectRequestRateByUserId = {} -- [UserId] = { windowStart = number, requestCount = number }
 
 local GlobalRobuxPool = 0
 local Sponsors = {} -- Zachowujemy dla kompatybilności paska (opcjonalnie)
@@ -56,6 +57,24 @@ local function announceRareDiscovery(player, brainrotName, rarity)
 	end
 
 	OgBrainrotDiscoveryAnnouncement:FireAllClients(player.Name, brainrotName, rarity or "OG")
+end
+
+local function isCollectRequestRateLimited(player)
+	local now = time()
+	local rateWindow = GameConfig.CollectRequestRateWindow or 0.35
+	local maxRequestsPerWindow = GameConfig.MaxCollectRequestsPerWindow or 4
+	local currentState = collectRequestRateByUserId[player.UserId]
+
+	if not currentState or (now - currentState.windowStart) > rateWindow then
+		collectRequestRateByUserId[player.UserId] = {
+			windowStart = now,
+			requestCount = 1
+		}
+		return false
+	end
+
+	currentState.requestCount += 1
+	return currentState.requestCount > maxRequestsPerWindow
 end
 
 -- NOWE: Kolejkowanie
@@ -145,10 +164,6 @@ local function spawnPhysicalCoins(count)
 					local amountToAdd = math.ceil(COIN_REWARD * multi)
 					stats.Coins.Value += amountToAdd
 					
-					local ServerUpdateQuestProgress = BrainrotEvents:FindFirstChild("ServerUpdateQuestProgress")
-					if ServerUpdateQuestProgress then
-						ServerUpdateQuestProgress:Fire(p, "CollectCoins", 1)
-					end
 				end
 				coin:Destroy()
 			end
@@ -412,23 +427,33 @@ OpenSpecificCaseEvent.Event:Connect(function(player, requestedRarity)
 	end
 end)
 
+game.Players.PlayerRemoving:Connect(function(player)
+	collectRequestRateByUserId[player.UserId] = nil
+	RebirthPositions[player.UserId] = nil
+end)
+
 -- 2. OBSŁUGA ZBIERANIA Z MAPY (Szybki zapis na serwerze)
 BrainrotCollectedEvent.OnServerEvent:Connect(function(player, brainrotName)
 	-- Sprawdzamy, czy to na pewno nazwa modelu, a nie sygnał animacji
 	if type(brainrotName) ~= "string" or brainrotName == "PLAY_ANIM" then return end
+	if isCollectRequestRateLimited(player) then
+		warn("[Anti-Cheat] Gracz " .. player.Name .. " wysyla zbyt wiele requestow collect.")
+		return
+	end
 
 	local collection = getCollection(player)
 	if collection:FindFirstChild(brainrotName) then return end
 
 	-- Sanity Check dystansu
 	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
 	local brainrotModel = BrainrotyFolder:FindFirstChild(brainrotName)
 	
 	-- Pobieramy wzorzec ze storage, aby znać rzadkość
 	local modelTemplate = BrainrotStorage:FindFirstChild(brainrotName)
 
-	if not humanoidRootPart or not brainrotModel then
+	if not humanoid or humanoid.Health <= 0 or not humanoidRootPart or not brainrotModel or not modelTemplate then
 		warn("[Sanity Check] Nieprawidłowe żądanie od gracza " .. player.Name .. " dla: " .. tostring(brainrotName))
 		return
 	end
@@ -441,6 +466,11 @@ BrainrotCollectedEvent.OnServerEvent:Connect(function(player, brainrotName)
 	else
 		local cf, _ = brainrotModel:GetBoundingBox()
 		targetPosition = cf.Position
+	end
+
+	if not targetPosition then
+		warn("[Sanity Check] Nie udalo sie ustalic pozycji collecta dla: " .. tostring(brainrotName))
+		return
 	end
 
 	if targetPosition then

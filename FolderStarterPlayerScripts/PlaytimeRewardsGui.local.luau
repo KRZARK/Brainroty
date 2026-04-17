@@ -15,6 +15,17 @@ local playerGui = player:WaitForChild("PlayerGui")
 local HudTileStyle = require(ReplicatedStorage:WaitForChild("FolderReplicatedStorage"):WaitForChild("HudTileStyle"))
 local greenStudsImage = HudTileStyle.getImage(ReplicatedStorage, "GreenStuds", "")
 
+local function playClaimRewardSound()
+	local soundTemplate = ReplicatedStorage:FindFirstChild("Claimed")
+	if soundTemplate and soundTemplate:IsA("Sound") then
+		local sound = soundTemplate:Clone()
+		sound.Volume = 2
+		sound.Parent = workspace
+		sound:Play()
+		game:GetService("Debris"):AddItem(sound, 3)
+	end
+end
+
 -- Inicjalizacja Danych z Serwera
 local sessionStartTime = os.time()
 local claimedRewards = {}
@@ -399,6 +410,7 @@ for index, rewardData in ipairs(GameConfig.PlaytimeRewards) do
 			actionBtn.Text = "..."
 			local success, result, hadSocBonus, shouldRestart = claimEvent:InvokeServer(index)
 			if success then
+				playClaimRewardSound()
 				claimedRewards[tostring(index)] = true -- Czasem stringuje się przy jsonie
 				claimedRewards[index] = true
 				actionBtn.BackgroundColor3 = Color3.fromRGB(62, 70, 79)

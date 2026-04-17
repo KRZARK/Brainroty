@@ -33,7 +33,10 @@ GameConfig.TrollProducts = {
 }
 
 -- Globalne Ustawienia
-GameConfig.MaxCollectDistance = 15
+GameConfig.ClientCollectDistance = 6
+GameConfig.MaxCollectDistance = 10
+GameConfig.CollectRequestRateWindow = 0.35
+GameConfig.MaxCollectRequestsPerWindow = 4
 GameConfig.CoinRainTriggerAmount = 1000
 GameConfig.CoinRainDuration = 115
 GameConfig.CoinRainCoinReward = 1
@@ -42,16 +45,17 @@ GameConfig.TotalBrainrots = 143
 
 GameConfig.QuestSystem = {
 	DailyCount = 3, -- Ile zadań gracz dostaje dziennie
+	SelectionVersion = 2,
 	Pool = {
-		{ID = "CollectBrainrots", Desc = "Znajdz %d Brainrotow", Req = 30, Reward = 250},
-		{ID = "CollectCoins", Desc = "Zbierz %d fizycznych monet", Req = 15, Reward = 300},
-		{ID = "PlayTime", Desc = "Graj przez %d minut", Req = 20, Reward = 200},
-		{ID = "Jump", Desc = "Podskocz %d razy", Req = 250, Reward = 150},
-		{ID = "Walk", Desc = "Przebiegnij %d studow", Req = 3000, Reward = 150},
-		{ID = "UseReveal", Desc = "Uzyj podpowiedzi %d razy", Req = 2, Reward = 200},
-		{ID = "Fall", Desc = "Spadnij lacznie %d studow", Req = 500, Reward = 200},
-		{ID = "Swim", Desc = "Plyn lacznie przez %d sekund", Req = 120, Reward = 150},
-		{ID = "Socialize", Desc = "Badz blisko innych graczy przez %d sekund", Req = 180, Reward = 200}
+		{ID = "CollectBrainrots", Desc = "Znajdz %d Brainrotow", Req = 15, Reward = 300, Category = "Active"},
+		{ID = "PlayTime", Desc = "Graj przez %d minut", Req = 20, Reward = 300, Category = "Passive"},
+		{ID = "Jump", Desc = "Podskocz %d razy", Req = 250, Reward = 300, Category = "Active"},
+		{ID = "Climb", Desc = "Wespnij sie lub wskocz lacznie na %d studow", Req = 1000, Reward = 300, Category = "Active"},
+		{ID = "Walk", Desc = "Przebiegnij %d studow", Req = 3000, Reward = 300, Category = "Passive"},
+		{ID = "UseReveal", Desc = "Uzyj podpowiedzi %d razy", Req = 2, Reward = 300, Category = "Situational"},
+		{ID = "Fall", Desc = "Spadnij lacznie %d studow", Req = 500, Reward = 300, Category = "Passive"},
+		{ID = "Swim", Desc = "Plyn lacznie przez %d sekund", Req = 60, Reward = 300, Category = "Situational"},
+		{ID = "Socialize", Desc = "Badz blisko innych graczy przez %d sekund", Req = 180, Reward = 300, Category = "Situational"}
 	}
 }
 GameConfig.PlaytimeRewards = {
@@ -61,6 +65,8 @@ GameConfig.PlaytimeRewards = {
 	{ TimeMinutes = 60, Reward = 1000 },
 	{ TimeMinutes = 90, Reward = 2000 }
 }
+GameConfig.PlaytimeReconnectHeartbeatSeconds = 10
+GameConfig.PlaytimeReconnectGraceSeconds = 60
 
 GameConfig.DailyRewards = {
 	[1] = { Type = "Coin", Value = 50, Icon = "Coin2D" },

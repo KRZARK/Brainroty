@@ -5,6 +5,7 @@ local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService") -- Potrzebne do animacji
 local AvatarEditorService = game:GetService("AvatarEditorService")
+local GuiService = game:GetService("GuiService")
 
 -- 1. USTAWIENIA KOLORÓW
 local RarityColors = {
@@ -46,9 +47,26 @@ local HudTileStyle = require(FolderReplicatedStorage:WaitForChild("HudTileStyle"
 local BrainrotCollectedEvent = BrainrotEvents:WaitForChild("BrainrotCollected")
 local OgBrainrotDiscoveryAnnouncement = BrainrotEvents:WaitForChild("OgBrainrotDiscoveryAnnouncement")
 local TogglePetEvent = BrainrotEvents:WaitForChild("TogglePetEvent")
+local MarkExperienceFavoritedEvent = BrainrotEvents:WaitForChild("MarkExperienceFavorited")
 local BrainrotStorage = ReplicatedStorage:WaitForChild("BrainrotStorage") 
 local BrainrotyFolder = Workspace:WaitForChild("Brainroty") 
 local GreenStudsTexture = HudTileStyle.getImage(ReplicatedStorage, "GreenStuds", "")
+local CLIENT_COLLECT_DISTANCE = GameConfig.ClientCollectDistance or 6
+local currentBrainrotCollected = 0
+local currentBrainrotTotal = 0
+local currentCoinRainPool = 0
+local currentCoinRainMax = GameConfig.CoinRainTriggerAmount or 1000
+local useCompactTopStatusText = false
+
+local function formatBrainrotProgressText(collected, total)
+	local prefix = useCompactTopStatusText and "BRAINROT: " or "BRAINROT PROGRESS: "
+	return prefix .. tostring(collected) .. " / " .. tostring(total)
+end
+
+local function formatCoinRainProgressText(currentPool, maxPool)
+	local prefix = useCompactTopStatusText and "COIN RAIN: " or "COIN RAIN PROGRESS: "
+	return prefix .. tostring(currentPool) .. " / " .. tostring(maxPool) .. " " .. utf8.char(0xE002)
+end
 
 local CollectSound = SoundService:WaitForChild("CollectSound")
 CollectSound.SoundId = "rbxassetid://3150375869"
@@ -128,12 +146,19 @@ stripes.Parent = topProgressFill
 local topProgressLabel = Instance.new("TextLabel")
 topProgressLabel.Size = UDim2.fromScale(1, 1)
 topProgressLabel.BackgroundTransparency = 1
-topProgressLabel.Text = "BRAINROT PROGRESS: 0 / 0"
+topProgressLabel.Text = formatBrainrotProgressText(0, 0)
 topProgressLabel.TextColor3 = Color3.new(1, 1, 1)
 topProgressLabel.Font = Enum.Font.SourceSansBold
 topProgressLabel.TextSize = 26
+topProgressLabel.TextScaled = true
+topProgressLabel.TextXAlignment = Enum.TextXAlignment.Left
 topProgressLabel.ZIndex = 5
 topProgressLabel.Parent = topProgressContainer
+
+local topProgressTextConstraint = Instance.new("UITextSizeConstraint")
+topProgressTextConstraint.MinTextSize = 9
+topProgressTextConstraint.MaxTextSize = 22
+topProgressTextConstraint.Parent = topProgressLabel
 
 -- SŁONIK NA KOŃCU (Powiększony z tłem)
 local elephantFrame = Instance.new("Frame")
@@ -452,7 +477,9 @@ globalSubText.TextXAlignment = Enum.TextXAlignment.Left
 local notificationQueue = {}
 local isShowingNow = false
 local activeNotifyRarity = ""
-local hasPromptedFavorite = false
+local hasFavoritedExperience = player:GetAttribute("HasFavoritedExperience") == true
+local hasPromptedFavorite = hasFavoritedExperience
+local isCheckingFavoriteStatus = false
 local globalAnnouncementQueue = {}
 local isGlobalAnnouncementShowing = false
 
@@ -532,16 +559,56 @@ local function promptFavorite()
 	end)
 end
 
+local function markExperienceFavorited()
+	if hasFavoritedExperience then
+		return
+	end
+
+	hasFavoritedExperience = true
+	MarkExperienceFavoritedEvent:FireServer()
+end
+
+local function hasExistingFavorite()
+	if hasFavoritedExperience or isCheckingFavoriteStatus then
+		return hasFavoritedExperience
+	end
+
+	isCheckingFavoriteStatus = true
+	local success, isFavorited = pcall(function()
+		return AvatarEditorService:GetFavoriteAsync(game.PlaceId, Enum.AvatarItemType.Asset)
+	end)
+	isCheckingFavoriteStatus = false
+
+	if success and isFavorited then
+		markExperienceFavorited()
+		return true
+	end
+
+	return false
+end
+
+AvatarEditorService.PromptSetFavoriteCompleted:Connect(function(result)
+	if result == Enum.AvatarPromptResult.Success then
+		markExperienceFavorited()
+	end
+end)
+
 local function showCollectionEffect(name, rarity)
 	isShowingNow = true
 	activeNotifyRarity = rarity
 
 	if rarity ~= "Common" and rarity ~= "Rare" and not hasPromptedFavorite then
 		hasPromptedFavorite = true
-		task.delay(5, function()
-			if player and player.Parent then
-				promptFavorite()
+		task.spawn(function()
+			if hasExistingFavorite() then
+				return
 			end
+
+			task.delay(5, function()
+				if player and player.Parent and not hasFavoritedExperience then
+					promptFavorite()
+				end
+			end)
 		end)
 	end
 
@@ -1031,7 +1098,9 @@ local function updateProgressBar()
 	local percentage = (total > 0) and (collected / total) or 0
 	local remaining = math.max(total - collected, 0)
 
-	topProgressLabel.Text = "BRAINROT PROGRESS: " .. collected .. " / " .. total
+	currentBrainrotCollected = collected
+	currentBrainrotTotal = total
+	topProgressLabel.Text = formatBrainrotProgressText(collected, total)
 	topProgressFill:TweenSize(UDim2.fromScale(percentage, 1), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.5, true)
 
 	helperLabel.Text = (remaining == 0 and total > 0) and "ALBUM COMPLETE" or (remaining .. " LEFT TO FIND")
@@ -1425,7 +1494,7 @@ local function checkTouches()
 				targetPosition = cf.Position
 			end
 
-			if targetPosition and (targetPosition - rootPart.Position).Magnitude < 6 then
+			if targetPosition and (targetPosition - rootPart.Position).Magnitude < CLIENT_COLLECT_DISTANCE then
 				collectBrainrot(model)
 			end
 		end
@@ -1703,19 +1772,102 @@ Instance.new("UICorner", robuxFill).CornerRadius = UDim.new(0.5, 0)
 local robuxLabel = Instance.new("TextLabel", robuxContainer)
 robuxLabel.Size = UDim2.fromScale(1, 1)
 robuxLabel.BackgroundTransparency = 1
-robuxLabel.Text = "COIN RAIN PROGRESS: 0 / 1000 " .. utf8.char(0xE002)
+robuxLabel.Text = formatCoinRainProgressText(0, currentCoinRainMax)
 robuxLabel.TextColor3 = Color3.new(1, 1, 1)
 robuxLabel.Font = Enum.Font.SourceSansBold
 robuxLabel.TextSize = 20
+robuxLabel.TextScaled = true
 robuxLabel.ZIndex = 5
+
+local robuxTextConstraint = Instance.new("UITextSizeConstraint")
+robuxTextConstraint.MinTextSize = 10
+robuxTextConstraint.MaxTextSize = 20
+robuxTextConstraint.Parent = robuxLabel
+
+local topStatusLayoutConnection
+
+local function applyTopStatusLayout()
+	local camera = Workspace.CurrentCamera
+	local viewport = camera and camera.ViewportSize or Vector2.new(1280, 720)
+	local insetTopLeft, _ = GuiService:GetGuiInset()
+	local sidePadding = math.clamp(viewport.X * 0.025, 12, 30)
+	local gap = math.clamp(viewport.X * 0.015, 10, 22)
+	local desiredBrainrotWidth = math.clamp(viewport.X * 0.26, 220, 420)
+	local desiredCoinWidth = math.clamp(viewport.X * 0.34, 250, 560)
+	local totalDesiredWidth = desiredBrainrotWidth + desiredCoinWidth + gap
+	local maxRowWidth = math.max(viewport.X - (sidePadding * 2), 260)
+	local layoutScale = totalDesiredWidth > maxRowWidth and (maxRowWidth / totalDesiredWidth) or 1
+	local brainrotWidth = math.floor(desiredBrainrotWidth * layoutScale + 0.5)
+	local coinWidth = math.floor(desiredCoinWidth * layoutScale + 0.5)
+	local appliedGap = math.floor(gap * layoutScale + 0.5)
+	local compactLayout = viewport.X < 780 or brainrotWidth < 260
+	local brainrotHeight = compactLayout and 40 or 46
+	local coinHeight = compactLayout and 36 or 40
+	local rowWidth = brainrotWidth + coinWidth + appliedGap
+	local rowLeft = math.floor((viewport.X - rowWidth) * 0.5 + 0.5)
+	local rowCenterY = insetTopLeft.Y + (compactLayout and 34 or 40)
+	local elephantSize = math.clamp(
+		math.floor(brainrotWidth * (compactLayout and 0.30 or 0.24) + 0.5),
+		compactLayout and 50 or 72,
+		compactLayout and 72 or 88
+	)
+	local elephantInset = math.floor(elephantSize * 0.42 + 0.5)
+
+	useCompactTopStatusText = compactLayout
+	topProgressContainer.AnchorPoint = Vector2.new(0, 0.5)
+	topProgressContainer.Position = UDim2.fromOffset(rowLeft, rowCenterY)
+	topProgressContainer.Size = UDim2.fromOffset(brainrotWidth, brainrotHeight)
+
+	robuxContainer.AnchorPoint = Vector2.new(0, 0.5)
+	robuxContainer.Position = UDim2.fromOffset(rowLeft + brainrotWidth + appliedGap, rowCenterY)
+	robuxContainer.Size = UDim2.fromOffset(coinWidth, coinHeight)
+
+	topStroke.Thickness = compactLayout and 2 or 3
+	stripes.TileSize = UDim2.new(0, compactLayout and 42 or 60, 1, 0)
+
+	topProgressLabel.Position = UDim2.fromOffset(compactLayout and 10 or 14, 0)
+	topProgressLabel.Size = UDim2.new(1, -(elephantSize + (compactLayout and 12 or 20)), 1, 0)
+	topProgressTextConstraint.MaxTextSize = compactLayout and 18 or 22
+
+	elephantFrame.Size = UDim2.fromOffset(elephantSize, elephantSize)
+	elephantFrame.Position = UDim2.new(1, -elephantInset, 0.5, 0)
+	elephantBg.Size = UDim2.fromScale(0.88, 0.88)
+	bgStroke.Thickness = compactLayout and 3 or 4
+
+	robuxTextConstraint.MaxTextSize = compactLayout and 16 or 20
+	topProgressLabel.Text = formatBrainrotProgressText(currentBrainrotCollected, currentBrainrotTotal)
+	robuxLabel.Text = formatCoinRainProgressText(currentCoinRainPool, currentCoinRainMax)
+end
+
+local function bindTopStatusLayoutCamera(camera)
+	if topStatusLayoutConnection then
+		topStatusLayoutConnection:Disconnect()
+		topStatusLayoutConnection = nil
+	end
+
+	if not camera then
+		return
+	end
+
+	topStatusLayoutConnection = camera:GetPropertyChangedSignal("ViewportSize"):Connect(applyTopStatusLayout)
+end
+
+applyTopStatusLayout()
+bindTopStatusLayoutCamera(Workspace.CurrentCamera)
+Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+	bindTopStatusLayoutCamera(Workspace.CurrentCamera)
+	applyTopStatusLayout()
+end)
 
 local PoolUpdated = BrainrotEvents:WaitForChild("PoolUpdated")
 
 PoolUpdated.OnClientEvent:Connect(function(currentPool, queuedCount)
-    local maxPool = GameConfig.CoinRainTriggerAmount or 1000 
-    local percentage = math.clamp(currentPool / maxPool, 0, 1)
+	local maxPool = GameConfig.CoinRainTriggerAmount or 1000 
+	local percentage = math.clamp(currentPool / maxPool, 0, 1)
     
     -- ZAWSZE AKTUALIZUJEMY (Zgodnie z życzeniem: "ma się pasek aktualizować ciągle")
-    robuxLabel.Text = "COIN RAIN PROGRESS: " .. currentPool .. " / " .. maxPool .. " " .. utf8.char(0xE002)
-    TweenService:Create(robuxFill, TweenInfo.new(0.3), {Size = UDim2.fromScale(percentage, 1)}):Play()
+	currentCoinRainPool = currentPool
+	currentCoinRainMax = maxPool
+	robuxLabel.Text = formatCoinRainProgressText(currentPool, maxPool)
+	TweenService:Create(robuxFill, TweenInfo.new(0.3), {Size = UDim2.fromScale(percentage, 1)}):Play()
 end)

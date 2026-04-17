@@ -9,6 +9,12 @@ local BrainrotEvents = ReplicatedStorage:WaitForChild("BrainrotEvents")
 local openDailyRewardsPanelEvent = BrainrotEvents:FindFirstChild("OpenDailyRewardsPanel") or Instance.new("RemoteEvent")
 openDailyRewardsPanelEvent.Name = "OpenDailyRewardsPanel"
 openDailyRewardsPanelEvent.Parent = BrainrotEvents
+local requestImmediateDataSaveEvent = BrainrotEvents:FindFirstChild("RequestImmediateDataSave") or Instance.new("BindableEvent")
+requestImmediateDataSaveEvent.Name = "RequestImmediateDataSave"
+requestImmediateDataSaveEvent.Parent = BrainrotEvents
+local markExperienceFavoritedEvent = BrainrotEvents:FindFirstChild("MarkExperienceFavorited") or Instance.new("RemoteEvent")
+markExperienceFavoritedEvent.Name = "MarkExperienceFavorited"
+markExperienceFavoritedEvent.Parent = BrainrotEvents
 
 -- 1. Inicjalizacja DataStore
 local BrainrotData = DataStoreService:GetDataStore("BrainrotData_V1")
@@ -26,6 +32,7 @@ local DEFAULT_DATA = {
 	LoginStreak = 1,
 	LastClaimedDate = "",
 	LastDailyRewardPromptDate = "",
+	HasFavoritedExperience = false,
 	HasBoughtStarterPack = false,
 	FreeFartTrolls = 0,
 	StarterPackExpiry = 0,
@@ -35,6 +42,7 @@ local DEFAULT_DATA = {
 	LatestUnlockedJumpSetting = "",
 	SpeedBoostEnds = 0,
 	JumpBoostEnds = 0,
+	QuestSelectionVersion = 0,
 }
 
 -- Funkcja pomocnicza do bezpiecznego zapisu
@@ -57,6 +65,7 @@ local function saveData(player)
 		LoginStreak = player:GetAttribute("LoginStreak") or 1,
 		LastClaimedDate = player:GetAttribute("LastClaimedDate") or "",
 		LastDailyRewardPromptDate = player:GetAttribute("LastDailyRewardPromptDate") or "",
+		HasFavoritedExperience = player:GetAttribute("HasFavoritedExperience") or false,
 		HasBoughtStarterPack = player:GetAttribute("HasBoughtStarterPack") or false,
 		FreeFartTrolls = player:GetAttribute("FreeFartTrolls") or 0,
 		StarterPackExpiry = player:GetAttribute("StarterPackExpiry") or 0,
@@ -66,6 +75,7 @@ local function saveData(player)
 		LatestUnlockedJumpSetting = player:GetAttribute("LatestUnlockedJumpSetting") or "",
 		SpeedBoostEnds = player:GetAttribute("SpeedBoostEnds") or 0,
 		JumpBoostEnds = player:GetAttribute("JumpBoostEnds") or 0,
+		QuestSelectionVersion = player:GetAttribute("QuestSelectionVersion") or 0,
 	}
 	
 	local questsFolder = player:FindFirstChild("DailyQuestsFolder")
@@ -96,6 +106,36 @@ local function saveData(player)
 	end
 end
 
+local function requestImmediateProfileSave(player)
+	if not player then
+		return false
+	end
+
+	local saveSucceeded = saveData(player)
+	if saveSucceeded then
+		lastQuestAutosaveVersionByUserId[player.UserId] = player:GetAttribute("QuestAutosaveVersion") or 0
+	end
+
+	return saveSucceeded
+end
+
+requestImmediateDataSaveEvent.Event:Connect(function(player)
+	task.spawn(function()
+		requestImmediateProfileSave(player)
+	end)
+end)
+
+markExperienceFavoritedEvent.OnServerEvent:Connect(function(player)
+	if player:GetAttribute("HasFavoritedExperience") then
+		return
+	end
+
+	player:SetAttribute("HasFavoritedExperience", true)
+	task.spawn(function()
+		requestImmediateProfileSave(player)
+	end)
+end)
+
 -- Aktualizacja Mnożnika Monet
 local function updateCoinMultiplier(player)
 	local multi = 1
@@ -116,6 +156,60 @@ local function updateCoinMultiplier(player)
 end
 
 -- 2. Funkcja PlayerAdded (Ładowanie Danych)
+local function drawRandomQuestByCategory(categoryName)
+	local matchingQuests = {}
+
+	for _, questConfig in ipairs(GameConfig.QuestSystem.Pool) do
+		if questConfig.Category == categoryName then
+			table.insert(matchingQuests, questConfig)
+		end
+	end
+
+	if #matchingQuests == 0 then
+		return nil
+	end
+
+	return matchingQuests[math.random(1, #matchingQuests)]
+end
+
+local function buildDailyQuestSelection()
+	local selectedQuests = {}
+	local orderedCategories = { "Passive", "Active", "Situational" }
+
+	for _, categoryName in ipairs(orderedCategories) do
+		local chosenQuest = drawRandomQuestByCategory(categoryName)
+		if chosenQuest then
+			table.insert(selectedQuests, chosenQuest)
+		end
+	end
+
+return selectedQuests
+end
+
+local function populateQuestFolderFromSelection(questsFolder, selectedQuests)
+	for _, chosen in ipairs(selectedQuests) do
+		local qVal = Instance.new("IntValue")
+		qVal.Name = chosen.ID
+		qVal.Value = 0
+		qVal.Parent = questsFolder
+		qVal:SetAttribute("Claimed", false)
+	end
+end
+
+local function populateQuestFolderFromSavedData(questsFolder, savedQuests)
+	if not savedQuests then
+		return
+	end
+
+	for _, qData in ipairs(savedQuests) do
+		local qVal = Instance.new("IntValue")
+		qVal.Name = qData.ID
+		qVal.Value = qData.Progress or 0
+		qVal:SetAttribute("Claimed", qData.Claimed or false)
+		qVal.Parent = questsFolder
+	end
+end
+
 Players.PlayerAdded:Connect(function(player)
 	local userId = tostring(player.UserId)
 	local loadedData
@@ -187,6 +281,7 @@ Players.PlayerAdded:Connect(function(player)
 	
 	player:SetAttribute("LoginStreak", streak)
 	player:SetAttribute("LastClaimedDate", lastClaim)
+	player:SetAttribute("HasFavoritedExperience", loadedData.HasFavoritedExperience or false)
 	local lastDailyRewardPromptDate = loadedData.LastDailyRewardPromptDate or ""
 	local shouldScheduleDailyRewardPrompt = lastDailyRewardPromptDate ~= todayStr and lastClaim ~= todayStr
 	if lastDailyRewardPromptDate ~= todayStr then
@@ -241,37 +336,22 @@ Players.PlayerAdded:Connect(function(player)
 	local today = os.date("%Y%m%d") -- Zwraca np. "20260329"
 	local questsFolder = Instance.new("Folder")
 	questsFolder.Name = "DailyQuestsFolder"
-	
+	local currentQuestSelectionVersion = GameConfig.QuestSystem.SelectionVersion or 1
+		
 	player:SetAttribute("QuestDate", loadedData.QuestDate or "")
+	player:SetAttribute("QuestSelectionVersion", loadedData.QuestSelectionVersion or 0)
 	
 	-- Sprawdzamy czy to nowy dzień dla gracza
-	if player:GetAttribute("QuestDate") ~= today then
+	if player:GetAttribute("QuestDate") ~= today or (player:GetAttribute("QuestSelectionVersion") or 0) < currentQuestSelectionVersion then
 		player:SetAttribute("QuestDate", today)
+		player:SetAttribute("QuestSelectionVersion", currentQuestSelectionVersion)
 		-- Losowanie nowych zadań
-		local availableQuests = table.clone(GameConfig.QuestSystem.Pool)
-		for i = 1, GameConfig.QuestSystem.DailyCount do
-			if #availableQuests == 0 then break end
-			local randIndex = math.random(1, #availableQuests)
-			local chosen = table.remove(availableQuests, randIndex)
-			
-			local qVal = Instance.new("IntValue")
-			qVal.Name = chosen.ID
-			qVal.Value = 0
-			qVal.Parent = questsFolder
-			qVal:SetAttribute("Claimed", false)
-		end
+		local selectedQuests = buildDailyQuestSelection()
+		populateQuestFolderFromSelection(questsFolder, selectedQuests)
 		player:SetAttribute("QuestAutosaveVersion", 1)
 	else
 		-- Ładowanie zapisanych zadań
-		if loadedData.DailyQuests then
-			for _, qData in ipairs(loadedData.DailyQuests) do
-				local qVal = Instance.new("IntValue")
-				qVal.Name = qData.ID
-				qVal.Value = qData.Progress or 0
-				qVal:SetAttribute("Claimed", qData.Claimed or false)
-				qVal.Parent = questsFolder
-			end
-		end
+		populateQuestFolderFromSavedData(questsFolder, loadedData.DailyQuests)
 	end
 	questsFolder.Parent = player
 	
@@ -423,6 +503,8 @@ buyHintEvent.OnServerInvoke = function(player, rarityName)
 		if ServerUpdateQuestProgress then
 			ServerUpdateQuestProgress:Fire(player, "UseReveal", 1)
 		end
+
+		requestImmediateDataSaveEvent:Fire(player)
 		
 		return true -- Zakup udany
 	end
@@ -473,6 +555,10 @@ MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gameP
 		if notificationType then
 			premiumPurchaseCelebrationEvent:FireClient(player, notificationType)
 		end
+
+		task.spawn(function()
+			requestImmediateProfileSave(player)
+		end)
 	end
 end)
 
@@ -501,7 +587,9 @@ MarketplaceService.PromptProductPurchaseFinished:Connect(function(userId, produc
 			end
 			
 			-- e) Zapisz dane
-			saveData(player)
+			task.spawn(function()
+				requestImmediateProfileSave(player)
+			end)
 			print("[StarterPack] Przyznano nagrody dla gracza " .. player.Name)
 		end
 	end

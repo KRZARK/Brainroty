@@ -2,6 +2,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local GameConfig = require(ReplicatedStorage:WaitForChild("FolderReplicatedStorage"):WaitForChild("GameConfig"))
 local BrainrotEvents = ReplicatedStorage:WaitForChild("BrainrotEvents")
+local CoinGrantHelper = require(script.Parent:WaitForChild("CoinGrantHelper"))
+local requestImmediateDataSaveEvent = BrainrotEvents:WaitForChild("RequestImmediateDataSave")
 
 local ClaimDailyRewardRF = Instance.new("RemoteFunction")
 ClaimDailyRewardRF.Name = "ClaimDailyReward"
@@ -23,9 +25,9 @@ ClaimDailyRewardRF.OnServerInvoke = function(player)
 	
 	-- Przyznajemy Nagrodę
 	if reward.Type == "Coin" then
-		local leaderstats = player:FindFirstChild("leaderstats")
-		if leaderstats and leaderstats:FindFirstChild("Coins") then
-			leaderstats.Coins.Value += reward.Value
+		local grantSucceeded = CoinGrantHelper.grantCoins(player, reward.Value, "DailyReward:" .. tostring(streak))
+		if not grantSucceeded then
+			return false, "Nie udalo sie przyznac monet."
 		end
 	elseif reward.Type == "Speed" then
 		player:SetAttribute("SpeedBoostEnds", os.time() + 1800) -- 30 min z zabezpieczeniem przed śmiercią
@@ -43,6 +45,8 @@ ClaimDailyRewardRF.OnServerInvoke = function(player)
 	local nextStreak = streak + 1
 	if nextStreak > 7 then nextStreak = 1 end
 	player:SetAttribute("LoginStreak", nextStreak)
+
+	requestImmediateDataSaveEvent:Fire(player)
 	
 	return true, streak, reward
 end

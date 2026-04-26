@@ -47,6 +47,32 @@ local heartbeatLoopActiveByUserId = {}
 local sessionInitializationInProgressByUserId = {}
 local sessionInitializedByUserId = {}
 
+local function clearClaimedRewards(claimed)
+	if type(claimed) ~= "table" then
+		return {}
+	end
+
+	for rewardIndex = 1, #GameConfig.PlaytimeRewards do
+		claimed[rewardIndex] = nil
+	end
+
+	return claimed
+end
+
+local function hasClaimedAllRewards(claimed)
+	if type(claimed) ~= "table" then
+		return false
+	end
+
+	for rewardIndex = 1, #GameConfig.PlaytimeRewards do
+		if not claimed[rewardIndex] then
+			return false
+		end
+	end
+
+	return #GameConfig.PlaytimeRewards > 0
+end
+
 local function serializeClaimedRewards(claimed)
 	local claimedIndices = {}
 
@@ -147,7 +173,23 @@ local function initializePlayerSession(player)
 		ClaimedRewards[player.UserId] = {}
 	end
 
+	if hasClaimedAllRewards(ClaimedRewards[player.UserId]) then
+		SessionStartTimes[player.UserId] = os.time()
+		ClaimedRewards[player.UserId] = clearClaimedRewards(ClaimedRewards[player.UserId])
+	end
+
 	saveReconnectSnapshot(player)
+end
+
+local function resetRewardCycle(player)
+	local userId = player.UserId
+	local claimed = ClaimedRewards[userId] or {}
+
+	ClaimedRewards[userId] = clearClaimedRewards(claimed)
+	SessionStartTimes[userId] = os.time()
+	saveReconnectSnapshot(player)
+
+	return SessionStartTimes[userId]
 end
 
 local function ensurePlayerSessionInitialized(player)
@@ -210,12 +252,16 @@ end
 -- Dodatkowa funkcja do klienta, aby zsynchronizować StartTime i State
 getTimeEvent.OnServerInvoke = function(player)
 	ensurePlayerSessionInitialized(player)
+	if hasClaimedAllRewards(ClaimedRewards[player.UserId]) then
+		resetRewardCycle(player)
+	end
 	local startTime = SessionStartTimes[player.UserId] or os.time()
 	local claimed = ClaimedRewards[player.UserId] or {}
 	return startTime, claimed
 end
 
 claimEvent.OnServerInvoke = function(player, rewardIndex)
+	ensurePlayerSessionInitialized(player)
 	local startTime = SessionStartTimes[player.UserId]
 	local claimed = ClaimedRewards[player.UserId]
 	
@@ -246,52 +292,27 @@ claimEvent.OnServerInvoke = function(player, rewardIndex)
 	local multiplier = player:GetAttribute("CoinMultiplier") or 1
 	
 	-- 2. Bonus za Znajomego (+20%)
-	local hasFriendBonus = false
-	for _, otherPlayer in ipairs(Players:GetPlayers()) do
-		if otherPlayer.UserId ~= player.UserId then
-			local success, isFriend = pcall(function()
-				return player:IsFriendsWith(otherPlayer.UserId)
-			end)
-			if success and isFriend then
-				hasFriendBonus = true
-				break
-			end
-		end
-	end
-	
-	if hasFriendBonus then
-		multiplier = multiplier * 1.2
-	end
-	
-	local finalReward = math.floor(baseReward * multiplier)
+	-- CoinMultiplier already includes VIP and Rebirth bonuses.
+
+	local finalReward = math.floor(baseReward * (player:GetAttribute("CoinMultiplier") or 1))
 	
 	-- Przyznanie nagrody
 	local grantSucceeded, grantedCoins = CoinGrantHelper.grantCoins(player, finalReward, "PlaytimeReward:" .. tostring(rewardIndex))
 	if grantSucceeded then
 		claimed[rewardIndex] = true -- Oznacz jako odebrane
-		
-		local allClaimed = true
-		for i = 1, #GameConfig.PlaytimeRewards do
-			if not claimed[i] then
-				allClaimed = false
-				break
-			end
-		end
-		
-		local restart = false
-		if allClaimed then
-			SessionStartTimes[player.UserId] = os.time()
-			for i = 1, #GameConfig.PlaytimeRewards do
-				claimed[i] = nil
-			end
-			restart = true
+		local restart = hasClaimedAllRewards(claimed)
+		local nextCycleStartTime = nil
+
+		if restart then
+			nextCycleStartTime = resetRewardCycle(player)
+		else
+			saveReconnectSnapshot(player)
 		end
 
-		saveReconnectSnapshot(player)
 		requestImmediateDataSaveEvent:Fire(player)
 		
 		-- Odtworzenie dźwięku systemowego (Kaching) - opcjonalnie zrobimy to po stronie klienta
-		return true, grantedCoins, hasFriendBonus, restart
+		return true, grantedCoins, restart, nextCycleStartTime
 	else
 		return false, "Brak statystyki Coins."
 	end

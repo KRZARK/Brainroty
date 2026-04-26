@@ -1,5 +1,6 @@
 local MarketplaceService = game:GetService("MarketplaceService")
 local InsertService = game:GetService("InsertService")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
@@ -37,7 +38,10 @@ RebirthEvent.Name = "RebirthEvent"
 local RebirthEffect = BrainrotEvents:FindFirstChild("RebirthEffect") or Instance.new("RemoteEvent", BrainrotEvents)
 RebirthEffect.Name = "RebirthEffect"
 
-local RebirthPositions = {} -- [UserId] = CFrame
+local RequestOGTeleport = BrainrotEvents:FindFirstChild("RequestOGTeleport") or Instance.new("RemoteFunction", BrainrotEvents)
+RequestOGTeleport.Name = "RequestOGTeleport"
+local SpawnSystemServerEvent = BrainrotEvents:FindFirstChild("SpawnSystemServerEvent") or Instance.new("BindableEvent", BrainrotEvents)
+SpawnSystemServerEvent.Name = "SpawnSystemServerEvent"
 local collectRequestRateByUserId = {} -- [UserId] = { windowStart = number, requestCount = number }
 
 local GlobalRobuxPool = 0
@@ -61,8 +65,8 @@ end
 
 local function isCollectRequestRateLimited(player)
 	local now = time()
-	local rateWindow = GameConfig.CollectRequestRateWindow or 0.35
-	local maxRequestsPerWindow = GameConfig.MaxCollectRequestsPerWindow or 4
+	local rateWindow = GameConfig.CollectRequestRateWindow or 1.0
+	local maxRequestsPerWindow = GameConfig.MaxCollectRequestsPerWindow or 100 -- Ogromny limit, by gracze z lagiem nie gubili brainrotów
 	local currentState = collectRequestRateByUserId[player.UserId]
 
 	if not currentState or (now - currentState.windowStart) > rateWindow then
@@ -86,12 +90,222 @@ local SponsorQueue = {} -- Kolejka tabel sponsorów
 
 -- === KONFIGURACJA MONET NA MAPIE ===
 local PHYSICAL_COIN_MESH = "rbxassetid://4937522724"
-local SPAWN_RANGE = 600 -- Zasięg 2x większy (600 studs)
-local COIN_REWARD = GameConfig.CoinRainCoinReward or 1
+local DEFAULT_SPAWN_RANGE = 600
+local COIN_REWARD = GameConfig.CoinRainCoinReward or 5
+local COIN_SPAWN_BOUNDS_PADDING = 10
+local COIN_SPAWN_VERTICAL_PADDING = 140
+local COIN_SPAWN_ATTEMPTS = 8
+local coinRainRandom = Random.new()
+
+local function getBoundsFromInstance(instance)
+	if not instance then
+		return nil
+	end
+
+	if instance:IsA("BasePart") then
+		local halfSize = instance.Size * 0.5
+		return {
+			minX = instance.Position.X - halfSize.X,
+			maxX = instance.Position.X + halfSize.X,
+			minZ = instance.Position.Z - halfSize.Z,
+			maxZ = instance.Position.Z + halfSize.Z,
+			minY = instance.Position.Y - halfSize.Y,
+			maxY = instance.Position.Y + halfSize.Y,
+		}
+	end
+
+	if instance:IsA("Model") then
+		local cf, size = instance:GetBoundingBox()
+		local halfSize = size * 0.5
+		return {
+			minX = cf.Position.X - halfSize.X,
+			maxX = cf.Position.X + halfSize.X,
+			minZ = cf.Position.Z - halfSize.Z,
+			maxZ = cf.Position.Z + halfSize.Z,
+			minY = cf.Position.Y - halfSize.Y,
+			maxY = cf.Position.Y + halfSize.Y,
+		}
+	end
+
+	return nil
+end
+
+local function findCoinRainBoundsOverride()
+	local override = Workspace:FindFirstChild("CoinRainBounds")
+	if not override then
+		return nil
+	end
+
+	return getBoundsFromInstance(override)
+end
+
+local function isCharacterPart(part)
+	local ancestorModel = part:FindFirstAncestorOfClass("Model")
+	if not ancestorModel then
+		return false
+	end
+
+	return Players:GetPlayerFromCharacter(ancestorModel) ~= nil
+end
+
+local function shouldUsePartForCoinRainBounds(part)
+	if not part:IsA("BasePart") then
+		return false
+	end
+
+	if part:IsDescendantOf(PhysicalCoinsFolder) then
+		return false
+	end
+
+	if isCharacterPart(part) then
+		return false
+	end
+
+	local activePetsFolder = Workspace:FindFirstChild("ActivePets")
+	if activePetsFolder and part:IsDescendantOf(activePetsFolder) then
+		return false
+	end
+
+	if part.Transparency >= 1 then
+		return false
+	end
+
+	if not part.Anchored then
+		return false
+	end
+
+	if not part.CanCollide then
+		return false
+	end
+
+	if part.Size.X <= 0 or part.Size.Z <= 0 then
+		return false
+	end
+
+	return true
+end
+
+local function computeCoinRainSpawnBounds()
+	local overrideBounds = findCoinRainBoundsOverride()
+	if overrideBounds then
+		overrideBounds.minX -= COIN_SPAWN_BOUNDS_PADDING
+		overrideBounds.maxX += COIN_SPAWN_BOUNDS_PADDING
+		overrideBounds.minZ -= COIN_SPAWN_BOUNDS_PADDING
+		overrideBounds.maxZ += COIN_SPAWN_BOUNDS_PADDING
+		overrideBounds.rayOriginY = overrideBounds.maxY + COIN_SPAWN_VERTICAL_PADDING
+		overrideBounds.rayLength = math.max((overrideBounds.maxY - overrideBounds.minY) + (COIN_SPAWN_VERTICAL_PADDING * 2), 500)
+		return overrideBounds
+	end
+
+	local bounds = nil
+
+	for _, descendant in ipairs(Workspace:GetDescendants()) do
+		if shouldUsePartForCoinRainBounds(descendant) then
+			local halfSize = descendant.Size * 0.5
+			local minX = descendant.Position.X - halfSize.X
+			local maxX = descendant.Position.X + halfSize.X
+			local minZ = descendant.Position.Z - halfSize.Z
+			local maxZ = descendant.Position.Z + halfSize.Z
+			local minY = descendant.Position.Y - halfSize.Y
+			local maxY = descendant.Position.Y + halfSize.Y
+
+			if not bounds then
+				bounds = {
+					minX = minX,
+					maxX = maxX,
+					minZ = minZ,
+					maxZ = maxZ,
+					minY = minY,
+					maxY = maxY,
+				}
+			else
+				bounds.minX = math.min(bounds.minX, minX)
+				bounds.maxX = math.max(bounds.maxX, maxX)
+				bounds.minZ = math.min(bounds.minZ, minZ)
+				bounds.maxZ = math.max(bounds.maxZ, maxZ)
+				bounds.minY = math.min(bounds.minY, minY)
+				bounds.maxY = math.max(bounds.maxY, maxY)
+			end
+		end
+	end
+
+	if not bounds then
+		return {
+			minX = -DEFAULT_SPAWN_RANGE,
+			maxX = DEFAULT_SPAWN_RANGE,
+			minZ = -DEFAULT_SPAWN_RANGE,
+			maxZ = DEFAULT_SPAWN_RANGE,
+			minY = 0,
+			maxY = 150,
+			rayOriginY = 250,
+			rayLength = 500,
+		}
+	end
+
+	bounds.minX -= COIN_SPAWN_BOUNDS_PADDING
+	bounds.maxX += COIN_SPAWN_BOUNDS_PADDING
+	bounds.minZ -= COIN_SPAWN_BOUNDS_PADDING
+	bounds.maxZ += COIN_SPAWN_BOUNDS_PADDING
+	bounds.rayOriginY = bounds.maxY + COIN_SPAWN_VERTICAL_PADDING
+	bounds.rayLength = math.max((bounds.maxY - bounds.minY) + (COIN_SPAWN_VERTICAL_PADDING * 2), 500)
+
+	return bounds
+end
+
+local function buildCoinRainRaycastParams()
+	local exclusions = {PhysicalCoinsFolder, BrainrotyFolder}
+	local activePetsFolder = Workspace:FindFirstChild("ActivePets")
+	if activePetsFolder then
+		table.insert(exclusions, activePetsFolder)
+	end
+
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player.Character then
+			table.insert(exclusions, player.Character)
+		end
+	end
+
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = exclusions
+	params.IgnoreWater = false
+
+	return params
+end
+
+local function getFallbackCoinSpawnPosition()
+	return Vector3.new(
+		coinRainRandom:NextNumber(-DEFAULT_SPAWN_RANGE, DEFAULT_SPAWN_RANGE),
+		100,
+		coinRainRandom:NextNumber(-DEFAULT_SPAWN_RANGE, DEFAULT_SPAWN_RANGE)
+	)
+end
+
+local function findCoinSpawnPosition(bounds, raycastParams)
+	if not bounds then
+		return getFallbackCoinSpawnPosition()
+	end
+
+	for _ = 1, COIN_SPAWN_ATTEMPTS do
+		local origin = Vector3.new(
+			coinRainRandom:NextNumber(bounds.minX, bounds.maxX),
+			bounds.rayOriginY,
+			coinRainRandom:NextNumber(bounds.minZ, bounds.maxZ)
+		)
+		local result = Workspace:Raycast(origin, Vector3.new(0, -bounds.rayLength, 0), raycastParams)
+		if result and result.Instance and result.Normal.Y >= 0.45 then
+			return result.Position + Vector3.new(0, 2, 0)
+		end
+	end
+
+	return getFallbackCoinSpawnPosition()
+end
 
 local function spawnPhysicalCoins(count)
 	local folder = PhysicalCoinsFolder
 	folder:ClearAllChildren()
+	local spawnBounds = computeCoinRainSpawnBounds()
+	local raycastParams = buildCoinRainRaycastParams()
 
 	-- NOWE: Priorytet dla modelu w ReplicatedStorage
 	local coinTemplate = ReplicatedStorage:FindFirstChild("EventCoin")
@@ -135,33 +349,21 @@ local function spawnPhysicalCoins(count)
 
 		coin.Name = "CollectibleCoin"
 		coin.Size = Vector3.new(3, 3, 0.5)
-		coin.Position = Vector3.new(
-			math.random(-SPAWN_RANGE, SPAWN_RANGE),
-			100,
-			math.random(-SPAWN_RANGE, SPAWN_RANGE)
-		)
+		coin.Position = findCoinSpawnPosition(spawnBounds, raycastParams)
 		coin.CanCollide = false
 		coin.Anchored = true
 		coin.Parent = folder
-
-		-- Raycast na ziemię
-		local ray = Ray.new(coin.Position, Vector3.new(0, -200, 0))
-		local hit, pos = Workspace:FindPartOnRay(ray, coin)
-		if hit then
-			coin.Position = pos + Vector3.new(0, 2, 0)
-		end
 
 		local debounce = false
 		coin.Touched:Connect(function(hit)
 			if debounce then return end
 			local char = hit.Parent
-			local p = game.Players:GetPlayerFromCharacter(char)
+			local p = Players:GetPlayerFromCharacter(char)
 			if p then
 				debounce = true
 				local stats = p:FindFirstChild("leaderstats")
 				if stats and stats:FindFirstChild("Coins") then
-					local multi = p:GetAttribute("CoinMultiplier") or 1
-					local amountToAdd = math.ceil(COIN_REWARD * multi)
+					local amountToAdd = math.ceil(COIN_REWARD * (p:GetAttribute("CoinMultiplier") or 1))
 					stats.Coins.Value += amountToAdd
 					
 				end
@@ -359,11 +561,15 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
 	local wonModel = missingItems[math.random(1, #missingItems)]
 	local collection = getCollection(player)
 
-	-- Zapis nagrody (marker)
+	-- Zapis nagrody (marker i atrybut)
 	if not collection:FindFirstChild(wonModel.Name) then
 		local marker = Instance.new("BoolValue")
 		marker.Name = wonModel.Name
 		marker.Parent = collection
+		
+		local safeAttributeName = string.gsub(wonModel.Name, " ", "_")
+		safeAttributeName = string.gsub(safeAttributeName, "[^%w_]", "")
+		player:SetAttribute("Collected_" .. safeAttributeName, true)
 		
 		-- NOWE: Konsumpcja wskazówki (usunięcie z DataStore/folderu)
 		local hints = player:FindFirstChild("BoughtHints")
@@ -408,6 +614,10 @@ OpenSpecificCaseEvent.Event:Connect(function(player, requestedRarity)
 		marker.Name = wonModel.Name
 		marker.Parent = collection
 		
+		local safeAttributeName = string.gsub(wonModel.Name, " ", "_")
+		safeAttributeName = string.gsub(safeAttributeName, "[^%w_]", "")
+		player:SetAttribute("Collected_" .. safeAttributeName, true)
+		
 		local hints = player:FindFirstChild("BoughtHints")
 		local rarity = wonModel:GetAttribute("Rarity") or "Common"
 		if hints and hints:FindFirstChild(rarity) then
@@ -425,11 +635,11 @@ OpenSpecificCaseEvent.Event:Connect(function(player, requestedRarity)
 	if ServerUpdateQuestProgress then
 		ServerUpdateQuestProgress:Fire(player, "CollectBrainrots", 1)
 	end
+
 end)
 
 game.Players.PlayerRemoving:Connect(function(player)
 	collectRequestRateByUserId[player.UserId] = nil
-	RebirthPositions[player.UserId] = nil
 end)
 
 -- 2. OBSŁUGA ZBIERANIA Z MAPY (Szybki zapis na serwerze)
@@ -475,8 +685,11 @@ BrainrotCollectedEvent.OnServerEvent:Connect(function(player, brainrotName)
 
 	if targetPosition then
 		local distance = (humanoidRootPart.Position - targetPosition).Magnitude
-		if distance > GameConfig.MaxCollectDistance then
-			warn("[Anti-Cheat] Gracz " .. player.Name .. " odrzucony. Odległość " .. math.floor(distance) .. " jest większa niż max " .. GameConfig.MaxCollectDistance)
+		local maxDist = GameConfig.MaxCollectDistance or 60
+		if maxDist < 60 then maxDist = 60 end -- Bezpieczny bufor dla szybko biegających graczy (np. ze Speed Boostem)
+		
+		if distance > maxDist then
+			warn("[Anti-Cheat] Gracz " .. player.Name .. " odrzucony. Odległość " .. math.floor(distance) .. " jest większa niż max " .. maxDist)
 			return
 		end
 	end
@@ -503,6 +716,10 @@ BrainrotCollectedEvent.OnServerEvent:Connect(function(player, brainrotName)
 	if ServerUpdateQuestProgress then
 		ServerUpdateQuestProgress:Fire(player, "CollectBrainrots", 1)
 	end
+
+	if rarity == "OG" then
+		SpawnSystemServerEvent:Fire("HandleOGCollected", player)
+	end
 end)
 
 -- Synchronizacja Robuxów przy wejściu gracza
@@ -510,16 +727,30 @@ game.Players.PlayerAdded:Connect(function(player)
 	PoolUpdated:FireClient(player, GlobalRobuxPool, QueuedRains)
 end)
 
+-- OBSŁUGA PORTALU OG (Walidacja Serwerowa - KROK 4)
+RequestOGTeleport.OnServerInvoke = function(player)
+	local BrainrotUtils = require(ReplicatedStorage:WaitForChild("FolderReplicatedStorage"):WaitForChild("BrainrotUtils"))
+	
+	-- Twarde sprawdzanie ilości (Zmienione: teleport wymaga tylko skompletowania rzadkości "Secret")
+	if BrainrotUtils.hasCompletedRarity(player, "Secret") then
+		SpawnSystemServerEvent:Fire("EnterOG", player)
+		return true
+	end
+	
+	return false
+end
+
 -- OBSŁUGA REBIRTH (Logika Kasowania i Fizyka)
 RebirthEvent.OnServerEvent:Connect(function(player)
 	local collection = player:FindFirstChild("BrainrotCollection")
 
 	-- Sprawdza, czy liczba elementów w folderze BrainrotCollection gracza wynosi GameConfig.TotalBrainrots.
 	if collection and #collection:GetChildren() >= GameConfig.TotalBrainrots then
+		local rebirthReturnCFrame = nil
 
 		-- Zapisujemy pozycję gracza
 		if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-			RebirthPositions[player.UserId] = player.Character.HumanoidRootPart.CFrame
+			rebirthReturnCFrame = player.Character.HumanoidRootPart.CFrame
 		end
 
 		-- Wysyłanie efektu do klienta
@@ -548,6 +779,9 @@ RebirthEvent.OnServerEvent:Connect(function(player)
 			end
 
 			-- Odświeżenie postaci (bez zabijania)
+			if rebirthReturnCFrame then
+				SpawnSystemServerEvent:Fire("SetRespawnOverride", player, { cframe = rebirthReturnCFrame })
+			end
 			player:LoadCharacter()
 		end)
 	end
@@ -560,10 +794,6 @@ game.Players.PlayerAdded:Connect(function(player)
 		local hrp = character:WaitForChild("HumanoidRootPart")
 
 		-- Teleportacja powrotna jeśli to był Rebirth
-		if RebirthPositions[player.UserId] then
-			hrp.CFrame = RebirthPositions[player.UserId]
-			RebirthPositions[player.UserId] = nil
-		end
 
 		-- Pobieranie Rebirths
 		local stats = player:WaitForChild("leaderstats")

@@ -2,14 +2,14 @@ local GameConfig = {}
 
 -- Ceny i Wymagania (Rzadkości)
 GameConfig.Rarities = {
-	["Common"] = { Price = 50, PetReqRebirth = 0, Color = Color3.fromRGB(163, 162, 165), Order = 1 },
-	["Rare"] = { Price = 150, PetReqRebirth = 1, Color = Color3.fromRGB(64, 255, 71), Order = 2 },
-	["Epic"] = { Price = 400, PetReqRebirth = 2, Color = Color3.fromRGB(180, 71, 255), Order = 3 },
-	["Legendary"] = { Price = 800, PetReqRebirth = 2, Color = Color3.fromRGB(255, 145, 0), Order = 4 },
-	["Mythic"] = { Price = 1500, PetReqRebirth = 3, Color = Color3.fromRGB(255, 33, 33), Order = 5 },
-	["Brainrot God"] = { Price = 5000, PetReqRebirth = 3, Color = Color3.fromRGB(0, 255, 255), Order = 6 },
-	["Secret"] = { Price = 10000, PetReqRebirth = 4, Color = Color3.fromRGB(150, 150, 150), Order = 7 },
-	["OG"] = { Price = 99999, PetReqRebirth = 5, Color = Color3.fromRGB(0, 255, 255), Order = 8 }
+	["Common"] = { Price = 25, PetReqRebirth = 0, Color = Color3.fromRGB(163, 162, 165), Order = 1 },
+	["Rare"] = { Price = 50, PetReqRebirth = 1, Color = Color3.fromRGB(64, 255, 71), Order = 2 },
+	["Epic"] = { Price = 150, PetReqRebirth = 2, Color = Color3.fromRGB(180, 71, 255), Order = 3 },
+	["Legendary"] = { Price = 300, PetReqRebirth = 2, Color = Color3.fromRGB(255, 145, 0), Order = 4 },
+	["Mythic"] = { Price = 600, PetReqRebirth = 3, Color = Color3.fromRGB(255, 33, 33), Order = 5 },
+	["Brainrot God"] = { Price = 1200, PetReqRebirth = 3, Color = Color3.fromRGB(0, 255, 255), Order = 6 },
+	["Secret"] = { Price = 2500, PetReqRebirth = 4, Color = Color3.fromRGB(150, 150, 150), Order = 7 },
+	["OG"] = { Price = 10000, PetReqRebirth = 5, Color = Color3.fromRGB(0, 255, 255), Order = 8 }
 }
 
 -- Produkty: Skrzynki (POPRAWIONE ID z oryginalnych skryptów)
@@ -39,42 +39,42 @@ GameConfig.CollectRequestRateWindow = 0.35
 GameConfig.MaxCollectRequestsPerWindow = 4
 GameConfig.CoinRainTriggerAmount = 1000
 GameConfig.CoinRainDuration = 115
-GameConfig.CoinRainCoinReward = 1
+GameConfig.CoinRainCoinReward = 5
 
 GameConfig.TotalBrainrots = 143
 
 GameConfig.QuestSystem = {
 	DailyCount = 3, -- Ile zadań gracz dostaje dziennie
-	SelectionVersion = 2,
+	SelectionVersion = 3,
 	Pool = {
-		{ID = "CollectBrainrots", Desc = "Znajdz %d Brainrotow", Req = 15, Reward = 300, Category = "Active"},
-		{ID = "PlayTime", Desc = "Graj przez %d minut", Req = 20, Reward = 300, Category = "Passive"},
-		{ID = "Jump", Desc = "Podskocz %d razy", Req = 250, Reward = 300, Category = "Active"},
-		{ID = "Climb", Desc = "Wespnij sie lub wskocz lacznie na %d studow", Req = 1000, Reward = 300, Category = "Active"},
-		{ID = "Walk", Desc = "Przebiegnij %d studow", Req = 3000, Reward = 300, Category = "Passive"},
-		{ID = "UseReveal", Desc = "Uzyj podpowiedzi %d razy", Req = 2, Reward = 300, Category = "Situational"},
-		{ID = "Fall", Desc = "Spadnij lacznie %d studow", Req = 500, Reward = 300, Category = "Passive"},
-		{ID = "Swim", Desc = "Plyn lacznie przez %d sekund", Req = 60, Reward = 300, Category = "Situational"},
-		{ID = "Socialize", Desc = "Badz blisko innych graczy przez %d sekund", Req = 180, Reward = 300, Category = "Situational"}
+		{ID = "CollectBrainrots", Desc = "Znajdz %d Brainrotow", Req = 30, Reward = 1000, Category = "Active"},
+		{ID = "PlayTime", Desc = "Graj przez %d minut", Req = 40, Reward = 1000, Category = "Passive"},
+		{ID = "Jump", Desc = "Podskocz %d razy", Req = 500, Reward = 1000, Category = "Active"},
+		{ID = "Climb", Desc = "Wespnij sie lub wskocz lacznie na %d studow", Req = 2000, Reward = 1000, Category = "Active"},
+		{ID = "Walk", Desc = "Przebiegnij %d studow", Req = 6000, Reward = 1000, Category = "Passive"},
+		{ID = "UseReveal", Desc = "Uzyj podpowiedzi %d razy", Req = 2, Reward = 1000, Category = "Situational"},
+		{ID = "Fall", Desc = "Spadnij lacznie %d studow", Req = 1000, Reward = 1000, Category = "Passive"},
+		{ID = "Swim", Desc = "Plyn lacznie przez %d sekund", Req = 120, Reward = 1000, Category = "Situational"},
+		{ID = "Socialize", Desc = "Badz blisko innych graczy przez %d sekund", Req = 180, Reward = 1000, Category = "Situational"}
 	}
 }
 GameConfig.PlaytimeRewards = {
-	{ TimeMinutes = 5, Reward = 100 },
-	{ TimeMinutes = 15, Reward = 250 },
-	{ TimeMinutes = 30, Reward = 500 },
-	{ TimeMinutes = 60, Reward = 1000 },
-	{ TimeMinutes = 90, Reward = 2000 }
+	{ TimeMinutes = 5, Reward = 250 },
+	{ TimeMinutes = 15, Reward = 500 },
+	{ TimeMinutes = 30, Reward = 1000 },
+	{ TimeMinutes = 60, Reward = 2250 },
+	{ TimeMinutes = 90, Reward = 4000 }
 }
 GameConfig.PlaytimeReconnectHeartbeatSeconds = 10
 GameConfig.PlaytimeReconnectGraceSeconds = 60
 
 GameConfig.DailyRewards = {
-	[1] = { Type = "Coin", Value = 50, Icon = "Coin2D" },
-	[2] = { Type = "Coin", Value = 250, Icon = "Coin2D" },
+	[1] = { Type = "Coin", Value = 1000, Icon = "Coin2D" },
+	[2] = { Type = "Coin", Value = 2000, Icon = "Coin2D" },
 	[3] = { Type = "Speed", Value = 2, Icon = "speed" }, -- Speed Boost x2 (30 min)
-	[4] = { Type = "Coin", Value = 500, Icon = "Coin2D" },
+	[4] = { Type = "Coin", Value = 3500, Icon = "Coin2D" },
 	[5] = { Type = "Jump", Value = 2, Icon = "Jump" }, -- Jump Boost x2 (30 min)
-	[6] = { Type = "Coin", Value = 1000, Icon = "Coin2D" },
+	[6] = { Type = "Coin", Value = 6000, Icon = "Coin2D" },
 	[7] = { Type = "PurpleTrail", Value = 1, Icon = "Aura" }
 }
 
@@ -86,10 +86,10 @@ GameConfig.GamePasses = {
 }
 
 GameConfig.CoinPacks = {
-	Pack100 = { ID = 3568785592, Amount = 100, Price = 19 },
-	Pack250 = { ID = 3568785721, Amount = 250, Price = 45 },
-	Pack500 = { ID = 3568785904, Amount = 500, Price = 79 },
-	Pack1000 = { ID = 3568786016, Amount = 1000, Price = 149 }
+	Pack100 = { ID = 3568785592, Amount = 1000, Price = 19 },
+	Pack250 = { ID = 3568785721, Amount = 2500, Price = 45 },
+	Pack500 = { ID = 3568785904, Amount = 10000, Price = 79 },
+	Pack1000 = { ID = 3568786016, Amount = 25000, Price = 149 }
 }
 
 -- STARTER PACK

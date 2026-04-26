@@ -175,15 +175,20 @@ end
 local function buildDailyQuestSelection()
 	local selectedQuests = {}
 	local orderedCategories = { "Passive", "Active", "Situational" }
+	local dailyCount = math.max(1, tonumber(GameConfig.QuestSystem.DailyCount) or #orderedCategories)
 
 	for _, categoryName in ipairs(orderedCategories) do
+		if #selectedQuests >= dailyCount then
+			break
+		end
+
 		local chosenQuest = drawRandomQuestByCategory(categoryName)
 		if chosenQuest then
 			table.insert(selectedQuests, chosenQuest)
 		end
 	end
 
-return selectedQuests
+	return selectedQuests
 end
 
 local function populateQuestFolderFromSelection(questsFolder, selectedQuests)
@@ -260,6 +265,10 @@ Players.PlayerAdded:Connect(function(player)
 			local marker = Instance.new("BoolValue")
 			marker.Name = itemName
 			marker.Parent = collectionFolder
+			
+			local safeAttributeName = string.gsub(itemName, " ", "_")
+			safeAttributeName = string.gsub(safeAttributeName, "[^%w_]", "")
+			player:SetAttribute("Collected_" .. safeAttributeName, true)
 		end
 	end
 	collectionFolder.Parent = player

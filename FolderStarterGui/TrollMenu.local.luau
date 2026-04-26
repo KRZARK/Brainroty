@@ -63,16 +63,62 @@ local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 280, 0, 420)
 MainFrame.ZIndex = 100
+local trollMenuScale = 1
+local trollMenuUIScale = Instance.new("UIScale")
+trollMenuUIScale.Parent = MainFrame
+local menuOpen = false
 
 -- Prawy dolny róg (otwarte) i zjazd poza prawą dolną krawędź (zamknięte)
-local openPos = UDim2.new(1, -420, 1, -440)
-local closedPos = UDim2.new(1, 40, 1, -440)
+local openPos = UDim2.new(1, -(MainFrame.Size.X.Offset + 24), 0, 214)
+local closedPos = UDim2.new(1, MainFrame.Size.X.Offset + 40, 0, 214)
+
+local function getViewportSize()
+	local camera = Workspace.CurrentCamera
+	if camera then
+		return camera.ViewportSize
+	end
+
+	return Vector2.new(1280, 720)
+end
+
+local function updateMenuPositions()
+	local metrics = HudTileStyle.getLayoutMetrics()
+	local viewport = metrics.Viewport or getViewportSize()
+	local scale = HudTileStyle.getResponsivePanelScale(280, 420, {
+		landscapeWidthRatio = 0.42,
+		landscapeHeightRatio = 0.76,
+		portraitWidthRatio = 0.7,
+		portraitHeightRatio = 0.62,
+		mobileMinScale = 0.58,
+	})
+	trollMenuScale = scale
+	trollMenuUIScale.Scale = scale
+
+	local frameWidth = math.floor(MainFrame.Size.X.Offset * trollMenuScale + 0.5)
+	local frameHeight = math.floor(MainFrame.Size.Y.Offset * trollMenuScale + 0.5)
+	local hudGap = metrics.IsLandscapeMobile and math.max(12, math.floor(metrics.GapPx * 1.8 + 0.5)) or math.max(24, math.floor(metrics.GapPx * 2.2 + 0.5))
+	local bottomPadding = metrics.IsLandscapeMobile and math.max(82, math.floor(viewport.Y * 0.24 + 0.5)) or math.max(18, math.floor(viewport.Y * 0.025 + 0.5))
+	local topOffset = math.max(10, viewport.Y - frameHeight - bottomPadding)
+	local iconColumnLeft = metrics.RightX - (metrics.ButtonPx * 0.5)
+	local openLeft = math.max(8, iconColumnLeft - hudGap - frameWidth)
+	local openOffsetX = math.floor(openLeft - viewport.X + 0.5)
+
+	openPos = UDim2.new(1, openOffsetX, 0, topOffset)
+	closedPos = UDim2.new(1, 40, 0, topOffset)
+
+	if menuOpen then
+		MainFrame.Position = openPos
+	else
+		MainFrame.Position = closedPos
+	end
+end
 
 MainFrame.Position = closedPos
 MainFrame.Visible = false
 MainFrame.BackgroundColor3 = Color3.new(1, 1, 1) -- BIAŁE do Gradientu
 MainFrame.BorderSizePixel = 0
 MainFrame.Parent = ScreenGui
+updateMenuPositions()
 
 local mainGradient = Instance.new("UIGradient")
 mainGradient.Color = ColorSequence.new({
@@ -311,7 +357,24 @@ PrevBtn.MouseButton1Click:Connect(function() updateSpectateTarget(-1) end)
 NextBtn.MouseButton1Click:Connect(function() updateSpectateTarget(1) end)
 
 -- Logika animacji i auto-włączania podglądania
-local menuOpen = false
+
+local function bindMenuLayoutCamera(camera)
+	if not camera then
+		return
+	end
+
+	camera:GetPropertyChangedSignal("ViewportSize"):Connect(updateMenuPositions)
+end
+
+bindMenuLayoutCamera(Workspace.CurrentCamera)
+Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+	bindMenuLayoutCamera(Workspace.CurrentCamera)
+	updateMenuPositions()
+	task.defer(updateMenuPositions)
+end)
+task.defer(updateMenuPositions)
+task.delay(0.2, updateMenuPositions)
+task.delay(1, updateMenuPositions)
 
 local function toggleMenu()
     menuOpen = not menuOpen

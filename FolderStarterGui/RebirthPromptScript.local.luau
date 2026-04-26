@@ -1,7 +1,9 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local GameConfig = require(ReplicatedStorage:WaitForChild("FolderReplicatedStorage"):WaitForChild("GameConfig"))
+local FolderReplicatedStorage = ReplicatedStorage:WaitForChild("FolderReplicatedStorage")
+local GameConfig = require(FolderReplicatedStorage:WaitForChild("GameConfig"))
+local HudTileStyle = require(FolderReplicatedStorage:WaitForChild("HudTileStyle"))
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -59,6 +61,18 @@ Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 20)
 
 local uiScale = Instance.new("UIScale", mainFrame)
 uiScale.Scale = 1.2
+
+HudTileStyle.bindResponsivePanelScale(mainFrame, {
+	baseSize = UDim2.fromOffset(780, 500),
+	uiScale = uiScale,
+	desktopScale = 1.2,
+	mobileMaxScale = 1,
+	landscapeWidthRatio = 0.94,
+	landscapeHeightRatio = 0.88,
+	portraitWidthRatio = 0.94,
+	portraitHeightRatio = 0.7,
+	mobileMinScale = 0.54,
+})
 
 local mainStroke = Instance.new("UIStroke", mainFrame)
 mainStroke.Thickness = 6

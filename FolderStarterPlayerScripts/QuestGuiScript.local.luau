@@ -56,7 +56,7 @@ ToggleGui.Parent = playerGui
 
 local questBtn = Instance.new("ImageButton")
 questBtn.Name = "OpenQuests"
-questBtn.Position = HudTileStyle.getSlot("left", 1)
+questBtn.Position = HudTileStyle.getSlot("left", 3)
 questBtn.ZIndex = 100
 questBtn.Parent = ToggleGui
 
@@ -88,7 +88,7 @@ btnText.Parent = questBtn
 
 HudTileStyle.apply(questBtn, btnIcon, btnText, {
 	side = "left",
-	slotIndex = 1,
+	slotIndex = 3,
 	zIndex = 100,
 })
 
@@ -106,6 +106,15 @@ local panelStroke = Instance.new("UIStroke", questPanel)
 panelStroke.Thickness = 3
 panelStroke.Color = Color3.new(0, 0, 0)
 panelStroke.Transparency = 0.06
+
+HudTileStyle.bindResponsivePanelScale(questPanel, {
+	baseSize = UDim2.fromOffset(520, 560),
+	landscapeWidthRatio = 0.84,
+	landscapeHeightRatio = 0.88,
+	portraitWidthRatio = 0.92,
+	portraitHeightRatio = 0.84,
+	mobileMinScale = 0.54,
+})
 
 local panelGradient = Instance.new("UIGradient", questPanel)
 panelGradient.Color = ColorSequence.new({

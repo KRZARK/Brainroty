@@ -6,11 +6,15 @@ local TweenService = game:GetService("TweenService") -- Potrzebne do wolnej anim
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local rootPart = character:WaitForChild("HumanoidRootPart")
+local activeHighlight
+local bindDeathCleanup
+local createWayfinder
 
 -- === POPRAWKA: ODŚWIEŻANIE POSTACI PO RESPAWN / REBIRTH ===
 player.CharacterAdded:Connect(function(newChar)
 	character = newChar
 	rootPart = newChar:WaitForChild("HumanoidRootPart")
+	bindDeathCleanup(newChar)
 	
 	-- Jeśli użytkownik aktualnie czegoś SZUKAŁ, po respawnie odświeżamy mu ścieżkę!
 	if activeHighlight and activeHighlight.Adornee then
@@ -32,11 +36,68 @@ local HudTileStyle = require(FolderReplicatedStorage:WaitForChild("HudTileStyle"
 local greenStudsImage = HudTileStyle.getImage(ReplicatedStorage, "GreenStuds", "")
 local kompasImage = HudTileStyle.getImage(ReplicatedStorage, "Kompas", "rbxassetid://3944676352")
 
-local activeHighlight = nil
+activeHighlight = nil
 local activeBeamRoot = nil
+local activeTargetAttachment = nil
 local lastCoinsValue = 0 -- Do śledzenia przyrostu
 local currentTarget, currentRarity = nil, nil -- CACHE DLA OPTYMALIZACJI
 local isStatusOverridden = false -- Zapobiega nadpisywaniu tekstu przez RunService
+local isOgPortalHintActive = false
+local deathCleanupConnection = nil
+
+local function getCollectedFolder()
+	return player:FindFirstChild("BrainrotCollection")
+end
+
+local function hasCollectedBrainrot(brainrotName)
+	local collectedFolder = getCollectedFolder()
+	return collectedFolder ~= nil and brainrotName ~= nil and collectedFolder:FindFirstChild(brainrotName) ~= nil
+end
+
+local function clearActiveHint()
+	if activeHighlight then
+		activeHighlight:Destroy()
+		activeHighlight = nil
+	end
+
+	if activeBeamRoot then
+		activeBeamRoot:Destroy()
+		activeBeamRoot = nil
+	end
+
+	if activeTargetAttachment then
+		activeTargetAttachment:Destroy()
+		activeTargetAttachment = nil
+	end
+
+	isOgPortalHintActive = false
+end
+
+bindDeathCleanup = function(characterModel)
+	if deathCleanupConnection then
+		deathCleanupConnection:Disconnect()
+		deathCleanupConnection = nil
+	end
+
+	local humanoid = characterModel and characterModel:FindFirstChildOfClass("Humanoid")
+	if not humanoid then
+		return
+	end
+
+	deathCleanupConnection = humanoid.Died:Connect(function()
+		if isOgPortalHintActive then
+			clearActiveHint()
+		end
+	end)
+end
+
+bindDeathCleanup(character)
+
+_G.ClearOgPortalHint = function()
+	if isOgPortalHintActive then
+		clearActiveHint()
+	end
+end
 
 local function hasSavedHintForRarity(rarity)
 	local hintsFolder = player:FindFirstChild("BoughtHints")
@@ -67,7 +128,7 @@ promptGui.Parent = player:WaitForChild("PlayerGui")
 -- ESTETYCZNA RAMKA NA MONETY
 local coinsFrame = Instance.new("Frame")
 coinsFrame.Name = "CoinsFrame"
-coinsFrame.Size = UDim2.fromOffset(200, 45) 
+coinsFrame.Size = UDim2.fromOffset(200, 45)
 coinsFrame.Position = UDim2.new(1, -20, 0, 20) -- Prawy górny róg
 coinsFrame.AnchorPoint = Vector2.new(1, 0)
 coinsFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
@@ -75,7 +136,10 @@ coinsFrame.BackgroundTransparency = 0.4
 coinsFrame.ZIndex = 1
 coinsFrame.Parent = revealBtnGui
 
-Instance.new("UICorner", coinsFrame).CornerRadius = UDim.new(0, 8)
+local coinsCorner = Instance.new("UICorner")
+coinsCorner.CornerRadius = UDim.new(0, 8)
+coinsCorner.Parent = coinsFrame
+
 local stroke = Instance.new("UIStroke", coinsFrame)
 stroke.Color = Color3.new(1,1,1)
 stroke.Thickness = 2
@@ -94,9 +158,74 @@ coinsDisplay.Text = "💰 0"
 coinsDisplay.ZIndex = 10 -- NA WIERZCHU
 coinsDisplay.Parent = coinsFrame
 
+local coinsTextConstraint = Instance.new("UITextSizeConstraint")
+coinsTextConstraint.MinTextSize = 10
+coinsTextConstraint.MaxTextSize = 28
+coinsTextConstraint.Parent = coinsDisplay
+
+local coinsLayoutConnection
+
+local function applyCoinsFrameLayout()
+	local camera = workspace.CurrentCamera
+	local viewport = camera and camera.ViewportSize or Vector2.new(1280, 720)
+	local metrics = HudTileStyle.getLayoutMetrics()
+
+	if metrics.IsLandscapeMobile then
+		local frameWidth = math.clamp(viewport.X * 0.20, 128, 144)
+		local frameHeight = math.clamp(viewport.Y * 0.084, 28, 32)
+		local rightPadding = math.clamp(viewport.X * 0.012, 8, 14)
+		coinsFrame.Size = UDim2.fromOffset(frameWidth, frameHeight)
+		coinsFrame.Position = UDim2.new(1, -rightPadding, 0, 10)
+		coinsCorner.CornerRadius = UDim.new(0, 6)
+		stroke.Thickness = 1.8
+		coinsDisplay.Size = UDim2.new(1, -8, 1, -6)
+		coinsDisplay.Position = UDim2.new(0, 4, 0, 3)
+		coinsTextConstraint.MaxTextSize = 16
+	elseif metrics.IsMobile then
+		local frameWidth = math.clamp(viewport.X * 0.34, 150, 188)
+		local frameHeight = math.clamp(viewport.Y * 0.055, 34, 40)
+		local rightPadding = math.clamp(viewport.X * 0.015, 10, 16)
+		coinsFrame.Size = UDim2.fromOffset(frameWidth, frameHeight)
+		coinsFrame.Position = UDim2.new(1, -rightPadding, 0, 18)
+		coinsCorner.CornerRadius = UDim.new(0, 8)
+		stroke.Thickness = 2
+		coinsDisplay.Size = UDim2.new(1, -10, 1, -8)
+		coinsDisplay.Position = UDim2.new(0, 5, 0, 4)
+		coinsTextConstraint.MaxTextSize = 22
+	else
+		coinsFrame.Size = UDim2.fromOffset(200, 45)
+		coinsFrame.Position = UDim2.new(1, -20, 0, 20)
+		coinsCorner.CornerRadius = UDim.new(0, 8)
+		stroke.Thickness = 2
+		coinsDisplay.Size = UDim2.new(1, -10, 1, -10)
+		coinsDisplay.Position = UDim2.new(0, 5, 0, 5)
+		coinsTextConstraint.MaxTextSize = 28
+	end
+end
+
+local function bindCoinsLayoutCamera(camera)
+	if coinsLayoutConnection then
+		coinsLayoutConnection:Disconnect()
+		coinsLayoutConnection = nil
+	end
+
+	if not camera then
+		return
+	end
+
+	coinsLayoutConnection = camera:GetPropertyChangedSignal("ViewportSize"):Connect(applyCoinsFrameLayout)
+end
+
+applyCoinsFrameLayout()
+bindCoinsLayoutCamera(workspace.CurrentCamera)
+workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+	bindCoinsLayoutCamera(workspace.CurrentCamera)
+	applyCoinsFrameLayout()
+end)
+
 local revealBtn = Instance.new("ImageButton")
 revealBtn.Name = "RevealButton"
-revealBtn.Position = HudTileStyle.getSlot("right", 0)
+revealBtn.Position = HudTileStyle.getSlot("right", 1)
 revealBtn.ZIndex = 50
 revealBtn.Visible = true -- ZAWSZE WIDOCZNY
 revealBtn.Parent = revealBtnGui
@@ -112,7 +241,7 @@ revealLabel.Parent = revealBtn
 
 HudTileStyle.apply(revealBtn, revealIcon, revealLabel, {
 	side = "right",
-	slotIndex = 0,
+	slotIndex = 1,
 	zIndex = 50,
 })
 
@@ -157,6 +286,15 @@ promptGradient.Color = ColorSequence.new({
 promptGradient.Rotation = 90
 promptGradient.Parent = promptFrame
 
+HudTileStyle.bindResponsivePanelScale(promptFrame, {
+	baseSize = UDim2.fromOffset(400, 220),
+	landscapeWidthRatio = 0.76,
+	landscapeHeightRatio = 0.58,
+	portraitWidthRatio = 0.92,
+	portraitHeightRatio = 0.34,
+	mobileMinScale = 0.7,
+})
+
 local promptPattern = Instance.new("ImageLabel")
 promptPattern.Name = "Pattern"
 promptPattern.Size = UDim2.fromScale(1, 1)
@@ -183,6 +321,7 @@ promptLabel.Font = Enum.Font.FredokaOne
 promptLabel.TextColor3 = Color3.new(1, 1, 1)
 promptLabel.Text = "Czy chcesz kupić podpowiedź do Brainrota za 50 monet?"
 promptLabel.ZIndex = 91
+promptLabel.Text = "Czy chcesz kupic podpowiedz do Brainrota?"
 promptLabel.Parent = promptFrame
 
 local promptTextStroke = Instance.new("UIStroke", promptLabel)
@@ -347,18 +486,32 @@ local function showCoinPopup(amount)
 end
 
 -- === FUNKCJA TWORZENIA STRZAŁKI (BEAM) ===
-local function createWayfinder(target)
+createWayfinder = function(target)
 	if activeBeamRoot then activeBeamRoot:Destroy() end
+	if activeTargetAttachment then activeTargetAttachment:Destroy() end
 	local attPlayer = Instance.new("Attachment", rootPart)
 	attPlayer.Name = "FinderAttachment"
 	attPlayer.Position = Vector3.new(0, 1, 0) 
 
-	local targetPart = target.PrimaryPart or target:FindFirstChildWhichIsA("BasePart")
+	local targetPart = nil
+	if target:IsA("BasePart") then
+		targetPart = target
+	elseif target:IsA("Model") then
+		targetPart = target.PrimaryPart or target:FindFirstChildWhichIsA("BasePart")
+	else
+		targetPart = target:FindFirstChildWhichIsA("BasePart", true)
+	end
+
 	if not targetPart then return end
 
 	local attTarget = Instance.new("Attachment", targetPart)
 	attTarget.Name = "TargetAttachment"
-	attTarget.WorldPosition = target:GetPivot().Position 
+	if target:IsA("Model") then
+		attTarget.WorldPosition = target:GetPivot().Position
+	else
+		attTarget.WorldPosition = targetPart.Position
+	end
+	activeTargetAttachment = attTarget
 
 	local beam = Instance.new("Beam")
 	beam.Name = "PathOfLight"
@@ -383,14 +536,22 @@ end
 
 -- SZUKANIE NAJNIŻSZEJ RANGI
 local function getLowestRarityMissing()
-	if not _G.CollectedBrainrotsTable then return nil, nil end
 	local rarities = {"Common", "Rare", "Epic", "Legendary", "Mythic", "Brainrot God", "Secret", "OG"}
 	for _, rarityName in ipairs(rarities) do
 		local missing = {}
 		for _, model in ipairs(brainrotyFolder:GetChildren()) do
-			if model:IsA("Model") and not _G.CollectedBrainrotsTable[model.Name] then
+			if model:IsA("Model") and not hasCollectedBrainrot(model.Name) then
 				local mRarity = model:GetAttribute("Rarity") or "Common"
-				if mRarity == rarityName then table.insert(missing, model) end
+				if mRarity == rarityName then
+					if rarityName == "OG" then
+						local ogPortal = workspace:FindFirstChild("OGPortal")
+						if ogPortal then
+							return ogPortal, rarityName
+						end
+					else
+						table.insert(missing, model)
+					end
+				end
 			end
 		end
 		if #missing > 0 then
@@ -462,6 +623,7 @@ confirmBtn.Activated:Connect(function()
 		high.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
 		high.Parent = target
 		activeHighlight = high
+		isOgPortalHintActive = (rarity == "OG")
 		createWayfinder(target)
 	else
 		isStatusOverridden = true
@@ -491,10 +653,8 @@ RunService.RenderStepped:Connect(function()
 	end
 
 	if activeHighlight then
-		if not activeHighlight.Adornee or (_G.CollectedBrainrotsTable and _G.CollectedBrainrotsTable[activeHighlight.Adornee.Name]) then
-			activeHighlight:Destroy()
-			activeHighlight = nil
-			if activeBeamRoot then activeBeamRoot:Destroy(); activeBeamRoot = nil end
+		if not activeHighlight.Adornee or (not isOgPortalHintActive and hasCollectedBrainrot(activeHighlight.Adornee.Name)) then
+			clearActiveHint()
 		end
 	end
 

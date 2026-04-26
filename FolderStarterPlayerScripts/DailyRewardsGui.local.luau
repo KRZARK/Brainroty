@@ -76,13 +76,23 @@ DarkBg.Parent = ScreenGui
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 900, 0, 675)
-MainFrame.Position = UDim2.new(0.5, -450, 0.5, -337)
+MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 MainFrame.BackgroundColor3 = Color3.fromRGB(24, 31, 56)
 MainFrame.BorderSizePixel = 0
 MainFrame.Visible = false
 MainFrame.ZIndex = 1
 MainFrame.Parent = ScreenGui
 Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 20)
+
+HudTileStyle.bindResponsivePanelScale(MainFrame, {
+	baseSize = UDim2.fromOffset(900, 675),
+	landscapeWidthRatio = 0.96,
+	landscapeHeightRatio = 0.92,
+	portraitWidthRatio = 0.94,
+	portraitHeightRatio = 0.84,
+	mobileMinScale = 0.48,
+})
 
 local panelStroke = Instance.new("UIStroke", MainFrame)
 panelStroke.Thickness = 3
@@ -216,7 +226,8 @@ claimBtnStroke.Transparency = 0.08
 
 local function getRewardDescription(reward)
 	if reward.Type == "Coin" then
-		return tostring(reward.Value) .. " Coins"
+		local multiplier = LocalPlayer:GetAttribute("CoinMultiplier") or 1
+		return tostring(math.floor(reward.Value * multiplier)) .. " Coins"
 	elseif reward.Type == "Speed" then
 		return "Speed x2 (30m)"
 	elseif reward.Type == "Jump" then
@@ -439,7 +450,7 @@ local function closePanel()
 	local panelTween = TweenService:Create(
 		MainFrame,
 		TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-		{Position = UDim2.new(0.5, -450, 0.54, -337)}
+		{Position = UDim2.new(0.5, 0, 0.54, 0)}
 	)
 	panelTween:Play()
 	TweenService:Create(
@@ -463,7 +474,7 @@ local function openPanel()
 	DarkBg.BackgroundTransparency = 1
 	MainFrame.Visible = true
 	updateUI()
-	MainFrame.Position = UDim2.new(0.5, -450, 0.54, -337)
+	MainFrame.Position = UDim2.new(0.5, 0, 0.54, 0)
 
 	TweenService:Create(
 		DarkBg,
@@ -473,7 +484,7 @@ local function openPanel()
 	TweenService:Create(
 		MainFrame,
 		TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-		{Position = UDim2.new(0.5, -450, 0.5, -337)}
+		{Position = UDim2.new(0.5, 0, 0.5, 0)}
 	):Play()
 	TweenService:Create(ToggleBtn, TweenInfo.new(0.2), {Rotation = 15}):Play()
 end
@@ -529,6 +540,12 @@ ClaimBtn.MouseButton1Click:Connect(function()
 end)
 
 LocalPlayer:GetAttributeChangedSignal("LoginStreak"):Connect(function()
+	if MainFrame.Visible then
+		updateUI()
+	end
+end)
+
+LocalPlayer:GetAttributeChangedSignal("CoinMultiplier"):Connect(function()
 	if MainFrame.Visible then
 		updateUI()
 	end

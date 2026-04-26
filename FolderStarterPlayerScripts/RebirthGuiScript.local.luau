@@ -33,7 +33,7 @@ ToggleGui.Parent = playerGui
 
 local rebirthBtn = Instance.new("ImageButton")
 rebirthBtn.Name = "RebirthButton"
-rebirthBtn.Position = HudTileStyle.getSlot("left", 3)
+rebirthBtn.Position = HudTileStyle.getSlot("left", 5)
 rebirthBtn.ZIndex = 50
 rebirthBtn.Parent = ToggleGui
 
@@ -47,7 +47,7 @@ lb.Parent = rebirthBtn
 
 local rebirthStyle = HudTileStyle.apply(rebirthBtn, icon, lb, {
 	side = "left",
-	slotIndex = 3,
+	slotIndex = 5,
 	zIndex = 50,
 })
 local stroke = rebirthStyle.Stroke

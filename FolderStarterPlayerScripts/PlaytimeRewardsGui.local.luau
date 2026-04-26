@@ -29,6 +29,17 @@ end
 -- Inicjalizacja Danych z Serwera
 local sessionStartTime = os.time()
 local claimedRewards = {}
+local rewardRows = {}
+
+local function resetPlaytimeCycleClient(newStartTime)
+	sessionStartTime = tonumber(newStartTime) or os.time()
+	claimedRewards = {}
+
+	for _, rowObj in ipairs(rewardRows) do
+		rowObj.Button.Text = "LOCKED"
+		rowObj.Button.BackgroundColor3 = Color3.fromRGB(90, 96, 104)
+	end
+end
 
 -- Pobranie prawdziwego czasu z serwera po załadowaniu
 task.spawn(function()
@@ -141,12 +152,12 @@ amtStroke.Color = Color3.new(0, 0, 0)
 local function updateGiftButtonLayout()
 	local metrics = HudTileStyle.getLayoutMetrics()
 	if metrics.IsMobile then
-		giftTitle.Text = "TIME"
-		giftNotif.Size = UDim2.fromOffset(24, 24)
-		giftNotif.Position = UDim2.new(1, -2, 0, 2)
-		giftTimerLbl.Size = UDim2.new(0.82, 0, 0, 14)
-		giftTimerLbl.Position = UDim2.new(0.5, 0, 0.58, 0)
-		giftTimerLbl.TextSize = 10
+		giftTitle.Text = "PLAYTIME"
+		giftNotif.Size = UDim2.fromOffset(22, 22)
+		giftNotif.Position = UDim2.new(1, -1, 0, 1)
+		giftTimerLbl.Size = UDim2.new(0.9, 0, 0, 12)
+		giftTimerLbl.Position = UDim2.new(0.5, 0, 0.57, 0)
+		giftTimerLbl.TextSize = 9
 		giftAmountLbl.Visible = false
 	else
 		giftTitle.Text = "PLAYTIME"
@@ -196,6 +207,15 @@ panelGradient.Color = ColorSequence.new({
 	ColorSequenceKeypoint.new(1, Color3.fromRGB(22, 28, 48)),
 })
 panelGradient.Rotation = 90
+
+HudTileStyle.bindResponsivePanelScale(mainPanel, {
+	baseSize = UDim2.fromOffset(620, 700),
+	landscapeWidthRatio = 0.9,
+	landscapeHeightRatio = 0.92,
+	portraitWidthRatio = 0.94,
+	portraitHeightRatio = 0.84,
+	mobileMinScale = 0.48,
+})
 
 local panelPattern = Instance.new("ImageLabel", mainPanel)
 panelPattern.Name = "GreenStudsPattern"
@@ -280,7 +300,7 @@ socialBtn.Size = UDim2.new(1, -28, 0, 88)
 socialBtn.Position = UDim2.new(0, 14, 0, 92)
 socialBtn.AnchorPoint = Vector2.new(0, 0)
 socialBtn.BackgroundColor3 = Color3.fromRGB(22, 30, 52)
-socialBtn.Text = "👥 INVITE FRIEND (+20% COINS)"
+socialBtn.Text = "INVITE FRIENDS"
 socialBtn.TextColor3 = Color3.new(1, 1, 1)
 socialBtn.Font = Enum.Font.GothamBold
 socialBtn.TextSize = 34
@@ -324,7 +344,6 @@ listLayout.Padding = UDim.new(0, 12)
 listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
 -- === 3. BUDOWANIE ELEMENTÓW LISTY ===
-local rewardRows = {}
 
 for index, rewardData in ipairs(GameConfig.PlaytimeRewards) do
 	local row = Instance.new("Frame")
@@ -408,22 +427,18 @@ for index, rewardData in ipairs(GameConfig.PlaytimeRewards) do
 	actionBtn.MouseButton1Click:Connect(function()
 		if actionBtn.Text == "CLAIM" then
 			actionBtn.Text = "..."
-			local success, result, hadSocBonus, shouldRestart = claimEvent:InvokeServer(index)
+			local success, result, shouldRestart, nextCycleStartTime = claimEvent:InvokeServer(index)
 			if success then
 				playClaimRewardSound()
-				claimedRewards[tostring(index)] = true -- Czasem stringuje się przy jsonie
-				claimedRewards[index] = true
-				actionBtn.BackgroundColor3 = Color3.fromRGB(62, 70, 79)
-				actionBtn.Text = "CLAIMED"
 				
 				if shouldRestart then
-					-- Jeżeli odebrano wszystkie nagrody, serwer restartuje cykl
-					sessionStartTime = os.time()
-					claimedRewards = {}
-					for _, r in ipairs(rewardRows) do
-						r.Button.Text = "LOCKED"
-						r.Button.BackgroundColor3 = Color3.fromRGB(90, 96, 104)
-					end
+					-- Jeżeli odebrano wszystkie nagrody, serwer restartuje cały cykl od nowa.
+					resetPlaytimeCycleClient(nextCycleStartTime)
+				else
+					claimedRewards[tostring(index)] = true -- Czasem stringuje się przy jsonie
+					claimedRewards[index] = true
+					actionBtn.BackgroundColor3 = Color3.fromRGB(62, 70, 79)
+					actionBtn.Text = "CLAIMED"
 				end
 				
 				-- Pokazanie popupu
@@ -435,7 +450,7 @@ for index, rewardData in ipairs(GameConfig.PlaytimeRewards) do
 				pop.Font = Enum.Font.LuckiestGuy
 				pop.TextSize = 35
 				pop.TextColor3 = Color3.new(0, 1, 0)
-				pop.Text = "+ " .. result .. " 💰" .. (hadSocBonus and " (FRIEND BONUS!)" or "")
+				pop.Text = "+ " .. result .. " COINS"
 				pop.Parent = screenGui
 				
 				local popStroke = Instance.new("UIStroke", pop)
@@ -468,9 +483,6 @@ local isFriendBonusActive = false
 
 local function updateRewardValues()
 	local multi = player:GetAttribute("CoinMultiplier") or 1
-	if isFriendBonusActive then
-		multi = multi * 1.2
-	end
 	
 	for _, r in ipairs(rewardRows) do
 		local fRew = math.floor(r.Data.Reward * multi)
@@ -483,34 +495,10 @@ updateRewardValues() -- Inicjalne ustawienie
 
 -- Aktualizacja baneru zapraszania znajomych
 local function updateSocialBanner()
-	local foundFriend = false
-	for _, p in ipairs(Players:GetPlayers()) do
-		if p ~= player then
-			local success, isF = pcall(function() return player:IsFriendsWith(p.UserId) end)
-			if success and isF then
-				foundFriend = true
-				break
-			end
-		end
-	end
-	
-	if foundFriend then
-		if not isFriendBonusActive then
-			isFriendBonusActive = true
-			socialBtn.BackgroundColor3 = Color3.fromRGB(57, 81, 132)
-			socialBtn.Text = "🤝 FRIEND BONUS ACTIVE! (+20%)"
-			socialStroke.Color = Color3.fromRGB(123, 214, 114)
-			updateRewardValues()
-		end
-	else
-		if isFriendBonusActive then
-			isFriendBonusActive = false
-			socialBtn.BackgroundColor3 = Color3.fromRGB(22, 30, 52)
-			socialBtn.Text = "👥 INVITE FRIEND (+20% COINS)"
-			socialStroke.Color = Color3.fromRGB(72, 160, 224)
-			updateRewardValues()
-		end
-	end
+	isFriendBonusActive = false
+	socialBtn.BackgroundColor3 = Color3.fromRGB(22, 30, 52)
+	socialBtn.Text = "INVITE FRIENDS"
+	socialStroke.Color = Color3.fromRGB(72, 160, 224)
 end
 
 -- Sprawdzanie znajomych co 10 sekund (nie w pętli render, żeby nie zabić rate-limitu!)
@@ -629,7 +617,6 @@ RunService.RenderStepped:Connect(function(dt)
 					lowestTimeLeft = left
 					
 					local multi = player:GetAttribute("CoinMultiplier") or 1
-					if isFriendBonusActive then multi = multi * 1.2 end
 					nextRewardAmount = math.floor(rowObj.Data.Reward * multi)
 				end
 			end

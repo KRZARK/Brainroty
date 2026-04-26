@@ -482,6 +482,248 @@ local hasPromptedFavorite = hasFavoritedExperience
 local isCheckingFavoriteStatus = false
 local globalAnnouncementQueue = {}
 local isGlobalAnnouncementShowing = false
+local isRebirthing = false
+local isRebirthReadyQueued = false
+local isRebirthReadyShowing = false
+local hasShownRebirthReadyAnnouncement = false
+local rebirthReadyRequestId = 0
+local REBIRTH_READY_TARGET = "Strawberry Elephant"
+local REBIRTH_READY_RARITY = "OG"
+local REBIRTH_READY_DELAY = 4.5
+local REBIRTH_READY_DURATION = 10
+local rebirthReadyIconImage = "rbxassetid://72256385"
+
+local rebirthReadyOverlay = Instance.new("Frame")
+rebirthReadyOverlay.Name = "RebirthReadyOverlay"
+rebirthReadyOverlay.Size = UDim2.fromScale(1, 1)
+rebirthReadyOverlay.BackgroundColor3 = Color3.fromRGB(18, 11, 2)
+rebirthReadyOverlay.BackgroundTransparency = 1
+rebirthReadyOverlay.Visible = false
+rebirthReadyOverlay.ZIndex = 270
+rebirthReadyOverlay.Parent = screenGui
+
+local rebirthOverlayGlow = Instance.new("ImageLabel")
+rebirthOverlayGlow.Name = "OverlayGlow"
+rebirthOverlayGlow.AnchorPoint = Vector2.new(0.5, 0.5)
+rebirthOverlayGlow.Position = UDim2.fromScale(0.5, 0.33)
+rebirthOverlayGlow.Size = UDim2.fromOffset(1220, 440)
+rebirthOverlayGlow.BackgroundTransparency = 1
+rebirthOverlayGlow.Image = "rbxassetid://4996891970"
+rebirthOverlayGlow.ImageColor3 = Color3.fromRGB(255, 211, 74)
+rebirthOverlayGlow.ImageTransparency = 1
+rebirthOverlayGlow.ZIndex = 271
+rebirthOverlayGlow.Parent = rebirthReadyOverlay
+
+local rebirthTopBeam = Instance.new("Frame")
+rebirthTopBeam.Name = "TopBeam"
+rebirthTopBeam.AnchorPoint = Vector2.new(0.5, 0)
+rebirthTopBeam.Position = UDim2.fromScale(0.5, 0.17)
+rebirthTopBeam.Size = UDim2.new(0.76, 0, 0, 6)
+rebirthTopBeam.BackgroundColor3 = Color3.fromRGB(255, 228, 148)
+rebirthTopBeam.BackgroundTransparency = 1
+rebirthTopBeam.BorderSizePixel = 0
+rebirthTopBeam.ZIndex = 272
+rebirthTopBeam.Parent = rebirthReadyOverlay
+Instance.new("UICorner", rebirthTopBeam).CornerRadius = UDim.new(1, 0)
+
+local rebirthBottomBeam = Instance.new("Frame")
+rebirthBottomBeam.Name = "BottomBeam"
+rebirthBottomBeam.AnchorPoint = Vector2.new(0.5, 1)
+rebirthBottomBeam.Position = UDim2.fromScale(0.5, 0.49)
+rebirthBottomBeam.Size = UDim2.new(0.76, 0, 0, 6)
+rebirthBottomBeam.BackgroundColor3 = Color3.fromRGB(255, 228, 148)
+rebirthBottomBeam.BackgroundTransparency = 1
+rebirthBottomBeam.BorderSizePixel = 0
+rebirthBottomBeam.ZIndex = 272
+rebirthBottomBeam.Parent = rebirthReadyOverlay
+Instance.new("UICorner", rebirthBottomBeam).CornerRadius = UDim.new(1, 0)
+
+local rebirthReadyCard = Instance.new("Frame")
+rebirthReadyCard.Name = "RebirthReadyCard"
+rebirthReadyCard.AnchorPoint = Vector2.new(0.5, 0.5)
+rebirthReadyCard.Position = UDim2.fromScale(0.5, 0.33)
+rebirthReadyCard.Size = UDim2.fromOffset(980, 220)
+rebirthReadyCard.BackgroundColor3 = Color3.fromRGB(27, 18, 4)
+rebirthReadyCard.BackgroundTransparency = 1
+rebirthReadyCard.BorderSizePixel = 0
+rebirthReadyCard.Visible = false
+rebirthReadyCard.ZIndex = 275
+rebirthReadyCard.Parent = rebirthReadyOverlay
+Instance.new("UICorner", rebirthReadyCard).CornerRadius = UDim.new(0, 28)
+
+local rebirthCardStroke = Instance.new("UIStroke")
+rebirthCardStroke.Thickness = 3
+rebirthCardStroke.Transparency = 1
+rebirthCardStroke.Color = Color3.fromRGB(255, 214, 79)
+rebirthCardStroke.Parent = rebirthReadyCard
+
+local rebirthCardGradient = Instance.new("UIGradient")
+rebirthCardGradient.Rotation = 18
+rebirthCardGradient.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(27, 18, 4)),
+	ColorSequenceKeypoint.new(0.55, Color3.fromRGB(68, 43, 8)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(23, 14, 3))
+})
+rebirthCardGradient.Parent = rebirthReadyCard
+
+local rebirthShine = Instance.new("Frame")
+rebirthShine.Name = "Shine"
+rebirthShine.AnchorPoint = Vector2.new(0.5, 0.5)
+rebirthShine.Position = UDim2.fromScale(-0.2, 0.5)
+rebirthShine.Size = UDim2.fromScale(0.18, 1.4)
+rebirthShine.BackgroundColor3 = Color3.fromRGB(255, 246, 214)
+rebirthShine.BackgroundTransparency = 1
+rebirthShine.Rotation = 18
+rebirthShine.BorderSizePixel = 0
+rebirthShine.ZIndex = 276
+rebirthShine.Parent = rebirthReadyCard
+
+local rebirthShineGradient = Instance.new("UIGradient")
+rebirthShineGradient.Transparency = NumberSequence.new({
+	NumberSequenceKeypoint.new(0, 1),
+	NumberSequenceKeypoint.new(0.5, 0.68),
+	NumberSequenceKeypoint.new(1, 1)
+})
+rebirthShineGradient.Parent = rebirthShine
+
+local rebirthViewportHolder = Instance.new("Frame")
+rebirthViewportHolder.Name = "ViewportHolder"
+rebirthViewportHolder.AnchorPoint = Vector2.new(0.5, 0.5)
+rebirthViewportHolder.Position = UDim2.fromScale(0.12, 0.5)
+rebirthViewportHolder.Size = UDim2.fromOffset(120, 120)
+rebirthViewportHolder.BackgroundColor3 = Color3.fromRGB(34, 23, 4)
+rebirthViewportHolder.BackgroundTransparency = 0.15
+rebirthViewportHolder.BorderSizePixel = 0
+rebirthViewportHolder.ZIndex = 277
+rebirthViewportHolder.Parent = rebirthReadyCard
+Instance.new("UICorner", rebirthViewportHolder).CornerRadius = UDim.new(1, 0)
+
+local rebirthViewportStroke = Instance.new("UIStroke")
+rebirthViewportStroke.Thickness = 4
+rebirthViewportStroke.Transparency = 0.08
+rebirthViewportStroke.Color = Color3.fromRGB(255, 222, 120)
+rebirthViewportStroke.Parent = rebirthViewportHolder
+
+local rebirthViewportGlow = Instance.new("ImageLabel")
+rebirthViewportGlow.Name = "ViewportGlow"
+rebirthViewportGlow.AnchorPoint = Vector2.new(0.5, 0.5)
+rebirthViewportGlow.Position = UDim2.fromScale(0.5, 0.5)
+rebirthViewportGlow.Size = UDim2.fromScale(1.65, 1.65)
+rebirthViewportGlow.BackgroundTransparency = 1
+rebirthViewportGlow.Image = "rbxassetid://4996891970"
+rebirthViewportGlow.ImageColor3 = Color3.fromRGB(255, 214, 79)
+rebirthViewportGlow.ImageTransparency = 1
+rebirthViewportGlow.ZIndex = 278
+rebirthViewportGlow.Parent = rebirthViewportHolder
+
+local rebirthViewportHalo = Instance.new("Frame")
+rebirthViewportHalo.Name = "ViewportHalo"
+rebirthViewportHalo.AnchorPoint = Vector2.new(0.5, 0.5)
+rebirthViewportHalo.Position = UDim2.fromScale(0.5, 0.5)
+rebirthViewportHalo.Size = UDim2.fromScale(0.74, 0.74)
+rebirthViewportHalo.BackgroundColor3 = Color3.fromRGB(255, 202, 73)
+rebirthViewportHalo.BackgroundTransparency = 1
+rebirthViewportHalo.BorderSizePixel = 0
+rebirthViewportHalo.ZIndex = 279
+rebirthViewportHalo.Parent = rebirthViewportHolder
+Instance.new("UICorner", rebirthViewportHalo).CornerRadius = UDim.new(1, 0)
+
+local rebirthAnnouncementIcon = Instance.new("ImageLabel")
+rebirthAnnouncementIcon.Name = "RebirthIcon"
+rebirthAnnouncementIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+rebirthAnnouncementIcon.Position = UDim2.fromScale(0.5, 0.5)
+rebirthAnnouncementIcon.Size = UDim2.fromScale(0.58, 0.58)
+rebirthAnnouncementIcon.BackgroundTransparency = 1
+rebirthAnnouncementIcon.Image = rebirthReadyIconImage
+rebirthAnnouncementIcon.ImageColor3 = Color3.fromRGB(255, 251, 239)
+rebirthAnnouncementIcon.ImageTransparency = 1
+rebirthAnnouncementIcon.Rotation = -8
+rebirthAnnouncementIcon.ZIndex = 280
+rebirthAnnouncementIcon.Parent = rebirthViewportHolder
+
+local rebirthBadge = Instance.new("TextLabel")
+rebirthBadge.Name = "Badge"
+rebirthBadge.AnchorPoint = Vector2.new(0, 0)
+rebirthBadge.Position = UDim2.fromScale(0.23, 0.12)
+rebirthBadge.Size = UDim2.fromOffset(250, 34)
+rebirthBadge.BackgroundColor3 = Color3.fromRGB(255, 214, 79)
+rebirthBadge.BackgroundTransparency = 1
+rebirthBadge.BorderSizePixel = 0
+rebirthBadge.Font = Enum.Font.FredokaOne
+rebirthBadge.Text = "INDEX COMPLETE!"
+rebirthBadge.TextColor3 = Color3.fromRGB(53, 31, 0)
+rebirthBadge.TextSize = 18
+rebirthBadge.TextTransparency = 1
+rebirthBadge.ZIndex = 278
+rebirthBadge.Parent = rebirthReadyCard
+Instance.new("UICorner", rebirthBadge).CornerRadius = UDim.new(1, 0)
+
+local rebirthTitle = Instance.new("TextLabel")
+rebirthTitle.Name = "Title"
+rebirthTitle.AnchorPoint = Vector2.new(0, 0)
+rebirthTitle.Position = UDim2.fromScale(0.23, 0.27)
+rebirthTitle.Size = UDim2.fromOffset(650, 72)
+rebirthTitle.BackgroundTransparency = 1
+rebirthTitle.Font = Enum.Font.FredokaOne
+rebirthTitle.Text = "CONGRATULATIONS! YOU COLLECTED EVERY BRAINROT!"
+rebirthTitle.TextWrapped = true
+rebirthTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+rebirthTitle.TextSize = 29
+rebirthTitle.TextXAlignment = Enum.TextXAlignment.Left
+rebirthTitle.TextYAlignment = Enum.TextYAlignment.Top
+rebirthTitle.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+rebirthTitle.TextStrokeTransparency = 0.28
+rebirthTitle.TextTransparency = 1
+rebirthTitle.ZIndex = 278
+rebirthTitle.Parent = rebirthReadyCard
+
+local rebirthReadyRarity = Instance.new("TextLabel")
+rebirthReadyRarity.Name = "Rarity"
+rebirthReadyRarity.AnchorPoint = Vector2.new(0, 0)
+rebirthReadyRarity.Position = UDim2.fromScale(0.23, 0.62)
+rebirthReadyRarity.Size = UDim2.fromOffset(360, 30)
+rebirthReadyRarity.BackgroundTransparency = 1
+rebirthReadyRarity.Font = Enum.Font.FredokaOne
+rebirthReadyRarity.Text = "REBIRTH READY"
+rebirthReadyRarity.TextColor3 = Color3.fromRGB(255, 214, 79)
+rebirthReadyRarity.TextSize = 20
+rebirthReadyRarity.TextXAlignment = Enum.TextXAlignment.Left
+rebirthReadyRarity.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+rebirthReadyRarity.TextStrokeTransparency = 0.42
+rebirthReadyRarity.TextTransparency = 1
+rebirthReadyRarity.ZIndex = 278
+rebirthReadyRarity.Parent = rebirthReadyCard
+
+local rebirthSubText = Instance.new("TextLabel")
+rebirthSubText.Name = "SubText"
+rebirthSubText.AnchorPoint = Vector2.new(0, 0)
+rebirthSubText.Position = UDim2.fromScale(0.23, 0.75)
+rebirthSubText.Size = UDim2.fromOffset(590, 42)
+rebirthSubText.BackgroundTransparency = 1
+rebirthSubText.Font = Enum.Font.GothamMedium
+rebirthSubText.Text = "YOU ARE NOW READY TO REBIRTH! UNLOCK EXCLUSIVE PETS, TRAILS & BOOSTS!"
+rebirthSubText.TextWrapped = true
+rebirthSubText.TextColor3 = Color3.fromRGB(255, 242, 208)
+rebirthSubText.TextSize = 19
+rebirthSubText.TextTransparency = 1
+rebirthSubText.ZIndex = 278
+rebirthSubText.Parent = rebirthReadyCard
+rebirthSubText.TextXAlignment = Enum.TextXAlignment.Left
+
+task.spawn(function()
+	local rebirthIconAsset = ReplicatedStorage:WaitForChild("RebirthIcon", 5)
+	if rebirthIconAsset then
+		if rebirthIconAsset:IsA("Decal") then
+			rebirthReadyIconImage = rebirthIconAsset.Texture
+		elseif rebirthIconAsset:IsA("ImageLabel") or rebirthIconAsset:IsA("ImageButton") then
+			rebirthReadyIconImage = rebirthIconAsset.Image
+		elseif rebirthIconAsset:IsA("StringValue") then
+			rebirthReadyIconImage = rebirthIconAsset.Value
+		end
+	end
+
+	rebirthAnnouncementIcon.Image = rebirthReadyIconImage
+end)
 
 local function getAnnouncementDisplayName(brainrotName, rarity)
 	if (rarity or "") == "OG" and brainrotName == "Strawberry Elephant" then
@@ -552,6 +794,174 @@ local function createViewport(model, parent, isCollected)
 	end
 	return viewport
 end
+
+local function isRebirthReadyTarget(brainrotName, rarity)
+	return tostring(brainrotName or "") == REBIRTH_READY_TARGET and tostring(rarity or "") == REBIRTH_READY_RARITY
+end
+
+local function hideRebirthReadyEffectImmediately()
+	rebirthReadyOverlay.BackgroundTransparency = 1
+	rebirthOverlayGlow.ImageTransparency = 1
+	rebirthTopBeam.BackgroundTransparency = 1
+	rebirthBottomBeam.BackgroundTransparency = 1
+	rebirthReadyCard.BackgroundTransparency = 1
+	rebirthCardStroke.Transparency = 1
+	rebirthCardStroke.Thickness = 3
+	rebirthBadge.BackgroundTransparency = 1
+	rebirthBadge.TextTransparency = 1
+	rebirthTitle.TextTransparency = 1
+	rebirthReadyRarity.TextTransparency = 1
+	rebirthSubText.TextTransparency = 1
+	rebirthViewportGlow.ImageTransparency = 1
+	rebirthViewportHalo.BackgroundTransparency = 1
+	rebirthAnnouncementIcon.ImageTransparency = 1
+	rebirthReadyCard.Size = UDim2.fromOffset(900, 190)
+	rebirthReadyCard.Position = UDim2.fromScale(0.5, 0.31)
+	rebirthViewportHolder.Size = UDim2.fromOffset(110, 110)
+	rebirthAnnouncementIcon.Size = UDim2.fromScale(0.5, 0.5)
+	rebirthShine.Position = UDim2.fromScale(-0.2, 0.5)
+	rebirthShine.BackgroundTransparency = 1
+	rebirthReadyCard.Visible = false
+	rebirthReadyOverlay.Visible = false
+end
+
+local function resetRebirthReadyAnnouncementState()
+	rebirthReadyRequestId += 1
+	isRebirthReadyQueued = false
+	isRebirthReadyShowing = false
+	hasShownRebirthReadyAnnouncement = false
+	hideRebirthReadyEffectImmediately()
+end
+
+local function showRebirthReadyEffect(requestId)
+	if rebirthReadyRequestId ~= requestId or isRebirthReadyShowing then
+		return
+	end
+
+	isRebirthReadyShowing = true
+	rebirthReadyOverlay.Visible = true
+	rebirthReadyCard.Visible = true
+	rebirthAnnouncementIcon.Image = rebirthReadyIconImage
+
+	rebirthReadyOverlay.BackgroundTransparency = 1
+	rebirthOverlayGlow.ImageTransparency = 1
+	rebirthTopBeam.BackgroundTransparency = 1
+	rebirthBottomBeam.BackgroundTransparency = 1
+	rebirthReadyCard.BackgroundTransparency = 1
+	rebirthCardStroke.Transparency = 1
+	rebirthCardStroke.Thickness = 3
+	rebirthBadge.BackgroundTransparency = 1
+	rebirthBadge.TextTransparency = 1
+	rebirthTitle.TextTransparency = 1
+	rebirthReadyRarity.TextTransparency = 1
+	rebirthSubText.TextTransparency = 1
+	rebirthViewportGlow.ImageTransparency = 1
+	rebirthViewportHalo.BackgroundTransparency = 1
+	rebirthAnnouncementIcon.ImageTransparency = 1
+	rebirthReadyCard.Size = UDim2.fromOffset(900, 190)
+	rebirthReadyCard.Position = UDim2.fromScale(0.5, 0.31)
+	rebirthViewportHolder.Size = UDim2.fromOffset(110, 110)
+	rebirthAnnouncementIcon.Size = UDim2.fromScale(0.5, 0.5)
+	rebirthShine.Position = UDim2.fromScale(-0.2, 0.5)
+	rebirthShine.BackgroundTransparency = 1
+
+	TweenService:Create(rebirthReadyOverlay, TweenInfo.new(0.3), {BackgroundTransparency = 0.28}):Play()
+	TweenService:Create(rebirthOverlayGlow, TweenInfo.new(0.35), {ImageTransparency = 0.44}):Play()
+	TweenService:Create(rebirthTopBeam, TweenInfo.new(0.35), {BackgroundTransparency = 0.08}):Play()
+	TweenService:Create(rebirthBottomBeam, TweenInfo.new(0.35), {BackgroundTransparency = 0.08}):Play()
+	TweenService:Create(rebirthReadyCard, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		BackgroundTransparency = 0.08,
+		Size = UDim2.fromOffset(980, 220),
+		Position = UDim2.fromScale(0.5, 0.33),
+	}):Play()
+	TweenService:Create(rebirthCardStroke, TweenInfo.new(0.35), {Transparency = 0.04}):Play()
+	TweenService:Create(rebirthBadge, TweenInfo.new(0.35), {BackgroundTransparency = 0.02, TextTransparency = 0}):Play()
+	TweenService:Create(rebirthTitle, TweenInfo.new(0.35), {TextTransparency = 0}):Play()
+	TweenService:Create(rebirthReadyRarity, TweenInfo.new(0.35), {TextTransparency = 0}):Play()
+	TweenService:Create(rebirthSubText, TweenInfo.new(0.35), {TextTransparency = 0}):Play()
+	TweenService:Create(rebirthViewportHolder, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Size = UDim2.fromOffset(120, 120)
+	}):Play()
+	TweenService:Create(rebirthViewportGlow, TweenInfo.new(0.35), {ImageTransparency = 0.32}):Play()
+	TweenService:Create(rebirthViewportHalo, TweenInfo.new(0.35), {BackgroundTransparency = 0.32}):Play()
+	TweenService:Create(rebirthAnnouncementIcon, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		ImageTransparency = 0,
+		Size = UDim2.fromScale(0.58, 0.58)
+	}):Play()
+	TweenService:Create(rebirthShine, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Position = UDim2.fromScale(1.15, 0.5),
+		BackgroundTransparency = 0.45,
+	}):Play()
+
+	local pulseTween = TweenService:Create(rebirthCardStroke, TweenInfo.new(0.55, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, 3, true), {
+		Thickness = 7
+	})
+	pulseTween:Play()
+
+	task.delay(REBIRTH_READY_DURATION, function()
+		if rebirthReadyRequestId ~= requestId or not isRebirthReadyShowing then
+			return
+		end
+
+		TweenService:Create(rebirthReadyOverlay, TweenInfo.new(0.35), {BackgroundTransparency = 1}):Play()
+		TweenService:Create(rebirthOverlayGlow, TweenInfo.new(0.35), {ImageTransparency = 1}):Play()
+		TweenService:Create(rebirthTopBeam, TweenInfo.new(0.35), {BackgroundTransparency = 1}):Play()
+		TweenService:Create(rebirthBottomBeam, TweenInfo.new(0.35), {BackgroundTransparency = 1}):Play()
+		TweenService:Create(rebirthReadyCard, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+			BackgroundTransparency = 1,
+			Size = UDim2.fromOffset(930, 200),
+			Position = UDim2.fromScale(0.5, 0.3),
+		}):Play()
+		TweenService:Create(rebirthCardStroke, TweenInfo.new(0.35), {Transparency = 1}):Play()
+		TweenService:Create(rebirthBadge, TweenInfo.new(0.25), {BackgroundTransparency = 1, TextTransparency = 1}):Play()
+		TweenService:Create(rebirthTitle, TweenInfo.new(0.25), {TextTransparency = 1}):Play()
+		TweenService:Create(rebirthReadyRarity, TweenInfo.new(0.25), {TextTransparency = 1}):Play()
+		TweenService:Create(rebirthSubText, TweenInfo.new(0.25), {TextTransparency = 1}):Play()
+		TweenService:Create(rebirthViewportGlow, TweenInfo.new(0.25), {ImageTransparency = 1}):Play()
+		TweenService:Create(rebirthViewportHalo, TweenInfo.new(0.25), {BackgroundTransparency = 1}):Play()
+		TweenService:Create(rebirthAnnouncementIcon, TweenInfo.new(0.25), {ImageTransparency = 1}):Play()
+
+		task.delay(0.4, function()
+			if rebirthReadyRequestId ~= requestId then
+				return
+			end
+
+			hideRebirthReadyEffectImmediately()
+			isRebirthReadyShowing = false
+		end)
+	end)
+end
+
+local function scheduleRebirthReadyAnnouncement(brainrotName, rarity)
+	if not isRebirthReadyTarget(brainrotName, rarity) then
+		return
+	end
+
+	if isRebirthReadyQueued or hasShownRebirthReadyAnnouncement or isRebirthing then
+		return
+	end
+
+	isRebirthReadyQueued = true
+	rebirthReadyRequestId += 1
+	local requestId = rebirthReadyRequestId
+
+	task.delay(REBIRTH_READY_DELAY, function()
+		if rebirthReadyRequestId ~= requestId then
+			return
+		end
+
+		isRebirthReadyQueued = false
+
+		if isRebirthing or player.Parent ~= Players then
+			return
+		end
+
+		hasShownRebirthReadyAnnouncement = true
+		showRebirthReadyEffect(requestId)
+	end)
+end
+
+hideRebirthReadyEffectImmediately()
 
 local function promptFavorite()
 	pcall(function()
@@ -802,7 +1212,7 @@ indexGlow.Parent = ToggleGui
 
 local openButton = Instance.new("TextButton")
 openButton.Name = "OpenButton"
-openButton.Position = HudTileStyle.getSlot("right", 1)
+openButton.Position = HudTileStyle.getSlot("left", 1)
 openButton.Text = ""
 openButton.ZIndex = 11
 openButton.Parent = ToggleGui
@@ -817,7 +1227,7 @@ indexText.Text = "INDEX"
 indexText.Parent = openButton
 
 HudTileStyle.apply(openButton, indexImg, indexText, {
-	side = "right",
+	side = "left",
 	slotIndex = 1,
 	zIndex = 11,
 })
@@ -1085,7 +1495,7 @@ local function updateProgressBar()
 				for _, part in ipairs(modelNaMapie:GetDescendants()) do
 					if part:IsA("BasePart") then
 						if part.Transparency < 1 then
-							part.Transparency = 0.8
+							part.Transparency = 0.9
 						end
 						part.CanCollide = false
 					end
@@ -1464,6 +1874,7 @@ local function collectBrainrot(model)
 
 	local rarity = model:GetAttribute("Rarity") or "Common"
 	table.insert(notificationQueue, {name = model.Name, rarity = rarity})
+	scheduleRebirthReadyAnnouncement(model.Name, rarity)
 
 	BrainrotCollectedEvent:FireServer(model.Name)
 	for _, part in model:GetDescendants() do
@@ -1624,20 +2035,49 @@ end)
 
 -- === DODANE NASŁUCHIWANIE NA RESET (REBIRTH) ===
 local RebirthEffect = BrainrotEvents:WaitForChild("RebirthEffect")
+
 RebirthEffect.OnClientEvent:Connect(function()
 	print("!!! CLIENT: REBIRTH - FORCING BAR RESET !!!")
+	isRebirthing = true
+	resetRebirthReadyAnnouncementState()
 	
-	-- NIE CZYŚCIMY TABELI TUTAJ! Pozwalamy ChildRemoved (linijka 793) 
-	-- zrobić to model po modelu, żeby przywrócić ich widoczność na mapie.
+	-- Szybkie czyszczenie kolekcji i mapy w jednym kroku (Zabezpieczenie przed ściną)
+	table.clear(collectedBrainrots)
+	
+	if BrainrotyFolder and BrainrotStorage then
+		for _, mapModel in ipairs(BrainrotyFolder:GetChildren()) do
+			local storageModel = BrainrotStorage:FindFirstChild(mapModel.Name)
+			if storageModel then
+				for _, storagePart in ipairs(storageModel:GetDescendants()) do
+					if storagePart:IsA("BasePart") then
+						local mapPart = mapModel:FindFirstChild(storagePart.Name, true)
+						if mapPart and mapPart:IsA("BasePart") then
+							mapPart.Transparency = storagePart.Transparency
+						end
+					end
+				end
+			end
+		end
+	end
 	
 	if updateProgressBar then
 		updateProgressBar()
 	end
+	
+	if indexBackdrop.Visible then
+		refreshIndex(false)
+	end
+	
+	task.delay(2, function()
+		isRebirthing = false
+	end)
 end)
 
 task.spawn(function()
 	local collection = player:WaitForChild("BrainrotCollection")
 	collection.ChildRemoved:Connect(function(child)
+		if isRebirthing then return end -- Blokada podczas Rebirth!
+		
 		if collectedBrainrots[child.Name] then
 			collectedBrainrots[child.Name] = nil
 			-- Reset modelu na mapie do stanu z BrainrotStorage (BEZPIECZNA METODA)
@@ -1661,6 +2101,9 @@ task.spawn(function()
 			-- Opóźniona aktualizacja, by suwak na górze gładko spadł na 0
 			task.delay(0.1, function()
 				updateProgressBar()
+				if indexBackdrop.Visible then
+					refreshIndex(false)
+				end
 			end)
 		end
 	end)
@@ -1687,7 +2130,7 @@ task.spawn(function()
 					for _, part in ipairs(modelNaMapie:GetDescendants()) do
 						if part:IsA("BasePart") then
 							if part.Transparency < 1 then
-								part.Transparency = 0.8
+								part.Transparency = 0.9
 							end
 							part.CanCollide = false
 						end
@@ -1732,9 +2175,14 @@ BrainrotCollectedEvent.OnClientEvent:Connect(function(name)
 	local safeRarity = tostring(rarity) or "COMMON"
 
 	task.delay(1.2, function()
+		if safeName == REBIRTH_READY_TARGET and not collectedBrainrots[safeName] then
+			return
+		end
+
 		if CollectSound then CollectSound:Play() end
 		-- Dodajemy do kolejki powiadomień
 		table.insert(notificationQueue, {name = safeName, rarity = safeRarity})
+		scheduleRebirthReadyAnnouncement(safeName, safeRarity)
 
 		updateProgressBar()
 		if indexFrame.Visible then refreshIndex(true) end
@@ -1790,51 +2238,114 @@ local function applyTopStatusLayout()
 	local camera = Workspace.CurrentCamera
 	local viewport = camera and camera.ViewportSize or Vector2.new(1280, 720)
 	local insetTopLeft, _ = GuiService:GetGuiInset()
-	local sidePadding = math.clamp(viewport.X * 0.025, 12, 30)
-	local gap = math.clamp(viewport.X * 0.015, 10, 22)
-	local desiredBrainrotWidth = math.clamp(viewport.X * 0.26, 220, 420)
-	local desiredCoinWidth = math.clamp(viewport.X * 0.34, 250, 560)
-	local totalDesiredWidth = desiredBrainrotWidth + desiredCoinWidth + gap
-	local maxRowWidth = math.max(viewport.X - (sidePadding * 2), 260)
-	local layoutScale = totalDesiredWidth > maxRowWidth and (maxRowWidth / totalDesiredWidth) or 1
+	local hudMetrics = HudTileStyle.getLayoutMetrics()
+	local isMobile = hudMetrics.IsMobile
+	local isLandscapeMobile = hudMetrics.IsLandscapeMobile
+
+	local sidePadding
+	local gapBetweenBars
+	local coinsHudWidth
+	local coinsHudRightPadding
+	local gapToCoinsHud
+	local desiredBrainrotWidth
+	local desiredCoinWidth
+	local brainrotHeight
+	local coinHeight
+	local rowTop
+	local compactLayout
+
+	if isLandscapeMobile then
+		sidePadding = math.clamp(viewport.X * 0.014, 8, 14)
+		gapBetweenBars = math.clamp(viewport.X * 0.006, 6, 10)
+		coinsHudWidth = math.clamp(viewport.X * 0.20, 128, 144)
+		coinsHudRightPadding = math.clamp(viewport.X * 0.012, 8, 14)
+		gapToCoinsHud = math.clamp(viewport.X * 0.010, 8, 12)
+		desiredBrainrotWidth = math.clamp(viewport.X * 0.31, 170, 206)
+		desiredCoinWidth = math.clamp(viewport.X * 0.155, 92, 108)
+		brainrotHeight = 26
+		coinHeight = 22
+		rowTop = math.max(math.floor(insetTopLeft.Y * 0.10 + 0.5), 10)
+		compactLayout = true
+	elseif isMobile then
+		sidePadding = math.clamp(viewport.X * 0.016, 10, 18)
+		gapBetweenBars = math.clamp(viewport.X * 0.0075, 7, 12)
+		coinsHudWidth = math.clamp(viewport.X * 0.34, 150, 188)
+		coinsHudRightPadding = math.clamp(viewport.X * 0.015, 10, 16)
+		gapToCoinsHud = math.clamp(viewport.X * 0.010, 8, 14)
+		desiredBrainrotWidth = math.clamp(viewport.X * 0.52, 220, 320)
+		desiredCoinWidth = math.clamp(viewport.X * 0.26, 120, 180)
+		brainrotHeight = 38
+		coinHeight = 32
+		rowTop = math.max(math.floor(insetTopLeft.Y * 0.16 + 0.5), 20)
+		compactLayout = true
+	else
+		sidePadding = math.clamp(viewport.X * 0.02, 12, 24)
+		gapBetweenBars = math.clamp(viewport.X * 0.0085, 8, 18)
+		coinsHudWidth = math.clamp(viewport.X * 0.104, 170, 200)
+		coinsHudRightPadding = math.clamp(viewport.X * 0.0105, 12, 20)
+		gapToCoinsHud = math.clamp(viewport.X * 0.0105, 10, 26)
+		desiredBrainrotWidth = math.clamp(viewport.X * 0.30, 300, 560)
+		desiredCoinWidth = math.clamp(viewport.X * 0.175, 180, 340)
+		compactLayout = viewport.X < 980
+		brainrotHeight = compactLayout and 40 or 46
+		coinHeight = compactLayout and 34 or 36
+		rowTop = math.max(math.floor(insetTopLeft.Y * 0.18 + 0.5), compactLayout and 24 or 28)
+	end
+
+	local availableWidth = math.max(viewport.X - sidePadding - (coinsHudWidth + coinsHudRightPadding + gapToCoinsHud), 250)
+	local totalDesiredWidth = desiredBrainrotWidth + desiredCoinWidth + gapBetweenBars
+	local layoutScale = totalDesiredWidth > availableWidth and (availableWidth / totalDesiredWidth) or 1
 	local brainrotWidth = math.floor(desiredBrainrotWidth * layoutScale + 0.5)
 	local coinWidth = math.floor(desiredCoinWidth * layoutScale + 0.5)
-	local appliedGap = math.floor(gap * layoutScale + 0.5)
-	local compactLayout = viewport.X < 780 or brainrotWidth < 260
-	local brainrotHeight = compactLayout and 40 or 46
-	local coinHeight = compactLayout and 36 or 40
-	local rowWidth = brainrotWidth + coinWidth + appliedGap
-	local rowLeft = math.floor((viewport.X - rowWidth) * 0.5 + 0.5)
-	local rowCenterY = insetTopLeft.Y + (compactLayout and 34 or 40)
+	local appliedGap = math.max(isLandscapeMobile and 6 or 8, math.floor(gapBetweenBars * layoutScale + 0.5))
+	if not isMobile then
+		compactLayout = compactLayout or coinWidth < 210 or brainrotWidth < 340
+		brainrotHeight = compactLayout and 40 or 46
+		coinHeight = compactLayout and 34 or 36
+		rowTop = math.max(math.floor(insetTopLeft.Y * 0.18 + 0.5), compactLayout and 24 or 28)
+	end
+	local coinLeft = math.floor(viewport.X - coinsHudWidth - coinsHudRightPadding - gapToCoinsHud - coinWidth + 0.5)
 	local elephantSize = math.clamp(
-		math.floor(brainrotWidth * (compactLayout and 0.30 or 0.24) + 0.5),
-		compactLayout and 50 or 72,
-		compactLayout and 72 or 88
+		math.floor(brainrotWidth * (isLandscapeMobile and 0.20 or (compactLayout and 0.30 or 0.24)) + 0.5),
+		isLandscapeMobile and 34 or (compactLayout and 50 or 72),
+		isLandscapeMobile and 42 or (compactLayout and 72 or 88)
 	)
-	local elephantInset = math.floor(elephantSize * 0.42 + 0.5)
+	local elephantInset = math.floor(elephantSize * (isLandscapeMobile and 0.24 or 0.42) + 0.5)
+	local brainrotCenteredLeft = math.floor(((viewport.X - brainrotWidth) * 0.5) + 0.5)
+	local brainrotVisualOverhang = isLandscapeMobile and math.floor(elephantSize * 0.30 + 0.5) or 0
+	local brainrotLeft = brainrotCenteredLeft
+	if isLandscapeMobile then
+		local maxBrainrotLeft = coinLeft - appliedGap - brainrotWidth - brainrotVisualOverhang
+		brainrotLeft = math.max(sidePadding, math.min(brainrotCenteredLeft, maxBrainrotLeft))
+	else
+		brainrotLeft = math.max(sidePadding, brainrotCenteredLeft)
+	end
 
-	useCompactTopStatusText = compactLayout
-	topProgressContainer.AnchorPoint = Vector2.new(0, 0.5)
-	topProgressContainer.Position = UDim2.fromOffset(rowLeft, rowCenterY)
+	useCompactTopStatusText = compactLayout or isMobile
+	topProgressContainer.AnchorPoint = Vector2.new(0, 0)
+	topProgressContainer.Position = UDim2.fromOffset(brainrotLeft, rowTop)
 	topProgressContainer.Size = UDim2.fromOffset(brainrotWidth, brainrotHeight)
 
-	robuxContainer.AnchorPoint = Vector2.new(0, 0.5)
-	robuxContainer.Position = UDim2.fromOffset(rowLeft + brainrotWidth + appliedGap, rowCenterY)
+	robuxContainer.AnchorPoint = Vector2.new(0, 0)
+	robuxContainer.Position = UDim2.fromOffset(coinLeft, rowTop)
 	robuxContainer.Size = UDim2.fromOffset(coinWidth, coinHeight)
 
-	topStroke.Thickness = compactLayout and 2 or 3
-	stripes.TileSize = UDim2.new(0, compactLayout and 42 or 60, 1, 0)
+	topStroke.Thickness = isLandscapeMobile and 1.8 or (compactLayout and 2 or 3)
+	robuxStroke.Thickness = isLandscapeMobile and 1.4 or 2
+	stripes.TileSize = UDim2.new(0, isLandscapeMobile and 26 or (compactLayout and 42 or 60), 1, 0)
 
-	topProgressLabel.Position = UDim2.fromOffset(compactLayout and 10 or 14, 0)
-	topProgressLabel.Size = UDim2.new(1, -(elephantSize + (compactLayout and 12 or 20)), 1, 0)
-	topProgressTextConstraint.MaxTextSize = compactLayout and 18 or 22
+	topProgressLabel.Position = UDim2.fromOffset(isLandscapeMobile and 8 or (compactLayout and 10 or 14), 0)
+	topProgressLabel.Size = UDim2.new(1, -(elephantSize + (isLandscapeMobile and 8 or (compactLayout and 12 or 20))), 1, 0)
+	topProgressTextConstraint.MinTextSize = isLandscapeMobile and 7 or 10
+	topProgressTextConstraint.MaxTextSize = isLandscapeMobile and 11 or (compactLayout and 18 or 22)
 
 	elephantFrame.Size = UDim2.fromOffset(elephantSize, elephantSize)
 	elephantFrame.Position = UDim2.new(1, -elephantInset, 0.5, 0)
-	elephantBg.Size = UDim2.fromScale(0.88, 0.88)
-	bgStroke.Thickness = compactLayout and 3 or 4
+	elephantBg.Size = UDim2.fromScale(isLandscapeMobile and 0.80 or 0.88, isLandscapeMobile and 0.80 or 0.88)
+	bgStroke.Thickness = isLandscapeMobile and 2 or (compactLayout and 3 or 4)
 
-	robuxTextConstraint.MaxTextSize = compactLayout and 16 or 20
+	robuxTextConstraint.MinTextSize = isLandscapeMobile and 6 or 10
+	robuxTextConstraint.MaxTextSize = isLandscapeMobile and 9 or (compactLayout and 15 or 18)
 	topProgressLabel.Text = formatBrainrotProgressText(currentBrainrotCollected, currentBrainrotTotal)
 	robuxLabel.Text = formatCoinRainProgressText(currentCoinRainPool, currentCoinRainMax)
 end

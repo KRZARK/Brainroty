@@ -2,6 +2,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local MarketplaceService = game:GetService("MarketplaceService")
 local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
@@ -50,9 +51,33 @@ textLabel.Parent = openBtn
 
 HudTileStyle.apply(openBtn, iconLabel, textLabel, {
 	side = "left",
-	slotIndex = 0,
+	slotIndex = 2,
 	zIndex = 50,
 })
+
+local mobileTimerBadge = Instance.new("TextLabel")
+mobileTimerBadge.Name = "MobileTimerBadge"
+mobileTimerBadge.Size = UDim2.new(0.88, 0, 0, 12)
+mobileTimerBadge.AnchorPoint = Vector2.new(0.5, 0.5)
+mobileTimerBadge.Position = UDim2.new(0.5, 0, 0.57, 0)
+mobileTimerBadge.BackgroundColor3 = Color3.fromRGB(20, 24, 29)
+mobileTimerBadge.BackgroundTransparency = 0.12
+mobileTimerBadge.Text = ""
+mobileTimerBadge.TextColor3 = Color3.new(1, 1, 1)
+mobileTimerBadge.Font = Enum.Font.FredokaOne
+mobileTimerBadge.TextSize = 9
+mobileTimerBadge.Visible = false
+mobileTimerBadge.ZIndex = 53
+mobileTimerBadge.Parent = openBtn
+
+local mobileTimerCorner = Instance.new("UICorner")
+mobileTimerCorner.CornerRadius = UDim.new(0, 5)
+mobileTimerCorner.Parent = mobileTimerBadge
+
+local mobileTimerStroke = Instance.new("UIStroke")
+mobileTimerStroke.Thickness = 1
+mobileTimerStroke.Color = Color3.new(0, 0, 0)
+mobileTimerStroke.Parent = mobileTimerBadge
 
 -- Main Frame (Center)
 local mainFrame = Instance.new("Frame")
@@ -304,12 +329,39 @@ local uiScale = Instance.new("UIScale")
 uiScale.Scale = 1
 uiScale.Parent = mainFrame
 
+local starterPackLayoutScale = 1
+local starterPackAnimationScale = 1
+local starterPackAnimationValue = Instance.new("NumberValue")
+starterPackAnimationValue.Name = "StarterPackAnimationScale"
+starterPackAnimationValue.Value = 1
+
+local function applyStarterPackScale()
+	uiScale.Scale = starterPackLayoutScale * starterPackAnimationScale
+end
+
+starterPackAnimationValue:GetPropertyChangedSignal("Value"):Connect(function()
+	starterPackAnimationScale = starterPackAnimationValue.Value
+	applyStarterPackScale()
+end)
+
+local function updateStarterPackLayout()
+	local scale = HudTileStyle.getResponsivePanelScale(500, 450, {
+		landscapeWidthRatio = 0.86,
+		landscapeHeightRatio = 0.9,
+		portraitWidthRatio = 0.94,
+		portraitHeightRatio = 0.8,
+		mobileMinScale = 0.62,
+	})
+	starterPackLayoutScale = scale
+	applyStarterPackScale()
+end
+
 -- Main Logic
 local hasAutoOpened = false
 
 local function closeStarterPack()
 	if not mainFrame.Visible then return end
-	local tween = TweenService:Create(uiScale, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), { Scale = 0 })
+	local tween = TweenService:Create(starterPackAnimationValue, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), { Value = 0 })
 	tween:Play()
 	TweenService:Create(openBtn, TweenInfo.new(0.2), {Rotation = 0}):Play()
 	tween.Completed:Wait()
@@ -325,10 +377,10 @@ local function openStarterPack()
 	end
 	
 	TweenService:Create(openBtn, TweenInfo.new(0.2), {Rotation = -15}):Play()
-	uiScale.Scale = 0.5
+	starterPackAnimationValue.Value = 0.5
 	mainFrame.Visible = true
-	TweenService:Create(uiScale, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-		Scale = 1
+	TweenService:Create(starterPackAnimationValue, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Value = 1
 	}):Play()
 end
 
@@ -346,8 +398,8 @@ task.delay(300, function()
 end)
 
 closeBtn.MouseButton1Click:Connect(function()
-	local tween = TweenService:Create(uiScale, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
-		Scale = 0
+	local tween = TweenService:Create(starterPackAnimationValue, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+		Value = 0
 	})
 	tween:Play()
 	TweenService:Create(openBtn, TweenInfo.new(0.2), {Rotation = 0}):Play()
@@ -387,7 +439,14 @@ task.spawn(function()
 				
 				local timeString = string.format("%02d:%02d:%02d", h, m, s)
 				timerLabel.Text = "Koniec za: " .. timeString
-				textLabel.Text = "STARTERPACK\n" .. timeString
+				if HudTileStyle.getLayoutMetrics().IsMobile then
+					textLabel.Text = "STARTERPACK"
+					mobileTimerBadge.Text = timeString
+					mobileTimerBadge.Visible = true
+				else
+					textLabel.Text = "STARTERPACK\n" .. timeString
+					mobileTimerBadge.Visible = false
+				end
 			end
 		end
 	end
@@ -397,3 +456,22 @@ end)
 mainFrame.Size = UDim2.new(0, 500, 0, 450)
 mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+updateStarterPackLayout()
+
+local function bindStarterPackCamera(camera)
+	if not camera then
+		return
+	end
+	camera:GetPropertyChangedSignal("ViewportSize"):Connect(updateStarterPackLayout)
+end
+
+bindStarterPackCamera(Workspace.CurrentCamera)
+mainFrame:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateStarterPackLayout)
+Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+	bindStarterPackCamera(Workspace.CurrentCamera)
+	updateStarterPackLayout()
+	task.defer(updateStarterPackLayout)
+end)
+task.defer(updateStarterPackLayout)
+task.delay(0.2, updateStarterPackLayout)
+task.delay(1, updateStarterPackLayout)

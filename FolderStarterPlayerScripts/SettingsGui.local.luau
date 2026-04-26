@@ -222,6 +222,15 @@ panelGradient.Color = ColorSequence.new({
 panelGradient.Rotation = 90
 panelGradient.Parent = Panel
 
+HudTileStyle.bindResponsivePanelScale(Panel, {
+	baseSize = UDim2.fromOffset(560, 560),
+	landscapeWidthRatio = 0.84,
+	landscapeHeightRatio = 0.9,
+	portraitWidthRatio = 0.92,
+	portraitHeightRatio = 0.84,
+	mobileMinScale = 0.54,
+})
+
 local panelPattern = Instance.new("ImageLabel")
 panelPattern.Name = "GreenStudsPattern"
 panelPattern.Size = UDim2.fromScale(1, 1)

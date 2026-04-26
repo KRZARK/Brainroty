@@ -78,7 +78,7 @@ ToggleGui.Parent = playerGui
 
 local mainBtn = Instance.new("TextButton", ToggleGui)
 mainBtn.Name = "MainShopButton"
-mainBtn.Position = HudTileStyle.getSlot("left", 2)
+mainBtn.Position = HudTileStyle.getSlot("left", 4)
 mainBtn.Text = ""
 mainBtn.ZIndex = 61
 
@@ -91,7 +91,7 @@ btnText.Text = "SHOP"
 
 HudTileStyle.apply(mainBtn, btnImg, btnText, {
 	side = "left",
-	slotIndex = 2,
+	slotIndex = 4,
 	zIndex = 61,
 })
 
@@ -106,6 +106,7 @@ Instance.new("UICorner", shopContainer).CornerRadius = UDim.new(0, 20)
 local shopStroke = Instance.new("UIStroke", shopContainer)
 shopStroke.Thickness = 4
 shopStroke.Color = Color3.fromRGB(166, 210, 192)
+local shopScale = Instance.new("UIScale", shopContainer)
 
 local shopGradient = Instance.new("UIGradient", shopContainer)
 shopGradient.Color = ColorSequence.new({
@@ -129,11 +130,11 @@ shopBg.ScaleType = Enum.ScaleType.Tile
 shopBg.TileSize = UDim2.fromOffset(128, 128)
 Instance.new("UICorner", shopBg).CornerRadius = UDim.new(0, 20)
 
-local closeButton = Instance.new("TextButton", screenGui)
+local closeButton = Instance.new("TextButton", shopContainer)
 closeButton.Name = "CloseButton"
 closeButton.Size = UDim2.fromOffset(80, 80)
-closeButton.Position = UDim2.new(0.5 + (0.8/2), 0, 0.5 - (0.8/2), 0)
-closeButton.AnchorPoint = Vector2.new(0.5, 0.5)
+closeButton.Position = UDim2.new(1, -12, 0, 12)
+closeButton.AnchorPoint = Vector2.new(1, 0)
 closeButton.BackgroundColor3 = Color3.fromRGB(220, 0, 0)
 closeButton.Text = "X"
 closeButton.TextColor3 = Color3.new(1, 1, 1)
@@ -688,6 +689,66 @@ local gridLayout = Instance.new("UIGridLayout", gridFrame)
 gridLayout.CellSize = UDim2.new(0.23, 0, 0.45, 0)
 gridLayout.CellPadding = UDim2.new(0.02, 0, 0.05, 0)
 gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+local function applyShopLayout()
+	local metrics = HudTileStyle.getLayoutMetrics()
+	local viewport = metrics.Viewport
+	if metrics.IsLandscapeMobile then
+		shopContainer.Size = UDim2.fromScale(0.9, 0.98)
+		shopScale.Scale = math.clamp(math.min(viewport.X / 840, viewport.Y / 470), 0.72, 0.82)
+		closeButton.Size = UDim2.fromOffset(54, 54)
+		closeButton.Position = UDim2.new(1, -8, 0, 8)
+		closeButton.TextSize = 32
+		TabBrainrot.TextScaled = true
+		TabBoosts.TextScaled = true
+		UpgradesTitle.TextScaled = true
+		CoinsTitle.TextScaled = true
+		subTitle.TextScaled = true
+	elseif metrics.IsMobile then
+		shopContainer.Size = UDim2.fromScale(0.92, 0.92)
+		shopScale.Scale = math.clamp(math.min(viewport.X / 820, viewport.Y / 620), 0.7, 0.86)
+		closeButton.Size = UDim2.fromOffset(60, 60)
+		closeButton.Position = UDim2.new(1, -9, 0, 9)
+		closeButton.TextSize = 34
+		TabBrainrot.TextScaled = true
+		TabBoosts.TextScaled = true
+		UpgradesTitle.TextScaled = true
+		CoinsTitle.TextScaled = true
+		subTitle.TextScaled = true
+	else
+		shopContainer.Size = UDim2.fromScale(0.8, 0.8)
+		shopScale.Scale = 1
+		closeButton.Size = UDim2.fromOffset(80, 80)
+		closeButton.Position = UDim2.new(1, -12, 0, 12)
+		closeButton.TextSize = 45
+		TabBrainrot.TextScaled = false
+		TabBoosts.TextScaled = false
+		UpgradesTitle.TextScaled = false
+		CoinsTitle.TextScaled = false
+		subTitle.TextScaled = false
+	end
+
+end
+
+local function bindShopLayoutCamera(camera)
+	if not camera then
+		return
+	end
+	camera:GetPropertyChangedSignal("ViewportSize"):Connect(applyShopLayout)
+end
+
+bindShopLayoutCamera(workspace.CurrentCamera)
+shopContainer:GetPropertyChangedSignal("AbsoluteSize"):Connect(applyShopLayout)
+workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+	bindShopLayoutCamera(workspace.CurrentCamera)
+	applyShopLayout()
+	task.defer(applyShopLayout)
+end)
+
+applyShopLayout()
+task.defer(applyShopLayout)
+task.delay(0.2, applyShopLayout)
+task.delay(1, applyShopLayout)
 
 -- === 3. GENEROWANIE KAFELKÓW ===
 local rainbowLabels = {}

@@ -25,7 +25,9 @@ ClaimDailyRewardRF.OnServerInvoke = function(player)
 	
 	-- Przyznajemy Nagrodę
 	if reward.Type == "Coin" then
-		local grantSucceeded = CoinGrantHelper.grantCoins(player, reward.Value, "DailyReward:" .. tostring(streak))
+		local multiplier = player:GetAttribute("CoinMultiplier") or 1
+		local finalReward = math.floor(reward.Value * multiplier)
+		local grantSucceeded = CoinGrantHelper.grantCoins(player, finalReward, "DailyReward:" .. tostring(streak))
 		if not grantSucceeded then
 			return false, "Nie udalo sie przyznac monet."
 		end

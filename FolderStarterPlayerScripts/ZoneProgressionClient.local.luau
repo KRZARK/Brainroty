@@ -7,6 +7,8 @@ local Workspace = game:GetService("Workspace")
 local player = Players.LocalPlayer
 local BrainrotUtils = require(ReplicatedStorage:WaitForChild("FolderReplicatedStorage"):WaitForChild("BrainrotUtils"))
 
+local GameConfig = require(ReplicatedStorage:WaitForChild("FolderReplicatedStorage"):WaitForChild("GameConfig"))
+
 -- GUI dla błędu portalu
 local playerGui = player:WaitForChild("PlayerGui")
 local warningGui = Instance.new("ScreenGui")
@@ -394,6 +396,15 @@ end
 
 -- Manage zone doors and announce newly unlocked areas
 task.spawn(function()
+	-- Czekamy na wczytanie kolekcji gracza oraz wzorców, by uniknąć fałszywych powiadomień po wejściu do gry
+	player:WaitForChild("BrainrotCollection", 30)
+	local storage = ReplicatedStorage:WaitForChild("BrainrotStorage", 10)
+	if storage then
+		while #storage:GetChildren() == 0 do
+			task.wait(0.5)
+		end
+	end
+
 	while true do
 		local doorsFolder = Workspace:FindFirstChild("ZoneDoors")
 		if doorsFolder then
@@ -439,6 +450,7 @@ task.spawn(function()
 		end
 
 		local hasSecret = BrainrotUtils.hasCompletedRarity(player, "Secret")
+		
 		if portalUnlockState == nil then
 			portalUnlockState = hasSecret
 		elseif portalUnlockState == false and hasSecret == true then
@@ -470,20 +482,17 @@ task.spawn(function()
 			if hrp then
 				debounce = true
 				
-				local hasSecret = BrainrotUtils.hasCompletedRarity(player, "Secret")
+				-- ROZWIĄZANIE PROBLEMU KROK 4: Weryfikacja serwerowa względem TotalBrainrots
+				local requestTeleport = ReplicatedStorage:WaitForChild("BrainrotEvents"):WaitForChild("RequestOGTeleport")
+				local success = requestTeleport:InvokeServer()
 				
-				if hasSecret then
-					local ogSpawn = Workspace:FindFirstChild("OGSpawn")
-					-- OGSpawn też może być modelem
-					local spawnCFrame = ogSpawn and (ogSpawn:IsA("Model") and ogSpawn:GetPivot() or ogSpawn.CFrame) or nil
-					
-					if spawnCFrame then
-						hrp.CFrame = spawnCFrame + Vector3.new(0, 3, 0)
-					else
-						warn("OGSpawn not found in Workspace!")
+				if success then
+					if type(_G.ClearOgPortalHint) == "function" then
+						_G.ClearOgPortalHint()
 					end
-					task.wait(1) -- Czas na TP
+					task.wait(1) -- Czas na TP (serwer to wykonuje)
 				else
+					warningLabel.Text = "YOU MUST COLLECT ALL SECRET BRAINROTS TO SEARCH FOR OG!"
 					warningLabel.Visible = true
 					task.delay(3, function()
 						warningLabel.Visible = false

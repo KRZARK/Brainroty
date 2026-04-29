@@ -18,6 +18,7 @@ local COIN_ASSET = "rbxassetid://11520144151"
 local SPECIAL_2D_ASSET = "rbxassetid://15993201893" -- NOWY ASSET 2D
 local MUSIC_ASSET = "rbxassetid://140383003026220" -- NOWA MUZYKA
 local GameConfig = require(ReplicatedStorage:WaitForChild("FolderReplicatedStorage"):WaitForChild("GameConfig"))
+local HudTileStyle = require(ReplicatedStorage:WaitForChild("FolderReplicatedStorage"):WaitForChild("HudTileStyle"))
 local CoinGrabSound = SoundService:WaitForChild("CoinGrab", 5)
 local RAIN_DURATION = GameConfig.CoinRainDuration
 local COIN_REWARD = GameConfig.CoinRainCoinReward or 5
@@ -35,7 +36,133 @@ rainGui.DisplayOrder = 100 -- Najwyższa warstwa
 rainGui.IgnoreGuiInset = true
 rainGui.Parent = playerGui
 
+local function getRewardPopupMetrics()
+	local metrics = HudTileStyle.getLayoutMetrics()
+	local camera = Workspace.CurrentCamera
+	local viewport = camera and camera.ViewportSize or Vector2.new(1280, 720)
+
+	if metrics.IsLandscapeMobile then
+		return {
+			size = UDim2.fromOffset(math.clamp(math.floor(viewport.X * 0.19), 120, 150), math.clamp(math.floor(viewport.Y * 0.09), 34, 42)),
+			textSize = 28,
+			strokeThickness = 2,
+			startPosition = UDim2.fromScale(0.5, 0.47),
+			endPosition = UDim2.fromScale(0.5, 0.38),
+		}
+	elseif metrics.IsMobile then
+		return {
+			size = UDim2.fromOffset(math.clamp(math.floor(viewport.X * 0.26), 140, 176), math.clamp(math.floor(viewport.Y * 0.07), 36, 44)),
+			textSize = 32,
+			strokeThickness = 2.5,
+			startPosition = UDim2.fromScale(0.5, 0.48),
+			endPosition = UDim2.fromScale(0.5, 0.37),
+		}
+	end
+
+	return {
+		size = UDim2.fromOffset(200, 50),
+		textSize = 45,
+		strokeThickness = 3,
+		startPosition = UDim2.fromScale(0.5, 0.5),
+		endPosition = UDim2.fromScale(0.5, 0.35),
+	}
+end
+
 -- NOWE: Pasek aktualizujący stan kolejki w tle
+local function getCoinRainHudMetrics()
+	local metrics = HudTileStyle.getLayoutMetrics()
+	local camera = Workspace.CurrentCamera
+	local viewport = camera and camera.ViewportSize or Vector2.new(1280, 720)
+
+	if metrics.IsLandscapeMobile then
+		return {
+			timerSize = UDim2.fromOffset(math.clamp(math.floor(viewport.X * 0.36), 196, 236), math.clamp(math.floor(viewport.Y * 0.048), 18, 22)),
+			timerPosition = UDim2.new(0.5, 0, 0.852, 0),
+			timerMaxText = 16,
+			sponsorSize = UDim2.fromOffset(math.clamp(math.floor(viewport.X * 0.58), 320, 388), math.clamp(math.floor(viewport.Y * 0.068), 24, 30)),
+			sponsorPosition = UDim2.new(0.5, 0, 0.91, 0),
+			sponsorTextSize = 13,
+			sponsorTweenSeconds = 24,
+		}
+	elseif metrics.IsMobile then
+		return {
+			timerSize = UDim2.fromOffset(math.clamp(math.floor(viewport.X * 0.44), 220, 320), math.clamp(math.floor(viewport.Y * 0.046), 22, 28)),
+			timerPosition = UDim2.new(0.5, 0, 0.89, 0),
+			timerMaxText = 18,
+			sponsorSize = UDim2.fromOffset(math.clamp(math.floor(viewport.X * 0.62), 280, 420), math.clamp(math.floor(viewport.Y * 0.064), 26, 34)),
+			sponsorPosition = UDim2.new(0.5, 0, 0.948, 0),
+			sponsorTextSize = 18,
+			sponsorTweenSeconds = 17,
+		}
+	end
+
+	return {
+		timerSize = UDim2.new(0.5, 0, 0, 30),
+		timerPosition = UDim2.new(0.5, 0, 0.91, 0),
+		timerMaxText = 24,
+		sponsorSize = UDim2.new(0.6, 0, 0, 40),
+		sponsorPosition = UDim2.new(0.5, 0, 0.95, 0),
+		sponsorTextSize = 24,
+		sponsorTweenSeconds = 16,
+	}
+end
+
+local function getCoinRainSummaryMetrics()
+	local metrics = HudTileStyle.getLayoutMetrics()
+	local camera = Workspace.CurrentCamera
+	local viewport = camera and camera.ViewportSize or Vector2.new(1280, 720)
+
+	if metrics.IsLandscapeMobile then
+		return {
+			frameSize = UDim2.fromOffset(math.clamp(math.floor(viewport.X * 0.31), 180, 240), math.clamp(math.floor(viewport.Y * 0.18), 72, 92)),
+			framePosition = UDim2.new(0.5, 0, 0.36, 0),
+			tileSize = UDim2.fromOffset(28, 28),
+			cornerRadius = UDim.new(0, 9),
+			strokeThickness = 2,
+			titleSize = UDim2.new(1, 0, 0, 24),
+			titlePosition = UDim2.new(0, 0, 0, 8),
+			titleTextSize = 16,
+			titleStrokeThickness = 1.5,
+			coinsSize = UDim2.new(1, 0, 0, 28),
+			coinsPosition = UDim2.new(0, 0, 0, 38),
+			coinsTextSize = 14,
+			coinsStrokeThickness = 1.5,
+		}
+	elseif metrics.IsMobile then
+		return {
+			frameSize = UDim2.fromOffset(math.clamp(math.floor(viewport.X * 0.42), 220, 320), math.clamp(math.floor(viewport.Y * 0.16), 94, 120)),
+			framePosition = UDim2.new(0.5, 0, 0.37, 0),
+			tileSize = UDim2.fromOffset(36, 36),
+			cornerRadius = UDim.new(0, 12),
+			strokeThickness = 2.5,
+			titleSize = UDim2.new(1, 0, 0, 34),
+			titlePosition = UDim2.new(0, 0, 0, 12),
+			titleTextSize = 22,
+			titleStrokeThickness = 2,
+			coinsSize = UDim2.new(1, 0, 0, 36),
+			coinsPosition = UDim2.new(0, 0, 0, 50),
+			coinsTextSize = 18,
+			coinsStrokeThickness = 2,
+		}
+	end
+
+	return {
+		frameSize = UDim2.fromOffset(400, 150),
+		framePosition = UDim2.new(0.5, 0, 0.4, 0),
+		tileSize = UDim2.fromOffset(50, 50),
+		cornerRadius = UDim.new(0, 15),
+		strokeThickness = 4,
+		titleSize = UDim2.new(1, 0, 0, 50),
+		titlePosition = UDim2.new(0, 0, 0, 15),
+		titleTextSize = 35,
+		titleStrokeThickness = 2,
+		coinsSize = UDim2.new(1, 0, 0, 60),
+		coinsPosition = UDim2.new(0, 0, 0, 70),
+		coinsTextSize = 30,
+		coinsStrokeThickness = 2,
+	}
+end
+
 PoolUpdated.OnClientEvent:Connect(function(pool, queued)
 	currentQueued = queued or 0
 end)
@@ -102,6 +229,7 @@ CoinRainTrigger.OnClientEvent:Connect(function(sponsors)
 	activeRainCount += 1
 	isEventActive = true
 	coinsCollectedThisRain = 0 -- Resetujemy licznik na start eventu
+	local hudMetrics = getCoinRainHudMetrics()
 	
 	local sponsorListString = "ANONYMOUS"
 	if type(sponsors) == "table" and #sponsors > 0 then
@@ -113,7 +241,7 @@ CoinRainTrigger.OnClientEvent:Connect(function(sponsors)
 	-- 1. LICZNIK CZASU (GÓRA NAD SPONSORAMI) - NOWE
 	local timerLabel = Instance.new("TextLabel")
 	timerLabel.Name = "EventTimerLabel"
-	timerLabel.Size = UDim2.new(0.5, 0, 0, 30)
+	timerLabel.Size = hudMetrics.timerSize
 	timerLabel.Position = UDim2.new(0.5, 0, 0.91, 0) -- Tuż nad marquee (który jest na 0.95)
 	timerLabel.AnchorPoint = Vector2.new(0.5, 1)
 	timerLabel.BackgroundTransparency = 1
@@ -123,6 +251,11 @@ CoinRainTrigger.OnClientEvent:Connect(function(sponsors)
 	timerLabel.TextStrokeTransparency = 0
 	timerLabel.ZIndex = 110
 	timerLabel.Parent = rainGui
+	timerLabel.Position = hudMetrics.timerPosition
+	local timerConstraint = Instance.new("UITextSizeConstraint")
+	timerConstraint.MinTextSize = 8
+	timerConstraint.MaxTextSize = hudMetrics.timerMaxText
+	timerConstraint.Parent = timerLabel
 	
 	if activeEventRoutine then coroutine.close(activeEventRoutine) end
 	
@@ -149,6 +282,8 @@ CoinRainTrigger.OnClientEvent:Connect(function(sponsors)
 	sponsorContainer.BorderSizePixel = 0
 	sponsorContainer.ClipsDescendants = true
 	sponsorContainer.Parent = rainGui
+	sponsorContainer.Size = hudMetrics.sponsorSize
+	sponsorContainer.Position = hudMetrics.sponsorPosition
 	
 	local uiCorner = Instance.new("UICorner", sponsorContainer)
 	uiCorner.CornerRadius = UDim.new(0.5, 0)
@@ -158,18 +293,18 @@ CoinRainTrigger.OnClientEvent:Connect(function(sponsors)
 	sponsorText.Size = UDim2.new(2, 0, 1, 0)
 	sponsorText.Position = UDim2.new(1.1, 0, 0, 0)
 	sponsorText.BackgroundTransparency = 1
-	sponsorText.Text = "💸 COIN RAIN SPONSORS: " .. sponsorListString .. " 💸"
+	sponsorText.Text = "COIN RAIN SPONSORS: " .. sponsorListString
 	sponsorText.TextColor3 = Color3.fromRGB(255, 215, 0)
 	sponsorText.Font = Enum.Font.FredokaOne
 	sponsorText.TextSize = 24
 	sponsorText.Parent = sponsorContainer
-
+	sponsorText.TextSize = hudMetrics.sponsorTextSize
 	local stroke = Instance.new("UIStroke", sponsorText)
 	stroke.Thickness = 2
 	stroke.Color = Color3.new(0, 0, 0)
 	
 	-- Przewijanie napisu (Marquee)
-	local tweenInfoScroll = TweenInfo.new(16, Enum.EasingStyle.Linear, Enum.EasingDirection.Out, -1)
+	local tweenInfoScroll = TweenInfo.new(hudMetrics.sponsorTweenSeconds, Enum.EasingStyle.Linear, Enum.EasingDirection.Out, -1)
 	local scrollTween = TweenService:Create(sponsorText, tweenInfoScroll, {Position = UDim2.new(-1.5, 0, 0, 0)})
 	scrollTween:Play()
 	
@@ -189,10 +324,13 @@ CoinRainTrigger.OnClientEvent:Connect(function(sponsors)
 		-- === NOWE: EKRAN PODSUMOWANIA (TĘCZOWE GREENSTUDS) ===
 		if coinsCollectedThisRain > 0 then
 			-- Używamy ImageLabel zamiast Frame, żeby dodać teksturę
+			local summaryMetrics = getCoinRainSummaryMetrics()
 			local summaryFrame = Instance.new("ImageLabel")
 			summaryFrame.Size = UDim2.fromOffset(400, 150)
 			summaryFrame.Position = UDim2.new(0.5, 0, 0.4, 0) -- Lekko powyżej środka
 			summaryFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+			summaryFrame.Size = summaryMetrics.frameSize
+			summaryFrame.Position = summaryMetrics.framePosition
 			summaryFrame.BackgroundTransparency = 1 -- Przezroczyste tło frame'a
 			
 			-- Dynamiczne pobieranie ID GreenStuds z ReplicatedStorage
@@ -207,9 +345,11 @@ CoinRainTrigger.OnClientEvent:Connect(function(sponsors)
 			
 			-- Kafelkowanie tekstury (Tiling)
 			summaryFrame.ScaleType = Enum.ScaleType.Tile
+			summaryFrame.TileSize = summaryMetrics.tileSize
 			summaryFrame.TileSize = UDim2.fromOffset(50, 50) -- Rozmiar klocków
 			
 			summaryFrame.ZIndex = 250
+			summaryFrame.TileSize = summaryMetrics.tileSize
 			summaryFrame.Parent = rainGui
 			
 			Instance.new("UICorner", summaryFrame).CornerRadius = UDim.new(0, 15)
@@ -217,6 +357,7 @@ CoinRainTrigger.OnClientEvent:Connect(function(sponsors)
 			summaryStroke.Thickness = 4
 			summaryStroke.Color = Color3.fromRGB(255, 215, 0)
 			summaryStroke.Transparency = 1
+			summaryStroke.Thickness = summaryMetrics.strokeThickness
 			
 			-- Dzieci (tytuł i monety)
 			local titleLbl = Instance.new("TextLabel")
@@ -227,12 +368,16 @@ CoinRainTrigger.OnClientEvent:Connect(function(sponsors)
 			titleLbl.TextColor3 = Color3.new(1, 1, 1)
 			titleLbl.Font = Enum.Font.LuckiestGuy
 			titleLbl.TextSize = 35
+			titleLbl.Size = summaryMetrics.titleSize
+			titleLbl.Position = summaryMetrics.titlePosition
+			titleLbl.TextSize = summaryMetrics.titleTextSize
 			titleLbl.TextTransparency = 1
 			titleLbl.ZIndex = 251
 			titleLbl.Parent = summaryFrame
 			local titleStroke = Instance.new("UIStroke", titleLbl)
 			titleStroke.Thickness = 2
 			titleStroke.Transparency = 1
+			titleStroke.Thickness = summaryMetrics.titleStrokeThickness
 			
 			local coinsLbl = Instance.new("TextLabel")
 			coinsLbl.Size = UDim2.new(1, 0, 0, 60)
@@ -242,12 +387,16 @@ CoinRainTrigger.OnClientEvent:Connect(function(sponsors)
 			coinsLbl.TextColor3 = Color3.fromRGB(255, 215, 0)
 			coinsLbl.Font = Enum.Font.FredokaOne
 			coinsLbl.TextSize = 30
+			coinsLbl.Size = summaryMetrics.coinsSize
+			coinsLbl.Position = summaryMetrics.coinsPosition
+			coinsLbl.TextSize = summaryMetrics.coinsTextSize
 			coinsLbl.TextTransparency = 1
 			coinsLbl.ZIndex = 251
 			coinsLbl.Parent = summaryFrame
 			local coinsStroke = Instance.new("UIStroke", coinsLbl)
 			coinsStroke.Thickness = 2
 			coinsStroke.Transparency = 1
+			coinsStroke.Thickness = summaryMetrics.coinsStrokeThickness
 			
 			-- === NOWE: TĘCZOWA ANIMACJA (RenderStepped) ===
 			local rainbowConnection
@@ -421,7 +570,7 @@ local function onCoinTouched(coin)
 			local p = Players:GetPlayerFromCharacter(char)
 			if p == player then
 				debounce = true
-				local rewardAmount = math.ceil(COIN_REWARD * (player:GetAttribute("CoinMultiplier") or 1))
+				local rewardAmount = math.ceil(COIN_REWARD * (player:GetAttribute("CoinEarningsMultiplier") or player:GetAttribute("CoinMultiplier") or 1))
 				if isEventActive then
 					coinsCollectedThisRain += rewardAmount
 				end
@@ -437,23 +586,24 @@ local function onCoinTouched(coin)
 				end
 				
 				local popup = Instance.new("TextLabel")
+				local popupMetrics = getRewardPopupMetrics()
 				popup.Name = "RewardPopup"
-				popup.Size = UDim2.new(0, 200, 0, 50)
-				popup.Position = UDim2.fromScale(0.5, 0.5)
+				popup.Size = popupMetrics.size
+				popup.Position = popupMetrics.startPosition
 				popup.AnchorPoint = Vector2.new(0.5, 0.5)
 				popup.BackgroundTransparency = 1
 				popup.Text = "+" .. tostring(rewardAmount) .. " 💰"
 				popup.TextColor3 = Color3.fromRGB(255, 230, 0)
 				popup.Font = Enum.Font.FredokaOne
-				popup.TextSize = 45
+				popup.TextSize = popupMetrics.textSize
 				popup.ZIndex = 200
 				popup.Parent = rainGui
 				
 				local stroke = Instance.new("UIStroke", popup)
-				stroke.Thickness = 3
+				stroke.Thickness = popupMetrics.strokeThickness
 				stroke.Color = Color3.new(0, 0, 0)
 				
-				popup:TweenPosition(UDim2.fromScale(0.5, 0.35), Enum.EasingDirection.Out, Enum.EasingStyle.Back, 0.8, true)
+				popup:TweenPosition(popupMetrics.endPosition, Enum.EasingDirection.Out, Enum.EasingStyle.Back, 0.8, true)
 				task.delay(0.8, function()
 					if popup then popup:Destroy() end
 				end)

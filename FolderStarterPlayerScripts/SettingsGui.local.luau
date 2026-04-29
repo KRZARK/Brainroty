@@ -80,19 +80,19 @@ end
 local settingDefinitions = {
 	{
 		id = "Music",
-		title = "MUZYKA",
+		title = "MUSIC",
 		kind = "local",
 		default = true,
 	},
 	{
 		id = "SFX",
-		title = "DŹWIĘKI / SFX",
+		title = "SOUNDS / SFX",
 		kind = "local",
 		default = true,
 	},
 	{
 		id = "Speed",
-		title = "SZYBKOŚĆ",
+		title = "SPEED",
 		kind = "cycle",
 		remoteKey = "Speed",
 		attributeName = "SpeedSettingEnabled",
@@ -101,7 +101,7 @@ local settingDefinitions = {
 	},
 	{
 		id = "Jump",
-		title = "SKOK",
+		title = "JUMP",
 		kind = "cycle",
 		remoteKey = "Jump",
 		attributeName = "JumpSettingEnabled",
@@ -110,7 +110,7 @@ local settingDefinitions = {
 	},
 	{
 		id = "TrailColor",
-		title = "KOLOR ŚLADU",
+		title = "TRAIL COLOR",
 		kind = "cycle",
 		remoteKey = "SelectedTrail",
 		attributeName = "SelectedTrail",
@@ -119,7 +119,7 @@ local settingDefinitions = {
 	},
 	{
 		id = "VIPProtection",
-		title = "OCHRONA VIP",
+		title = "VIP PROTECTION",
 		kind = "server",
 		remoteKey = "VIPProtection",
 		attributeName = "VIPProtectionEnabled",
@@ -130,7 +130,7 @@ local settingDefinitions = {
 	},
 	{
 		id = "Performance",
-		title = "OPTYMALIZACJA",
+		title = "PERFORMANCE",
 		kind = "local",
 		default = false,
 	},
@@ -142,6 +142,45 @@ local trackedSounds = {}
 local performanceOverrides = {}
 local performanceScanConnection
 local performanceScanToken = 0
+local settingsLayoutConnection
+
+local function getSettingsLayoutMetrics()
+	local metrics = HudTileStyle.getLayoutMetrics()
+	if metrics.IsLandscapeMobile then
+		return {
+			rowHeight = 82,
+			rowGap = 14,
+			titleTextSize = 23,
+			titleOffset = 180,
+			toggleWidth = 116,
+			toggleHeight = 50,
+			boolStatusTextSize = 20,
+			cycleStatusTextSize = 16,
+		}
+	elseif metrics.IsMobile then
+		return {
+			rowHeight = 78,
+			rowGap = 13,
+			titleTextSize = 22,
+			titleOffset = 176,
+			toggleWidth = 112,
+			toggleHeight = 48,
+			boolStatusTextSize = 19,
+			cycleStatusTextSize = 15,
+		}
+	end
+
+	return {
+		rowHeight = 72,
+		rowGap = 12,
+		titleTextSize = 20,
+		titleOffset = 170,
+		toggleWidth = 108,
+		toggleHeight = 46,
+		boolStatusTextSize = 18,
+		cycleStatusTextSize = 14,
+	}
+end
 
 local oldGui = PlayerGui:FindFirstChild("SettingsUI")
 if oldGui then oldGui:Destroy() end
@@ -228,7 +267,8 @@ HudTileStyle.bindResponsivePanelScale(Panel, {
 	landscapeHeightRatio = 0.9,
 	portraitWidthRatio = 0.92,
 	portraitHeightRatio = 0.84,
-	mobileMinScale = 0.54,
+	landscapeMinScale = 0.4,
+	portraitMinScale = 0.54,
 })
 
 local panelPattern = Instance.new("ImageLabel")
@@ -293,7 +333,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -120, 1, 0)
 Title.Position = UDim2.new(0, 38, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "USTAWIENIA"
+Title.Text = "SETTINGS"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.LuckiestGuy
 Title.TextSize = 38
@@ -594,9 +634,13 @@ local function updateRowVisual(definition)
 		return
 	end
 
+	local layout = getSettingsLayoutMetrics()
 	local currentValue = getCurrentSettingValue(definition)
 	local unlocked = isUnlocked(definition)
 	local isPending = pendingServerToggles[definition.id] == true
+
+	row.StatusLabel.TextScaled = false
+	row.StatusLabel.TextSize = layout.boolStatusTextSize
 
 	if isPending then
 		row.StatusLabel.Text = "..."
@@ -627,7 +671,7 @@ local function updateRowVisual(definition)
 		end
 		row.StatusLabel.Text = tostring(currentValue)
 		row.StatusLabel.TextScaled = (string.len(tostring(currentValue)) > 8)
-		row.StatusLabel.TextSize = 14
+		row.StatusLabel.TextSize = layout.cycleStatusTextSize
 		
 		if currentValue == "OFF" then
 			row.Toggle.BackgroundColor3 = Color3.fromRGB(188, 68, 68)
@@ -644,7 +688,7 @@ local function updateRowVisual(definition)
 	end
 
 	row.StatusLabel.TextScaled = false
-	row.StatusLabel.TextSize = 18 
+	row.StatusLabel.TextSize = layout.boolStatusTextSize
 	row.StatusLabel.Text = currentValue and "ON" or "OFF"
 	row.Toggle.BackgroundColor3 = currentValue and Color3.fromRGB(56, 182, 92) or Color3.fromRGB(188, 68, 68)
 	row.StatusLabel.TextColor3 = Color3.new(1, 1, 1)
@@ -746,6 +790,7 @@ local function createSettingRow(order, definition)
 	rowPatternCorner.Parent = rowPattern
 
 	local rowTitle = Instance.new("TextLabel")
+	rowTitle.Name = "RowTitle"
 	rowTitle.Size = UDim2.new(1, -170, 1, 0)
 	rowTitle.Position = UDim2.new(0, 20, 0, 0)
 	rowTitle.BackgroundTransparency = 1
@@ -803,9 +848,35 @@ local function createSettingRow(order, definition)
 	rowLookup[definition.id] = {
 		Row = Row,
 		Stroke = rowStroke,
+		TitleLabel = rowTitle,
 		Toggle = toggleButton,
 		StatusLabel = statusLabel,
 	}
+end
+
+local function applySettingsLayout()
+	local layout = getSettingsLayoutMetrics()
+	ContentLayout.Padding = UDim.new(0, layout.rowGap)
+
+	for _, row in pairs(rowLookup) do
+		row.Row.Size = UDim2.new(1, -4, 0, layout.rowHeight)
+		row.TitleLabel.Size = UDim2.new(1, -layout.titleOffset, 1, 0)
+		row.TitleLabel.TextSize = layout.titleTextSize
+		row.Toggle.Size = UDim2.fromOffset(layout.toggleWidth, layout.toggleHeight)
+	end
+
+	updateAllRows()
+end
+
+local function bindSettingsCamera(camera)
+	if settingsLayoutConnection then
+		settingsLayoutConnection:Disconnect()
+		settingsLayoutConnection = nil
+	end
+
+	if camera then
+		settingsLayoutConnection = camera:GetPropertyChangedSignal("ViewportSize"):Connect(applySettingsLayout)
+	end
 end
 
 for index, definition in ipairs(settingDefinitions) do
@@ -814,6 +885,14 @@ for index, definition in ipairs(settingDefinitions) do
 	end
 	createSettingRow(index, definition)
 end
+
+bindSettingsCamera(Workspace.CurrentCamera)
+Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+	bindSettingsCamera(Workspace.CurrentCamera)
+	task.defer(applySettingsLayout)
+end)
+applySettingsLayout()
+task.defer(applySettingsLayout)
 
 for _, instance in ipairs(game:GetDescendants()) do
 	if instance:IsA("Sound") then

@@ -34,8 +34,8 @@ local CoinsCollectedStore = DataStoreService:GetOrderedDataStore("Leaderboard_Co
 local LeaderboardConfigs = {
 	{
 		id = "rebirths",
-		title = "TOP REBIRTHOW",
-		valueHeader = "REBIRTHY",
+		title = "TOP REBIRTHS",
+		valueHeader = "REBIRTHS",
 		modelName = "Tablica",
 		store = RebirthsStore,
 		getLiveValue = function(player)
@@ -49,8 +49,8 @@ local LeaderboardConfigs = {
 	},
 	{
 		id = "robux",
-		title = "TOP ROBUXOW",
-		valueHeader = "ROBUXY",
+		title = "TOP ROBUX",
+		valueHeader = "ROBUX",
 		modelName = "Tablica_Robux",
 		store = RobuxSpentStore,
 		getLiveValue = function(player)
@@ -62,8 +62,8 @@ local LeaderboardConfigs = {
 	},
 	{
 		id = "coins",
-		title = "TOP MONET",
-		valueHeader = "MONETY",
+		title = "TOP COINS",
+		valueHeader = "COINS",
 		modelName = "Tablica_Monety",
 		store = CoinsCollectedStore,
 		getLiveValue = function(player)
@@ -168,6 +168,18 @@ local function flushAllDirty()
 	for userId in pairs(dirtyOrderedValues) do
 		flushDirtyUser(userId)
 	end
+end
+
+local function readOrderedValue(store, userId)
+	local success, result = pcall(function()
+		return store:GetAsync(tostring(userId))
+	end)
+
+	if success and type(result) == "number" then
+		return math.floor(result)
+	end
+
+	return 0
 end
 
 local function getPlayerName(userId)
@@ -743,10 +755,12 @@ local function setupPlayer(player)
 
 		local robuxSpent = math.max(
 			math.floor(tonumber(savedTotals.RobuxSpent) or 0),
+			readOrderedValue(RobuxSpentStore, player.UserId),
 			math.floor(tonumber(player:GetAttribute("RobuxSpent")) or 0)
 		)
 		local totalCoinsCollected = math.max(
 			math.floor(tonumber(savedTotals.TotalCoinsCollected) or 0),
+			readOrderedValue(CoinsCollectedStore, player.UserId),
 			math.floor(tonumber(player:GetAttribute("TotalCoinsCollected")) or 0),
 			coins.Value
 		)

@@ -40,6 +40,8 @@ GameConfig.MaxCollectRequestsPerWindow = 4
 GameConfig.CoinRainTriggerAmount = 1000
 GameConfig.CoinRainDuration = 115
 GameConfig.CoinRainCoinReward = 5
+GameConfig.InviteFriendCoinMultiplier = 1.2
+GameConfig.InviteFriendCoinBonusPercent = 20
 
 GameConfig.TotalBrainrots = 143
 
@@ -47,15 +49,15 @@ GameConfig.QuestSystem = {
 	DailyCount = 3, -- Ile zadań gracz dostaje dziennie
 	SelectionVersion = 3,
 	Pool = {
-		{ID = "CollectBrainrots", Desc = "Znajdz %d Brainrotow", Req = 30, Reward = 1000, Category = "Active"},
-		{ID = "PlayTime", Desc = "Graj przez %d minut", Req = 40, Reward = 1000, Category = "Passive"},
-		{ID = "Jump", Desc = "Podskocz %d razy", Req = 500, Reward = 1000, Category = "Active"},
-		{ID = "Climb", Desc = "Wespnij sie lub wskocz lacznie na %d studow", Req = 2000, Reward = 1000, Category = "Active"},
-		{ID = "Walk", Desc = "Przebiegnij %d studow", Req = 6000, Reward = 1000, Category = "Passive"},
-		{ID = "UseReveal", Desc = "Uzyj podpowiedzi %d razy", Req = 2, Reward = 1000, Category = "Situational"},
-		{ID = "Fall", Desc = "Spadnij lacznie %d studow", Req = 1000, Reward = 1000, Category = "Passive"},
-		{ID = "Swim", Desc = "Plyn lacznie przez %d sekund", Req = 120, Reward = 1000, Category = "Situational"},
-		{ID = "Socialize", Desc = "Badz blisko innych graczy przez %d sekund", Req = 180, Reward = 1000, Category = "Situational"}
+		{ID = "CollectBrainrots", Desc = "Find %d Brainrots", Req = 30, Reward = 1000, Category = "Active"},
+		{ID = "PlayTime", Desc = "Play for %d minutes", Req = 40, Reward = 1000, Category = "Passive"},
+		{ID = "Jump", Desc = "Jump %d times", Req = 500, Reward = 1000, Category = "Active"},
+		{ID = "Climb", Desc = "Climb or jump a total of %d studs", Req = 2000, Reward = 1000, Category = "Active"},
+		{ID = "Walk", Desc = "Run %d studs", Req = 6000, Reward = 1000, Category = "Passive"},
+		{ID = "UseReveal", Desc = "Use hints %d times", Req = 2, Reward = 1000, Category = "Situational"},
+		{ID = "Fall", Desc = "Fall a total of %d studs", Req = 1000, Reward = 1000, Category = "Passive"},
+		{ID = "Swim", Desc = "Swim for a total of %d seconds", Req = 120, Reward = 1000, Category = "Situational"},
+		{ID = "Socialize", Desc = "Stay close to other players for %d seconds", Req = 180, Reward = 1000, Category = "Situational"}
 	}
 }
 GameConfig.PlaytimeRewards = {
@@ -137,7 +139,7 @@ end
 
 function GameConfig.GetPetUnlocksLabelForRebirthLevel(rebirthLevel)
 	local unlocks = GameConfig.GetPetUnlocksForRebirthLevel(rebirthLevel)
-	return #unlocks > 0 and table.concat(unlocks, ", ") or "Brak"
+	return #unlocks > 0 and table.concat(unlocks, ", ") or "None"
 end
 
 return GameConfig

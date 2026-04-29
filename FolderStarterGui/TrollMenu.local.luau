@@ -89,7 +89,8 @@ local function updateMenuPositions()
 		landscapeHeightRatio = 0.76,
 		portraitWidthRatio = 0.7,
 		portraitHeightRatio = 0.62,
-		mobileMinScale = 0.58,
+		landscapeMinScale = 0.5,
+		portraitMinScale = 0.58,
 	})
 	trollMenuScale = scale
 	trollMenuUIScale.Scale = scale
@@ -99,8 +100,9 @@ local function updateMenuPositions()
 	local hudGap = metrics.IsLandscapeMobile and math.max(12, math.floor(metrics.GapPx * 1.8 + 0.5)) or math.max(24, math.floor(metrics.GapPx * 2.2 + 0.5))
 	local bottomPadding = metrics.IsLandscapeMobile and math.max(82, math.floor(viewport.Y * 0.24 + 0.5)) or math.max(18, math.floor(viewport.Y * 0.025 + 0.5))
 	local topOffset = math.max(10, viewport.Y - frameHeight - bottomPadding)
-	local iconColumnLeft = metrics.RightX - (metrics.ButtonPx * 0.5)
-	local openLeft = math.max(8, iconColumnLeft - hudGap - frameWidth)
+	local rightStackLeft = math.min(metrics.RightInnerX or metrics.RightX, metrics.RightX) - (metrics.ButtonPx * 0.5)
+	local safeRight = metrics.ContentRight or (rightStackLeft - hudGap)
+	local openLeft = math.max(8, safeRight - frameWidth)
 	local openOffsetX = math.floor(openLeft - viewport.X + 0.5)
 
 	openPos = UDim2.new(1, openOffsetX, 0, topOffset)

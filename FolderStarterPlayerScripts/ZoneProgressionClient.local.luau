@@ -2,6 +2,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
@@ -13,7 +14,8 @@ local GameConfig = require(ReplicatedStorage:WaitForChild("FolderReplicatedStora
 local playerGui = player:WaitForChild("PlayerGui")
 local warningGui = Instance.new("ScreenGui")
 warningGui.Name = "OGPortalWarning"
-warningGui.DisplayOrder = 100
+warningGui.DisplayOrder = 240
+warningGui.IgnoreGuiInset = true
 warningGui.ResetOnSpawn = false -- KLUCZOWE: GUI nie usuwa się po śmierci!
 warningGui.Parent = playerGui
 
@@ -27,7 +29,7 @@ warningLabel.TextColor3 = Color3.fromRGB(255, 30, 30)
 warningLabel.Font = Enum.Font.FredokaOne
 warningLabel.TextScaled = true
 warningLabel.Visible = false
-warningLabel.ZIndex = 100
+warningLabel.ZIndex = 240
 warningLabel.Parent = warningGui
 
 local warningStroke = Instance.new("UIStroke")
@@ -54,7 +56,7 @@ end
 
 local doorAnnouncementGui = Instance.new("ScreenGui")
 doorAnnouncementGui.Name = "ZoneUnlockAnnouncements"
-doorAnnouncementGui.DisplayOrder = 90
+doorAnnouncementGui.DisplayOrder = 600 -- Musi być nad BrainrotIndexUI (540), żeby komunikat nie chował się pod paskiem progressu.
 doorAnnouncementGui.IgnoreGuiInset = true
 doorAnnouncementGui.ResetOnSpawn = false
 doorAnnouncementGui.Parent = playerGui
@@ -146,6 +148,11 @@ doorBadge.TextXAlignment = Enum.TextXAlignment.Left
 doorBadge.ZIndex = 2
 doorBadge.Parent = doorAnnouncementCard
 
+local doorBadgeConstraint = Instance.new("UITextSizeConstraint")
+doorBadgeConstraint.MinTextSize = 12
+doorBadgeConstraint.MaxTextSize = 26
+doorBadgeConstraint.Parent = doorBadge
+
 local doorTitle = Instance.new("TextLabel")
 doorTitle.Name = "Title"
 doorTitle.AnchorPoint = Vector2.new(0, 0.5)
@@ -161,6 +168,11 @@ doorTitle.TextWrapped = true
 doorTitle.TextXAlignment = Enum.TextXAlignment.Left
 doorTitle.ZIndex = 2
 doorTitle.Parent = doorAnnouncementCard
+
+local doorTitleConstraint = Instance.new("UITextSizeConstraint")
+doorTitleConstraint.MinTextSize = 16
+doorTitleConstraint.MaxTextSize = 34
+doorTitleConstraint.Parent = doorTitle
 
 local doorSubText = Instance.new("TextLabel")
 doorSubText.Name = "SubText"
@@ -178,12 +190,196 @@ doorSubText.ZIndex = 2
 doorSubText.Visible = false
 doorSubText.Parent = doorAnnouncementCard
 
+local doorSubTextConstraint = Instance.new("UITextSizeConstraint")
+doorSubTextConstraint.MinTextSize = 10
+doorSubTextConstraint.MaxTextSize = 16
+doorSubTextConstraint.Parent = doorSubText
+
 local doorUnlockSoundTemplate = ReplicatedStorage:WaitForChild("Drzwi", 10)
 local doorUnlockSound = nil
 if doorUnlockSoundTemplate and doorUnlockSoundTemplate:IsA("Sound") then
 	doorUnlockSound = doorUnlockSoundTemplate:Clone()
 	doorUnlockSound.Name = "DoorUnlockAnnouncementSound"
 	doorUnlockSound.Parent = SoundService
+end
+
+local doorLayoutMetrics = {
+	startY = 0.08,
+	showY = 0.12,
+	titleInset = 28,
+	titleWithBadgeY = 88,
+	titleWithBadgeHeight = 54,
+	titleWithBadgeTextSize = 31,
+	titleWithoutBadgeHeight = 72,
+	titleWithoutBadgeTextSize = 34,
+}
+
+local viewportConnection = nil
+
+local function getViewportSize()
+	local camera = Workspace.CurrentCamera
+	if camera then
+		local size = camera.ViewportSize
+		if size.X > 1 and size.Y > 1 then
+			return size
+		end
+	end
+
+	return Vector2.new(1280, 720)
+end
+
+local function isMobileViewport(viewport)
+	local shortSide = math.min(viewport.X, viewport.Y)
+	local longSide = math.max(viewport.X, viewport.Y)
+
+	if shortSide <= 600 then
+		return true
+	end
+
+	if UserInputService.TouchEnabled and longSide <= 1400 then
+		return true
+	end
+
+	return false
+end
+
+local function applyDoorAnnouncementLayout()
+	local viewport = getViewportSize()
+	local isMobile = isMobileViewport(viewport)
+	local isLandscape = viewport.X >= viewport.Y
+
+	if isMobile and isLandscape then
+		local landscapeCardWidth = math.clamp(math.floor(viewport.X - 290 + 0.5), 350, 470)
+
+		warningLabel.Size = UDim2.fromScale(0.80, 0.10)
+		warningLabel.Position = UDim2.fromScale(0.5, 0.145)
+		uiConstraint.MinTextSize = 12
+		uiConstraint.MaxTextSize = 20
+		warningStroke.Thickness = 3
+
+		doorAnnouncementCard.Size = UDim2.fromOffset(landscapeCardWidth, 96)
+		doorAnnouncementCard.Position = UDim2.fromScale(0.5, 0.29)
+		doorCardConstraint.MinSize = Vector2.new(landscapeCardWidth, 96)
+		doorCardConstraint.MaxSize = Vector2.new(landscapeCardWidth, 96)
+		doorCardCorner.CornerRadius = UDim.new(0, 14)
+		doorTextureBackground.TileSize = UDim2.fromOffset(48, 48)
+		doorCardStroke.Thickness = 2
+		doorAccentLine.Size = UDim2.new(1, -22, 0, 3)
+
+		doorBadge.Position = UDim2.new(0, 16, 0, 16)
+		doorBadge.Size = UDim2.new(1, -32, 0, 14)
+		doorBadge.TextSize = 13
+		doorBadgeConstraint.MinTextSize = 9
+		doorBadgeConstraint.MaxTextSize = 13
+
+		doorSubText.Position = UDim2.new(0, 16, 1, -15)
+		doorSubText.Size = UDim2.new(1, -32, 0, 15)
+		doorSubText.TextSize = 10
+		doorSubTextConstraint.MinTextSize = 8
+		doorSubTextConstraint.MaxTextSize = 10
+
+		doorLayoutMetrics.startY = 0.27
+		doorLayoutMetrics.showY = 0.29
+		doorLayoutMetrics.titleInset = 16
+		doorLayoutMetrics.titleWithBadgeY = 46
+		doorLayoutMetrics.titleWithBadgeHeight = 30
+		doorLayoutMetrics.titleWithBadgeTextSize = 15
+		doorLayoutMetrics.titleWithoutBadgeHeight = 46
+		doorLayoutMetrics.titleWithoutBadgeTextSize = 18
+
+		doorTitleConstraint.MinTextSize = 10
+		doorTitleConstraint.MaxTextSize = 18
+	elseif isMobile then
+		warningLabel.Size = UDim2.fromScale(0.84, 0.14)
+		warningLabel.Position = UDim2.fromScale(0.5, 0.16)
+		uiConstraint.MinTextSize = 14
+		uiConstraint.MaxTextSize = 28
+		warningStroke.Thickness = 3.5
+
+		doorAnnouncementCard.Size = UDim2.new(0.84, 0, 0, 112)
+		doorAnnouncementCard.Position = UDim2.fromScale(0.5, 0.13)
+		doorCardConstraint.MinSize = Vector2.new(340, 102)
+		doorCardConstraint.MaxSize = Vector2.new(700, 118)
+		doorCardCorner.CornerRadius = UDim.new(0, 20)
+		doorTextureBackground.TileSize = UDim2.fromOffset(58, 58)
+		doorCardStroke.Thickness = 2.2
+		doorAccentLine.Size = UDim2.new(1, -28, 0, 5)
+
+		doorBadge.Position = UDim2.new(0, 22, 0, 30)
+		doorBadge.Size = UDim2.new(1, -44, 0, 22)
+		doorBadge.TextSize = 20
+		doorBadgeConstraint.MinTextSize = 10
+		doorBadgeConstraint.MaxTextSize = 20
+
+		doorSubText.Position = UDim2.new(0, 22, 1, -18)
+		doorSubText.Size = UDim2.new(1, -44, 0, 18)
+		doorSubText.TextSize = 12
+		doorSubTextConstraint.MinTextSize = 10
+		doorSubTextConstraint.MaxTextSize = 12
+
+		doorLayoutMetrics.startY = 0.12
+		doorLayoutMetrics.showY = 0.16
+		doorLayoutMetrics.titleInset = 22
+		doorLayoutMetrics.titleWithBadgeY = 68
+		doorLayoutMetrics.titleWithBadgeHeight = 38
+		doorLayoutMetrics.titleWithBadgeTextSize = 24
+		doorLayoutMetrics.titleWithoutBadgeHeight = 52
+		doorLayoutMetrics.titleWithoutBadgeTextSize = 26
+
+		doorTitleConstraint.MinTextSize = 13
+		doorTitleConstraint.MaxTextSize = 26
+	else
+		warningLabel.Size = UDim2.fromScale(0.8, 0.2)
+		warningLabel.Position = UDim2.fromScale(0.5, 0.3)
+		uiConstraint.MinTextSize = 20
+		uiConstraint.MaxTextSize = 60
+		warningStroke.Thickness = 4
+
+		doorAnnouncementCard.Size = UDim2.new(0.72, 0, 0, 140)
+		doorAnnouncementCard.Position = UDim2.fromScale(0.5, 0.08)
+		doorCardConstraint.MinSize = Vector2.new(480, 126)
+		doorCardConstraint.MaxSize = Vector2.new(820, 140)
+		doorCardCorner.CornerRadius = UDim.new(0, 24)
+		doorTextureBackground.TileSize = UDim2.fromOffset(72, 72)
+		doorCardStroke.Thickness = 2.5
+		doorAccentLine.Size = UDim2.new(1, -36, 0, 6)
+
+		doorBadge.Position = UDim2.new(0, 28, 0, 38)
+		doorBadge.Size = UDim2.new(1, -56, 0, 30)
+		doorBadge.TextSize = 26
+		doorBadgeConstraint.MinTextSize = 12
+		doorBadgeConstraint.MaxTextSize = 26
+
+		doorSubText.Position = UDim2.new(0, 28, 1, -24)
+		doorSubText.Size = UDim2.new(1, -56, 0, 22)
+		doorSubText.TextSize = 16
+		doorSubTextConstraint.MinTextSize = 10
+		doorSubTextConstraint.MaxTextSize = 16
+
+		doorLayoutMetrics.startY = 0.08
+		doorLayoutMetrics.showY = 0.12
+		doorLayoutMetrics.titleInset = 28
+		doorLayoutMetrics.titleWithBadgeY = 88
+		doorLayoutMetrics.titleWithBadgeHeight = 54
+		doorLayoutMetrics.titleWithBadgeTextSize = 31
+		doorLayoutMetrics.titleWithoutBadgeHeight = 72
+		doorLayoutMetrics.titleWithoutBadgeTextSize = 34
+
+		doorTitleConstraint.MinTextSize = 16
+		doorTitleConstraint.MaxTextSize = 34
+	end
+end
+
+local function bindViewportUpdates()
+	if viewportConnection then
+		viewportConnection:Disconnect()
+		viewportConnection = nil
+	end
+
+	local camera = Workspace.CurrentCamera
+	if camera then
+		viewportConnection = camera:GetPropertyChangedSignal("ViewportSize"):Connect(applyDoorAnnouncementLayout)
+	end
 end
 
 local function prettifyAreaName(value)
@@ -287,7 +483,8 @@ local function showNextDoorUnlockAnnouncement()
 	local nextAnnouncement = table.remove(doorUnlockQueue, 1)
 	isDoorUnlockShowing = true
 	doorAnnouncementCard.Visible = true
-	doorAnnouncementCard.Position = UDim2.fromScale(0.5, 0.08)
+	applyDoorAnnouncementLayout()
+	doorAnnouncementCard.Position = UDim2.fromScale(0.5, doorLayoutMetrics.startY)
 	doorAnnouncementCard.BackgroundTransparency = 1
 	doorCardStroke.Transparency = 1
 	doorAccentLine.BackgroundTransparency = 1
@@ -297,14 +494,14 @@ local function showNextDoorUnlockAnnouncement()
 
 	doorBadge.Visible = not nextAnnouncement.hideBadge
 	if nextAnnouncement.hideBadge then
-		doorTitle.Position = UDim2.new(0, 28, 0.5, 0)
-		doorTitle.Size = UDim2.new(1, -56, 0, 72)
-		doorTitle.TextSize = 34
+		doorTitle.Position = UDim2.new(0, doorLayoutMetrics.titleInset, 0.5, 0)
+		doorTitle.Size = UDim2.new(1, -doorLayoutMetrics.titleInset * 2, 0, doorLayoutMetrics.titleWithoutBadgeHeight)
+		doorTitle.TextSize = doorLayoutMetrics.titleWithoutBadgeTextSize
 		doorTitle.TextXAlignment = Enum.TextXAlignment.Center
 	else
-		doorTitle.Position = UDim2.new(0, 28, 0, 88)
-		doorTitle.Size = UDim2.new(1, -56, 0, 54)
-		doorTitle.TextSize = 31
+		doorTitle.Position = UDim2.new(0, doorLayoutMetrics.titleInset, 0, doorLayoutMetrics.titleWithBadgeY)
+		doorTitle.Size = UDim2.new(1, -doorLayoutMetrics.titleInset * 2, 0, doorLayoutMetrics.titleWithBadgeHeight)
+		doorTitle.TextSize = doorLayoutMetrics.titleWithBadgeTextSize
 		doorTitle.TextXAlignment = Enum.TextXAlignment.Left
 	end
 
@@ -316,7 +513,7 @@ local function showNextDoorUnlockAnnouncement()
 	playDoorUnlockSound()
 
 	TweenService:Create(doorAnnouncementCard, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-		Position = UDim2.fromScale(0.5, 0.12),
+		Position = UDim2.fromScale(0.5, doorLayoutMetrics.showY),
 		BackgroundTransparency = 0.06,
 	}):Play()
 	TweenService:Create(doorCardStroke, TweenInfo.new(0.3), {Transparency = 0.12}):Play()
@@ -329,7 +526,7 @@ local function showNextDoorUnlockAnnouncement()
 		task.wait(10)
 
 		TweenService:Create(doorAnnouncementCard, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-			Position = UDim2.fromScale(0.5, 0.08),
+			Position = UDim2.fromScale(0.5, doorLayoutMetrics.startY),
 			BackgroundTransparency = 1,
 		}):Play()
 		TweenService:Create(doorCardStroke, TweenInfo.new(0.25), {Transparency = 1}):Play()
@@ -393,6 +590,14 @@ local function setDoorOpenState(door, isOpen)
 		end
 	end
 end
+
+bindViewportUpdates()
+applyDoorAnnouncementLayout()
+
+Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+	bindViewportUpdates()
+	task.defer(applyDoorAnnouncementLayout)
+end)
 
 -- Manage zone doors and announce newly unlocked areas
 task.spawn(function()

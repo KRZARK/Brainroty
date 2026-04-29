@@ -89,9 +89,18 @@ HudTileStyle.bindResponsivePanelScale(MainFrame, {
 	baseSize = UDim2.fromOffset(900, 675),
 	landscapeWidthRatio = 0.96,
 	landscapeHeightRatio = 0.92,
+	landscapeContentWidthRatio = 1.18,
+	landscapeContentHeightRatio = 1.55,
 	portraitWidthRatio = 0.94,
 	portraitHeightRatio = 0.84,
-	mobileMinScale = 0.48,
+	landscapeMinScale = 0.32,
+	portraitMinScale = 0.48,
+	transformScale = function(scale, viewport, isMobile, isLandscapeMobile)
+		if isLandscapeMobile then
+			return scale * 0.9
+		end
+		return scale
+	end,
 })
 
 local panelStroke = Instance.new("UIStroke", MainFrame)
@@ -245,6 +254,24 @@ local pulseTween = TweenService:Create(
 	{Size = UDim2.new(0.65, 0, 0, 90), Position = UDim2.new(0.175, 0, 1, -112.5)}
 )
 pulseTween:Play()
+
+local function getDailyRewardsOpenPosition()
+	local metrics = HudTileStyle.getLayoutMetrics()
+	if metrics.IsLandscapeMobile then
+		return UDim2.new(0.5, 0, 0.52, 0)
+	end
+
+	return UDim2.new(0.5, 0, 0.5, 0)
+end
+
+local function getDailyRewardsClosedPosition()
+	local metrics = HudTileStyle.getLayoutMetrics()
+	if metrics.IsLandscapeMobile then
+		return UDim2.new(0.5, 0, 0.56, 0)
+	end
+
+	return UDim2.new(0.5, 0, 0.54, 0)
+end
 
 local function updateUI()
 	for _, child in ipairs(GridContainer:GetChildren()) do
@@ -450,7 +477,7 @@ local function closePanel()
 	local panelTween = TweenService:Create(
 		MainFrame,
 		TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-		{Position = UDim2.new(0.5, 0, 0.54, 0)}
+		{Position = getDailyRewardsClosedPosition()}
 	)
 	panelTween:Play()
 	TweenService:Create(
@@ -474,7 +501,7 @@ local function openPanel()
 	DarkBg.BackgroundTransparency = 1
 	MainFrame.Visible = true
 	updateUI()
-	MainFrame.Position = UDim2.new(0.5, 0, 0.54, 0)
+	MainFrame.Position = getDailyRewardsClosedPosition()
 
 	TweenService:Create(
 		DarkBg,
@@ -484,7 +511,7 @@ local function openPanel()
 	TweenService:Create(
 		MainFrame,
 		TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-		{Position = UDim2.new(0.5, 0, 0.5, 0)}
+		{Position = getDailyRewardsOpenPosition()}
 	):Play()
 	TweenService:Create(ToggleBtn, TweenInfo.new(0.2), {Rotation = 15}):Play()
 end

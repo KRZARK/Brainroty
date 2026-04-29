@@ -149,7 +149,8 @@ function HudTileStyle.getLayoutMetrics()
 	local totalHeight = (buttonPx * rows) + (gapPx * (rows - 1))
 	local availableHeight = math.max(viewport.Y - topSafe - bottomSafe, totalHeight)
 	local startBias = isLandscapeMobile and 0 or (isMobile and 0.06 or 0.06)
-	local startY = topSafe + math.floor(math.max(availableHeight - totalHeight, 0) * startBias + 0.5) + (buttonPx / 2)
+	local mobileLiftPx = isLandscapeMobile and math.floor(buttonPx * 0.48 + 0.5) or (isMobile and math.floor(buttonPx * 0.42 + 0.5) or 0)
+	local startY = topSafe + math.floor(math.max(availableHeight - totalHeight, 0) * startBias + 0.5) + (buttonPx / 2) - mobileLiftPx
 	local row1Y = startY
 	local row2Y = row1Y + buttonPx + gapPx
 	local row3Y = row2Y + buttonPx + gapPx
@@ -160,10 +161,19 @@ function HudTileStyle.getLayoutMetrics()
 	local rightOuterX = viewport.X - rightMargin - (buttonPx / 2)
 	local rightInnerX = rightOuterX - buttonPx - columnGapPx
 
+	local contentLeft = leftInnerX + (buttonPx * 0.5) + math.max(8, gapPx)
+	local contentRight = rightInnerX - (buttonPx * 0.5) - math.max(8, gapPx)
+	local contentTop = topSafe
+	local contentBottom = viewport.Y - bottomSafe
+
 	return {
 		Viewport = viewport,
 		IsMobile = isMobile,
 		IsLandscapeMobile = isLandscapeMobile,
+		TopSafe = topSafe,
+		BottomSafe = bottomSafe,
+		LeftMargin = leftMargin,
+		RightMargin = rightMargin,
 		ButtonPx = buttonPx,
 		GapPx = gapPx,
 		ColumnGapPx = columnGapPx,
@@ -173,6 +183,12 @@ function HudTileStyle.getLayoutMetrics()
 		LeftInnerX = leftInnerX,
 		RightInnerX = rightInnerX,
 		RightOuterX = rightOuterX,
+		ContentLeft = contentLeft,
+		ContentRight = contentRight,
+		ContentTop = contentTop,
+		ContentBottom = contentBottom,
+		ContentWidth = math.max(contentRight - contentLeft, buttonPx * 2),
+		ContentHeight = math.max(contentBottom - contentTop, buttonPx * 2),
 		StartY = row1Y,
 		RowCenters = { row1Y, row2Y, row3Y },
 		InnerPairCenters = { pair1Y, pair2Y },
@@ -264,9 +280,10 @@ end
 
 function HudTileStyle.getResponsivePanelScale(baseWidth, baseHeight, options)
 	options = options or {}
-	local viewport = getViewportSize()
-	local isMobile = options.forceMobile == true or HudTileStyle.isMobileLayout()
-	local isLandscapeMobile = isMobile and viewport.X > viewport.Y
+	local metrics = HudTileStyle.getLayoutMetrics()
+	local viewport = metrics.Viewport
+	local isMobile = options.forceMobile == true or metrics.IsMobile
+	local isLandscapeMobile = isMobile and metrics.IsLandscapeMobile
 
 	if not isMobile then
 		return options.desktopScale or 1, viewport, false, false
@@ -274,18 +291,35 @@ function HudTileStyle.getResponsivePanelScale(baseWidth, baseHeight, options)
 
 	local widthRatio
 	local heightRatio
+	local contentWidthRatio
+	local contentHeightRatio
 	if isLandscapeMobile then
 		widthRatio = options.landscapeWidthRatio or options.mobileWidthRatio or 0.92
 		heightRatio = options.landscapeHeightRatio or options.mobileHeightRatio or 0.84
+		contentWidthRatio = options.landscapeContentWidthRatio or options.mobileContentWidthRatio or 0.98
+		contentHeightRatio = options.landscapeContentHeightRatio or options.mobileContentHeightRatio or 0.82
 	else
 		widthRatio = options.portraitWidthRatio or options.mobileWidthRatio or 0.9
 		heightRatio = options.portraitHeightRatio or options.mobileHeightRatio or 0.82
+		contentWidthRatio = options.portraitContentWidthRatio or options.mobileContentWidthRatio or 0.98
+		contentHeightRatio = options.portraitContentHeightRatio or options.mobileContentHeightRatio or 0.88
 	end
 
 	local maxWidth = math.max(1, viewport.X * widthRatio)
 	local maxHeight = math.max(1, viewport.Y * heightRatio)
-	local maxScale = options.mobileMaxScale or options.maxScale or 1
-	local minScale = options.mobileMinScale or options.minScale or 0.45
+	if options.useHudSafeBounds ~= false then
+		maxWidth = math.min(maxWidth, math.max(1, metrics.ContentWidth * contentWidthRatio))
+		maxHeight = math.min(maxHeight, math.max(1, metrics.ContentHeight * contentHeightRatio))
+	end
+	local maxScale
+	local minScale
+	if isLandscapeMobile then
+		maxScale = options.landscapeMaxScale or options.mobileMaxScale or options.maxScale or 1
+		minScale = options.landscapeMinScale or options.mobileMinScale or options.minScale or 0.45
+	else
+		maxScale = options.portraitMaxScale or options.mobileMaxScale or options.maxScale or 1
+		minScale = options.portraitMinScale or options.mobileMinScale or options.minScale or 0.45
+	end
 	local scale = math.min(maxWidth / math.max(baseWidth, 1), maxHeight / math.max(baseHeight, 1), maxScale)
 	scale = math.clamp(scale, minScale, maxScale)
 	return scale, viewport, true, isLandscapeMobile

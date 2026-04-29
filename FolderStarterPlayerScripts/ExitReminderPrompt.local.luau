@@ -27,14 +27,17 @@ local greenStudsImage = HudTileStyle.getImage(ReplicatedStorage, "GreenStuds", "
 local function getViewportSize()
 	local camera = Workspace.CurrentCamera
 	if camera then
-		return camera.ViewportSize
+		local viewport = camera.ViewportSize
+		if viewport.X >= 100 and viewport.Y >= 100 then
+			return viewport
+		end
 	end
 
 	return Vector2.new(1280, 720)
 end
 
-local function isMobileLayout()
-	return getViewportSize().X <= 900
+local function getLayoutMetrics()
+	return HudTileStyle.getLayoutMetrics()
 end
 
 local function getIconImage(name, fallback)
@@ -218,59 +221,129 @@ local activeTween
 local isVisible = false
 local openToken = 0
 
-local function getVisiblePosition(width)
-	if isMobileLayout() then
-		return UDim2.new(0.5, 0, 0, 26)
+local function getVisiblePosition(layout)
+	if layout.IsLandscapeMobile then
+		return UDim2.fromOffset(layout.CenterX, layout.TopOffset)
+	end
+
+	if layout.IsMobile then
+		return UDim2.fromOffset(layout.CenterX, layout.TopOffset)
 	end
 
 	return UDim2.new(1, -26, 0, 124)
 end
 
-local function getHiddenPosition(width, height)
-	if isMobileLayout() then
-		return UDim2.new(0.5, 0, 0, -height - 24)
+local function getHiddenPosition(layout)
+	if layout.IsLandscapeMobile or layout.IsMobile then
+		return UDim2.fromOffset(layout.CenterX, -layout.HolderHeight - 24)
 	end
 
-	return UDim2.new(1, width + 36, 0, 124)
+	return UDim2.new(1, layout.HolderWidth + 36, 0, 124)
 end
 
 local function applyLayout()
-	local mobile = isMobileLayout()
-	local viewport = getViewportSize()
-	local holderWidth = mobile and math.floor(viewport.X * 0.94 + 0.5) or 520
-	local holderHeight = mobile and 320 or 336
-	local visiblePosition = getVisiblePosition(holderWidth)
-	local hiddenPosition = getHiddenPosition(holderWidth, holderHeight)
+	local metrics = getLayoutMetrics()
+	local viewport = metrics.Viewport or getViewportSize()
+	local layout = {
+		IsMobile = metrics.IsMobile,
+		IsLandscapeMobile = metrics.IsLandscapeMobile,
+		CenterX = math.floor(viewport.X * 0.5 + 0.5),
+		HolderWidth = 520,
+		HolderHeight = 336,
+		TopOffset = 124,
+	}
 
-	holder.Size = UDim2.fromOffset(holderWidth, holderHeight)
-	holder.AnchorPoint = mobile and Vector2.new(0.5, 0) or Vector2.new(1, 0)
+	if layout.IsLandscapeMobile then
+		layout.HolderWidth = math.clamp(math.floor(metrics.ContentWidth * 0.94 + 0.5), 320, 372)
+		layout.HolderHeight = math.clamp(math.floor(viewport.Y * 0.60 + 0.5), 208, 228)
+		layout.TopOffset = math.max(22, metrics.TopSafe - math.floor(layout.HolderHeight * 0.10 + 0.5))
+	elseif layout.IsMobile then
+		layout.HolderWidth = math.clamp(math.floor(viewport.X * 0.92 + 0.5), 320, 430)
+		layout.HolderHeight = 320
+		layout.TopOffset = math.max(26, metrics.TopSafe - 8)
+	end
+
+	local visiblePosition = getVisiblePosition(layout)
+	local hiddenPosition = getHiddenPosition(layout)
+
+	holder.Size = UDim2.fromOffset(layout.HolderWidth, layout.HolderHeight)
+	holder.AnchorPoint = layout.IsMobile and Vector2.new(0.5, 0) or Vector2.new(1, 0)
 	holder.Position = isVisible and visiblePosition or hiddenPosition
 
-	card.Size = UDim2.fromOffset(holderWidth, holderHeight)
-	card.Position = UDim2.fromOffset(holderWidth / 2, 0)
+	card.Size = UDim2.fromOffset(layout.HolderWidth, layout.HolderHeight)
+	card.Position = UDim2.fromOffset(layout.HolderWidth / 2, 0)
 
-	topGlow.Size = UDim2.new(1, -20, 0, mobile and 94 or 106)
+	if layout.IsLandscapeMobile then
+		topGlow.Size = UDim2.new(1, -18, 0, 72)
+		topGlow.Position = UDim2.new(0.5, 0, 0, 9)
+
+		leftIcon.Size = UDim2.fromOffset(56, 56)
+		leftIcon.Position = UDim2.new(0.12, 0, 0.77, 0)
+
+		rightIcon.Size = UDim2.fromOffset(54, 54)
+		rightIcon.Position = UDim2.new(0.88, 0, 0.24, 0)
+
+		title.Size = UDim2.new(0.84, 0, 0, 42)
+		title.Position = UDim2.new(0.5, 0, 0, 42)
+		titleConstraint.MinTextSize = 20
+		titleConstraint.MaxTextSize = 34
+
+		body.Size = UDim2.new(0.82, 0, 0, 66)
+		body.Position = UDim2.new(0.5, 0, 0, 82)
+		body.TextSize = 20
+
+		footer.Size = UDim2.new(0.76, 0, 0, 40)
+		footer.Position = UDim2.new(0.5, 0, 1, -12)
+		footerLabel.TextSize = 17
+	elseif layout.IsMobile then
+		topGlow.Size = UDim2.new(1, -20, 0, 94)
+		topGlow.Position = UDim2.new(0.5, 0, 0, 10)
+
+		leftIcon.Size = UDim2.fromOffset(74, 74)
+		leftIcon.Position = UDim2.new(0.11, 0, 0.78, 0)
+
+		rightIcon.Size = UDim2.fromOffset(74, 74)
+		rightIcon.Position = UDim2.new(0.89, 0, 0.24, 0)
+
+		title.Size = UDim2.new(0.88, 0, 0, 54)
+		title.Position = UDim2.new(0.5, 0, 0, 57)
+		titleConstraint.MinTextSize = 26
+		titleConstraint.MaxTextSize = 44
+
+		body.Size = UDim2.new(0.84, 0, 0, 126)
+		body.Position = UDim2.new(0.5, 0, 0, 118)
+		body.TextSize = 30
+
+		footer.Size = UDim2.new(0.72, 0, 0, 52)
+		footer.Position = UDim2.new(0.5, 0, 1, -18)
+		footerLabel.TextSize = 24
+	else
+		topGlow.Size = UDim2.new(1, -20, 0, 106)
 	topGlow.Position = UDim2.new(0.5, 0, 0, 10)
 
-	leftIcon.Size = mobile and UDim2.fromOffset(74, 74) or UDim2.fromOffset(82, 82)
-	leftIcon.Position = UDim2.new(0.11, 0, mobile and 0.78 or 0.8, 0)
+		leftIcon.Size = UDim2.fromOffset(82, 82)
+		leftIcon.Position = UDim2.new(0.11, 0, 0.8, 0)
 
-	rightIcon.Size = mobile and UDim2.fromOffset(74, 74) or UDim2.fromOffset(80, 80)
-	rightIcon.Position = UDim2.new(0.89, 0, mobile and 0.24 or 0.22, 0)
+		rightIcon.Size = UDim2.fromOffset(80, 80)
+		rightIcon.Position = UDim2.new(0.89, 0, 0.22, 0)
 
-	title.Size = UDim2.new(0.88, 0, 0, mobile and 54 or 62)
-	title.Position = UDim2.new(0.5, 0, 0, mobile and 57 or 63)
+		title.Size = UDim2.new(0.88, 0, 0, 62)
+		title.Position = UDim2.new(0.5, 0, 0, 63)
+		titleConstraint.MinTextSize = 26
+		titleConstraint.MaxTextSize = 44
 
-	body.Size = UDim2.new(0.84, 0, 0, mobile and 126 or 132)
-	body.Position = UDim2.new(0.5, 0, 0, mobile and 118 or 126)
-	body.TextSize = mobile and 30 or 34
+		body.Size = UDim2.new(0.84, 0, 0, 132)
+		body.Position = UDim2.new(0.5, 0, 0, 126)
+		body.TextSize = 34
 
-	footer.Size = UDim2.new(0.72, 0, 0, mobile and 52 or 58)
-	footer.Position = UDim2.new(0.5, 0, 1, mobile and -18 or -20)
-	footerLabel.TextSize = mobile and 24 or 28
+		footer.Size = UDim2.new(0.72, 0, 0, 58)
+		footer.Position = UDim2.new(0.5, 0, 1, -20)
+		footerLabel.TextSize = 28
+	end
 end
 
 applyLayout()
+task.defer(applyLayout)
 
 local function stopTween()
 	if activeTween then
@@ -290,7 +363,23 @@ local function showReminder()
 	cardScale.Scale = 0.94
 	stopTween()
 
-	local visiblePosition = getVisiblePosition(holder.AbsoluteSize.X)
+	local metrics = getLayoutMetrics()
+	local layout = {
+		IsMobile = metrics.IsMobile,
+		IsLandscapeMobile = metrics.IsLandscapeMobile,
+		CenterX = math.floor((metrics.Viewport and metrics.Viewport.X or getViewportSize().X) * 0.5 + 0.5),
+		HolderWidth = holder.AbsoluteSize.X,
+		HolderHeight = holder.AbsoluteSize.Y,
+		TopOffset = holder.AbsolutePosition.Y,
+	}
+	if layout.IsLandscapeMobile then
+		layout.TopOffset = math.max(22, metrics.TopSafe - math.floor(layout.HolderHeight * 0.10 + 0.5))
+	elseif layout.IsMobile then
+		layout.TopOffset = math.max(26, metrics.TopSafe - 8)
+	else
+		layout.TopOffset = 124
+	end
+	local visiblePosition = getVisiblePosition(layout)
 	local tweenPosition = TweenService:Create(holder, TweenInfo.new(0.32, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 		Position = visiblePosition,
 	})
@@ -315,7 +404,16 @@ local function hideReminder()
 	isVisible = false
 	stopTween()
 
-	local hiddenPosition = getHiddenPosition(holder.AbsoluteSize.X, holder.AbsoluteSize.Y)
+	local metrics = getLayoutMetrics()
+	local layout = {
+		IsMobile = metrics.IsMobile,
+		IsLandscapeMobile = metrics.IsLandscapeMobile,
+		CenterX = math.floor((metrics.Viewport and metrics.Viewport.X or getViewportSize().X) * 0.5 + 0.5),
+		HolderWidth = holder.AbsoluteSize.X,
+		HolderHeight = holder.AbsoluteSize.Y,
+		TopOffset = 124,
+	}
+	local hiddenPosition = getHiddenPosition(layout)
 	local tweenPosition = TweenService:Create(holder, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 		Position = hiddenPosition,
 	})
@@ -355,6 +453,16 @@ GuiService.MenuClosed:Connect(function()
 	hideReminder()
 end)
 
+local function bindCamera(camera)
+	if not camera then
+		return
+	end
+
+	camera:GetPropertyChangedSignal("ViewportSize"):Connect(applyLayout)
+end
+
+bindCamera(Workspace.CurrentCamera)
 Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
-	applyLayout()
+	bindCamera(Workspace.CurrentCamera)
+	task.defer(applyLayout)
 end)

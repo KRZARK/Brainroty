@@ -151,13 +151,21 @@ amtStroke.Color = Color3.new(0, 0, 0)
 
 local function updateGiftButtonLayout()
 	local metrics = HudTileStyle.getLayoutMetrics()
-	if metrics.IsMobile then
+	if metrics.IsLandscapeMobile then
+		giftTitle.Text = "PLAYTIME"
+		giftNotif.Size = UDim2.fromOffset(24, 24)
+		giftNotif.Position = UDim2.new(1, -1, 0, 1)
+		giftTimerLbl.Size = UDim2.new(0.92, 0, 0, 14)
+		giftTimerLbl.Position = UDim2.new(0.5, 0, 0.57, 0)
+		giftTimerLbl.TextSize = 11
+		giftAmountLbl.Visible = false
+	elseif metrics.IsMobile then
 		giftTitle.Text = "PLAYTIME"
 		giftNotif.Size = UDim2.fromOffset(22, 22)
 		giftNotif.Position = UDim2.new(1, -1, 0, 1)
 		giftTimerLbl.Size = UDim2.new(0.9, 0, 0, 12)
 		giftTimerLbl.Position = UDim2.new(0.5, 0, 0.57, 0)
-		giftTimerLbl.TextSize = 9
+		giftTimerLbl.TextSize = 10
 		giftAmountLbl.Visible = false
 	else
 		giftTitle.Text = "PLAYTIME"
@@ -214,7 +222,8 @@ HudTileStyle.bindResponsivePanelScale(mainPanel, {
 	landscapeHeightRatio = 0.92,
 	portraitWidthRatio = 0.94,
 	portraitHeightRatio = 0.84,
-	mobileMinScale = 0.48,
+	landscapeMinScale = 0.35,
+	portraitMinScale = 0.48,
 })
 
 local panelPattern = Instance.new("ImageLabel", mainPanel)
@@ -295,17 +304,16 @@ titleStroke.Thickness = 2
 titleStroke.Color = Color3.new(0, 0, 0)
 
 -- Baner Społecznościowy
+local socialBonusPercent = tonumber(GameConfig.InviteFriendCoinBonusPercent) or 20
 local socialBtn = Instance.new("TextButton")
 socialBtn.Size = UDim2.new(1, -28, 0, 88)
 socialBtn.Position = UDim2.new(0, 14, 0, 92)
 socialBtn.AnchorPoint = Vector2.new(0, 0)
 socialBtn.BackgroundColor3 = Color3.fromRGB(22, 30, 52)
-socialBtn.Text = "INVITE FRIENDS"
+socialBtn.Text = ""
 socialBtn.TextColor3 = Color3.new(1, 1, 1)
 socialBtn.Font = Enum.Font.GothamBold
 socialBtn.TextSize = 34
-socialBtn.TextScaled = true
-socialBtn.TextWrapped = true
 socialBtn.ZIndex = 102
 socialBtn.Parent = mainPanel
 Instance.new("UICorner", socialBtn).CornerRadius = UDim.new(0, 20)
@@ -313,6 +321,62 @@ local socialStroke = Instance.new("UIStroke", socialBtn)
 socialStroke.Thickness = 2
 socialStroke.Color = Color3.fromRGB(116, 174, 255)
 socialStroke.Transparency = 0.08
+
+local socialTitle = Instance.new("TextLabel")
+socialTitle.Name = "SocialTitle"
+socialTitle.Size = UDim2.new(1, -28, 1, -20)
+socialTitle.Position = UDim2.new(0, 14, 0, 7)
+socialTitle.BackgroundTransparency = 1
+socialTitle.Text = "INVITE FRIENDS AND GET +" .. socialBonusPercent .. "% COINS"
+socialTitle.TextColor3 = Color3.new(1, 1, 1)
+socialTitle.Font = Enum.Font.GothamBold
+socialTitle.TextSize = 24
+socialTitle.TextScaled = true
+socialTitle.TextWrapped = true
+socialTitle.TextXAlignment = Enum.TextXAlignment.Left
+socialTitle.TextYAlignment = Enum.TextYAlignment.Center
+socialTitle.ZIndex = 103
+socialTitle.Parent = socialBtn
+
+local socialTitleConstraint = Instance.new("UITextSizeConstraint")
+socialTitleConstraint.MinTextSize = 14
+socialTitleConstraint.MaxTextSize = 24
+socialTitleConstraint.Parent = socialTitle
+
+local socialTitleStroke = Instance.new("UIStroke")
+socialTitleStroke.Thickness = 1.8
+socialTitleStroke.Color = Color3.new(0, 0, 0)
+socialTitleStroke.Transparency = 0.18
+socialTitleStroke.Parent = socialTitle
+
+local socialActiveLabel = Instance.new("TextLabel")
+socialActiveLabel.Name = "ActiveBonusLabel"
+socialActiveLabel.AnchorPoint = Vector2.new(1, 1)
+socialActiveLabel.Position = UDim2.new(1, -14, 1, -8)
+socialActiveLabel.Size = UDim2.new(0.58, 0, 0, 18)
+socialActiveLabel.BackgroundTransparency = 1
+socialActiveLabel.Text = "ACTIVE +" .. socialBonusPercent .. "% COINS FRIEND BONUS"
+socialActiveLabel.TextColor3 = Color3.fromRGB(104, 255, 136)
+socialActiveLabel.Font = Enum.Font.GothamBold
+socialActiveLabel.TextSize = 13
+socialActiveLabel.TextScaled = true
+socialActiveLabel.TextWrapped = false
+socialActiveLabel.TextXAlignment = Enum.TextXAlignment.Right
+socialActiveLabel.TextYAlignment = Enum.TextYAlignment.Bottom
+socialActiveLabel.Visible = false
+socialActiveLabel.ZIndex = 104
+socialActiveLabel.Parent = socialBtn
+
+local socialActiveConstraint = Instance.new("UITextSizeConstraint")
+socialActiveConstraint.MinTextSize = 10
+socialActiveConstraint.MaxTextSize = 13
+socialActiveConstraint.Parent = socialActiveLabel
+
+local socialActiveStroke = Instance.new("UIStroke")
+socialActiveStroke.Thickness = 1.6
+socialActiveStroke.Color = Color3.new(0, 0, 0)
+socialActiveStroke.Transparency = 0.2
+socialActiveStroke.Parent = socialActiveLabel
 
 local socialPattern = Instance.new("ImageLabel", socialBtn)
 socialPattern.Size = UDim2.new(0, 56, 1, 0)
@@ -343,11 +407,130 @@ listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 listLayout.Padding = UDim.new(0, 12)
 listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
+local function updateSocialBannerLayout()
+	local metrics = HudTileStyle.getLayoutMetrics()
+	local isLandscapeMobile = metrics.IsLandscapeMobile
+	local isMobile = metrics.IsMobile
+	local bannerHeight
+
+	if isLandscapeMobile then
+		bannerHeight = 124
+		socialTitle.Text = "INVITE FRIENDS\nAND GET +" .. socialBonusPercent .. "% COINS"
+		socialTitle.Size = UDim2.new(1, -24, 0, 60)
+		socialTitle.Position = UDim2.new(0, 12, 0, 6)
+		socialTitle.TextXAlignment = Enum.TextXAlignment.Left
+		socialTitleConstraint.MinTextSize = 10
+		socialTitleConstraint.MaxTextSize = 16
+
+		socialActiveLabel.AnchorPoint = Vector2.new(0, 1)
+		socialActiveLabel.Position = UDim2.new(0, 12, 1, -8)
+		socialActiveLabel.Size = UDim2.new(1, -24, 0, 34)
+		socialActiveLabel.Text = "ACTIVE +" .. socialBonusPercent .. "% COINS\nFRIEND BONUS"
+		socialActiveLabel.TextWrapped = true
+		socialActiveLabel.TextXAlignment = Enum.TextXAlignment.Left
+		socialActiveConstraint.MinTextSize = 8
+		socialActiveConstraint.MaxTextSize = 10
+
+		socialPattern.Size = UDim2.new(0, 48, 1, 0)
+	elseif isMobile then
+		bannerHeight = 164
+		socialTitle.Text = "INVITE FRIENDS\nAND GET +" .. socialBonusPercent .. "% COINS"
+		socialTitle.Size = UDim2.new(1, -26, 0, 84)
+		socialTitle.Position = UDim2.new(0, 12, 0, 8)
+		socialTitle.TextXAlignment = Enum.TextXAlignment.Left
+		socialTitleConstraint.MinTextSize = 10
+		socialTitleConstraint.MaxTextSize = 15
+
+		socialActiveLabel.AnchorPoint = Vector2.new(0, 1)
+		socialActiveLabel.Position = UDim2.new(0, 12, 1, -10)
+		socialActiveLabel.Size = UDim2.new(1, -24, 0, 42)
+		socialActiveLabel.Text = "ACTIVE +" .. socialBonusPercent .. "% COINS\nFRIEND BONUS"
+		socialActiveLabel.TextWrapped = true
+		socialActiveLabel.TextXAlignment = Enum.TextXAlignment.Left
+		socialActiveConstraint.MinTextSize = 8
+		socialActiveConstraint.MaxTextSize = 10
+
+		socialPattern.Size = UDim2.new(0, 44, 1, 0)
+	else
+		bannerHeight = 88
+		socialTitle.Text = "INVITE FRIENDS AND GET +" .. socialBonusPercent .. "% COINS"
+		socialTitle.Size = UDim2.new(1, -28, 1, -20)
+		socialTitle.Position = UDim2.new(0, 14, 0, 7)
+		socialTitle.TextXAlignment = Enum.TextXAlignment.Left
+		socialTitleConstraint.MinTextSize = 14
+		socialTitleConstraint.MaxTextSize = 24
+
+		socialActiveLabel.AnchorPoint = Vector2.new(1, 1)
+		socialActiveLabel.Position = UDim2.new(1, -14, 1, -8)
+		socialActiveLabel.Size = UDim2.new(0.58, 0, 0, 18)
+		socialActiveLabel.Text = "ACTIVE +" .. socialBonusPercent .. "% COINS FRIEND BONUS"
+		socialActiveLabel.TextWrapped = false
+		socialActiveLabel.TextXAlignment = Enum.TextXAlignment.Right
+		socialActiveConstraint.MinTextSize = 10
+		socialActiveConstraint.MaxTextSize = 13
+
+		socialPattern.Size = UDim2.new(0, 56, 1, 0)
+	end
+
+	socialBtn.Size = UDim2.new(1, -28, 0, bannerHeight)
+	local listTop = socialBtn.Position.Y.Offset + bannerHeight + 8
+	listFrame.Position = UDim2.new(0, 14, 0, listTop)
+	listFrame.Size = UDim2.new(1, -28, 1, -(listTop + 10))
+end
+
+updateSocialBannerLayout()
+
+local function bindSocialLayoutCamera(camera)
+	if not camera then
+		return
+	end
+
+	camera:GetPropertyChangedSignal("ViewportSize"):Connect(updateSocialBannerLayout)
+end
+
+bindSocialLayoutCamera(Workspace.CurrentCamera)
+Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+	bindSocialLayoutCamera(Workspace.CurrentCamera)
+	updateSocialBannerLayout()
+end)
+
 -- === 3. BUDOWANIE ELEMENTÓW LISTY ===
+local playtimeMetrics = HudTileStyle.getLayoutMetrics()
+local compactLandscapeRows = playtimeMetrics.IsLandscapeMobile
+local mobileRows = playtimeMetrics.IsMobile
+
+local function getPlaytimeClaimPopupMetrics()
+	local metrics = HudTileStyle.getLayoutMetrics()
+	local camera = Workspace.CurrentCamera
+	local viewport = camera and camera.ViewportSize or Vector2.new(1280, 720)
+
+	if metrics.IsLandscapeMobile then
+		return {
+			size = UDim2.fromOffset(math.clamp(math.floor(viewport.X * 0.22), 124, 156), math.clamp(math.floor(viewport.Y * 0.085), 30, 36)),
+			textSize = 20,
+			strokeThickness = 2,
+			rise = 32,
+		}
+	elseif metrics.IsMobile then
+		return {
+			size = UDim2.fromOffset(math.clamp(math.floor(viewport.X * 0.28), 144, 176), math.clamp(math.floor(viewport.Y * 0.068), 34, 40)),
+			textSize = 24,
+			strokeThickness = 2.4,
+			rise = 38,
+		}
+	end
+
+	return {
+		size = UDim2.fromOffset(200, 50),
+		textSize = 35,
+		strokeThickness = 3,
+		rise = 50,
+	}
+end
 
 for index, rewardData in ipairs(GameConfig.PlaytimeRewards) do
 	local row = Instance.new("Frame")
-	row.Size = UDim2.new(1, -4, 0, 84)
+	row.Size = UDim2.new(1, -4, 0, compactLandscapeRows and 92 or (mobileRows and 88 or 84))
 	row.BackgroundColor3 = Color3.fromRGB(22, 28, 48)
 	row.BackgroundTransparency = 0.06
 	row.BorderSizePixel = 0
@@ -378,7 +561,7 @@ for index, rewardData in ipairs(GameConfig.PlaytimeRewards) do
 	timeLbl.Text = rewardData.TimeMinutes .. " MIN"
 	timeLbl.TextColor3 = Color3.fromRGB(202, 224, 205)
 	timeLbl.Font = Enum.Font.GothamBold
-	timeLbl.TextSize = 22
+	timeLbl.TextSize = compactLandscapeRows and 27 or (mobileRows and 24 or 22)
 	timeLbl.TextXAlignment = Enum.TextXAlignment.Left
 	timeLbl.ZIndex = 103
 	timeLbl.Parent = row
@@ -390,13 +573,13 @@ for index, rewardData in ipairs(GameConfig.PlaytimeRewards) do
 	coinLbl.Text = "💰 " .. rewardData.Reward
 	coinLbl.TextColor3 = Color3.fromRGB(255, 215, 0)
 	coinLbl.Font = Enum.Font.FredokaOne
-	coinLbl.TextSize = 24
+	coinLbl.TextSize = compactLandscapeRows and 29 or (mobileRows and 26 or 24)
 	coinLbl.TextXAlignment = Enum.TextXAlignment.Left
 	coinLbl.ZIndex = 103
 	coinLbl.Parent = row
 	
 	local actionBtn = Instance.new("TextButton")
-	actionBtn.Size = UDim2.new(0, 144, 0, 48)
+	actionBtn.Size = UDim2.new(0, compactLandscapeRows and 154 or 144, 0, compactLandscapeRows and 52 or 48)
 	actionBtn.Position = UDim2.new(1, -18, 0.5, 0)
 	actionBtn.AnchorPoint = Vector2.new(1, 0.5)
 	actionBtn.BackgroundColor3 = Color3.fromRGB(90, 96, 104)
@@ -405,7 +588,7 @@ for index, rewardData in ipairs(GameConfig.PlaytimeRewards) do
 	actionBtn.TextStrokeColor3 = Color3.new(0, 0, 0)
 	actionBtn.TextStrokeTransparency = 0
 	actionBtn.Font = Enum.Font.GothamBold
-	actionBtn.TextSize = 19
+	actionBtn.TextSize = compactLandscapeRows and 23 or (mobileRows and 21 or 19)
 	actionBtn.AutoButtonColor = false
 	actionBtn.ZIndex = 105
 	actionBtn.Parent = row
@@ -443,22 +626,26 @@ for index, rewardData in ipairs(GameConfig.PlaytimeRewards) do
 				
 				-- Pokazanie popupu
 				local pop = Instance.new("TextLabel")
-				pop.Size = UDim2.fromOffset(200, 50)
-				pop.Position = UDim2.fromOffset(actionBtn.AbsolutePosition.X, actionBtn.AbsolutePosition.Y)
+				local popupMetrics = getPlaytimeClaimPopupMetrics()
+				pop.Size = popupMetrics.size
+				pop.AnchorPoint = Vector2.new(0.5, 1)
+				pop.Position = UDim2.fromOffset(actionBtn.AbsolutePosition.X + (actionBtn.AbsoluteSize.X * 0.5), actionBtn.AbsolutePosition.Y - 4)
 				pop.BackgroundTransparency = 1
 				pop.ZIndex = 200
 				pop.Font = Enum.Font.LuckiestGuy
-				pop.TextSize = 35
+				pop.TextSize = popupMetrics.textSize
 				pop.TextColor3 = Color3.new(0, 1, 0)
 				pop.Text = "+ " .. result .. " COINS"
 				pop.Parent = screenGui
 				
 				local popStroke = Instance.new("UIStroke", pop)
-				popStroke.Thickness = 3
+				popStroke.Thickness = popupMetrics.strokeThickness
 				
 				-- Ruch do góry
-				local tw = TweenService:Create(pop, TweenInfo.new(1.5, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {Position = pop.Position - UDim2.fromOffset(0, 50), TextTransparency = 1})
+				local tw = TweenService:Create(pop, TweenInfo.new(1.5, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {Position = pop.Position - UDim2.fromOffset(0, popupMetrics.rise), TextTransparency = 1})
+				local strokeTw = TweenService:Create(popStroke, TweenInfo.new(1.2, Enum.EasingStyle.Linear, Enum.EasingDirection.Out, 0, false, 0.2), {Transparency = 1})
 				tw:Play()
+				strokeTw:Play()
 				task.delay(1.5, function() pop:Destroy() end)
 			else
 				actionBtn.Text = "CLAIM"
@@ -482,7 +669,7 @@ end
 local isFriendBonusActive = false
 
 local function updateRewardValues()
-	local multi = player:GetAttribute("CoinMultiplier") or 1
+	local multi = player:GetAttribute("CoinEarningsMultiplier") or player:GetAttribute("CoinMultiplier") or 1
 	
 	for _, r in ipairs(rewardRows) do
 		local fRew = math.floor(r.Data.Reward * multi)
@@ -491,32 +678,34 @@ local function updateRewardValues()
 end
 
 player:GetAttributeChangedSignal("CoinMultiplier"):Connect(updateRewardValues)
+player:GetAttributeChangedSignal("CoinEarningsMultiplier"):Connect(updateRewardValues)
 updateRewardValues() -- Inicjalne ustawienie
 
 -- Aktualizacja baneru zapraszania znajomych
 local function updateSocialBanner()
-	isFriendBonusActive = false
-	socialBtn.BackgroundColor3 = Color3.fromRGB(22, 30, 52)
-	socialBtn.Text = "INVITE FRIENDS"
-	socialStroke.Color = Color3.fromRGB(72, 160, 224)
+	isFriendBonusActive = player:GetAttribute("InviteFriendBonusActive") == true
+	local activeBonusCount = tonumber(player:GetAttribute("InviteFriendBonusCount")) or 0
+	socialActiveLabel.Visible = isFriendBonusActive and activeBonusCount > 0
+	if socialActiveLabel.Visible then
+		socialBtn.BackgroundColor3 = Color3.fromRGB(20, 46, 36)
+		socialStroke.Color = Color3.fromRGB(104, 255, 136)
+	else
+		socialBtn.BackgroundColor3 = Color3.fromRGB(22, 30, 52)
+		socialStroke.Color = Color3.fromRGB(72, 160, 224)
+	end
 end
 
 -- Sprawdzanie znajomych co 10 sekund (nie w pętli render, żeby nie zabić rate-limitu!)
-task.spawn(function()
-	while true do
-		updateSocialBanner()
-		task.wait(10)
-	end
-end)
+player:GetAttributeChangedSignal("InviteFriendBonusActive"):Connect(updateSocialBanner)
+player:GetAttributeChangedSignal("InviteFriendBonusCount"):Connect(updateSocialBanner)
+updateSocialBanner()
 
 socialBtn.MouseButton1Click:Connect(function()
-	if not isFriendBonusActive then
-		local success, err = pcall(function()
-			SocialService:PromptGameInvite(player)
-		end)
-		if not success then
-			warn("SocialService error:", err)
-		end
+	local success, err = pcall(function()
+		SocialService:PromptGameInvite(player)
+	end)
+	if not success then
+		warn("SocialService error:", err)
 	end
 end)
 
@@ -616,7 +805,7 @@ RunService.RenderStepped:Connect(function(dt)
 				if left < lowestTimeLeft then
 					lowestTimeLeft = left
 					
-					local multi = player:GetAttribute("CoinMultiplier") or 1
+					local multi = player:GetAttribute("CoinEarningsMultiplier") or player:GetAttribute("CoinMultiplier") or 1
 					nextRewardAmount = math.floor(rowObj.Data.Reward * multi)
 				end
 			end

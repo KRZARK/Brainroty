@@ -15,6 +15,9 @@ requestImmediateDataSaveEvent.Parent = BrainrotEvents
 local markExperienceFavoritedEvent = BrainrotEvents:FindFirstChild("MarkExperienceFavorited") or Instance.new("RemoteEvent")
 markExperienceFavoritedEvent.Name = "MarkExperienceFavorited"
 markExperienceFavoritedEvent.Parent = BrainrotEvents
+local grantStarterPackRewardsFunction = BrainrotEvents:FindFirstChild("GrantStarterPackRewards") or Instance.new("BindableFunction")
+grantStarterPackRewardsFunction.Name = "GrantStarterPackRewards"
+grantStarterPackRewardsFunction.Parent = BrainrotEvents
 
 -- 1. Inicjalizacja DataStore
 local BrainrotData = DataStoreService:GetDataStore("BrainrotData_V1")
@@ -44,6 +47,9 @@ local DEFAULT_DATA = {
 	JumpBoostEnds = 0,
 	QuestSelectionVersion = 0,
 }
+
+local activeInvitedFriendsByInviterUserId = {}
+local inviterUserIdByInvitedFriendUserId = {}
 
 -- Funkcja pomocnicza do bezpiecznego zapisu
 local function saveData(player)
@@ -119,6 +125,40 @@ local function requestImmediateProfileSave(player)
 	return saveSucceeded
 end
 
+local function grantStarterPackRewards(player)
+	if not player then
+		return false
+	end
+
+	if player:GetAttribute("HasBoughtStarterPack") == true then
+		return false
+	end
+
+	player:SetAttribute("HasBoughtStarterPack", true)
+
+	local stats = player:FindFirstChild("leaderstats")
+	if stats and stats:FindFirstChild("Coins") then
+		stats.Coins.Value += GameConfig.StarterPack.CoinsReward
+	end
+
+	local currentFreeTrolls = player:GetAttribute("FreeFartTrolls") or 0
+	player:SetAttribute("FreeFartTrolls", currentFreeTrolls + GameConfig.StarterPack.FreeFartTrolls)
+
+	local openCaseEvent = BrainrotEvents:FindFirstChild("OpenSpecificCase")
+	if openCaseEvent and openCaseEvent:IsA("BindableEvent") then
+		openCaseEvent:Fire(player, GameConfig.StarterPack.CrateReward)
+	end
+
+	task.spawn(function()
+		requestImmediateProfileSave(player)
+	end)
+
+	print("[StarterPack] Przyznano nagrody dla gracza " .. player.Name)
+	return true
+end
+
+grantStarterPackRewardsFunction.OnInvoke = grantStarterPackRewards
+
 requestImmediateDataSaveEvent.Event:Connect(function(player)
 	task.spawn(function()
 		requestImmediateProfileSave(player)
@@ -138,21 +178,145 @@ end)
 
 -- Aktualizacja Mnożnika Monet
 local function updateCoinMultiplier(player)
-	local multi = 1
+	local baseMulti = 1
 	if player:GetAttribute("HasVIP") then
-		multi = multi * 2
+		baseMulti = baseMulti * 2
 	end
-	
+
 	local leaderstats = player:FindFirstChild("leaderstats")
 	local rebirths = leaderstats and leaderstats:FindFirstChild("Rebirths")
 	local rb = rebirths and rebirths.Value or 0
-	
-	if rb == 1 then multi = multi * 1.25
-	elseif rb == 2 then multi = multi * 1.5
-	elseif rb >= 3 then multi = multi * 2.0
+
+	if rb == 1 then
+		baseMulti = baseMulti * 1.25
+	elseif rb == 2 then
+		baseMulti = baseMulti * 1.5
+	elseif rb >= 3 then
+		baseMulti = baseMulti * 2.0
 	end
-	
-	player:SetAttribute("CoinMultiplier", multi)
+
+	local earningsMulti = baseMulti
+	local inviteFriendBonusCount = tonumber(player:GetAttribute("InviteFriendBonusCount")) or 0
+	if inviteFriendBonusCount > 0 then
+		earningsMulti = earningsMulti * (GameConfig.InviteFriendCoinMultiplier or 1.2)
+	end
+
+	player:SetAttribute("CoinMultiplier", baseMulti)
+	player:SetAttribute("CoinEarningsMultiplier", earningsMulti)
+end
+
+local function refreshInviteFriendBonusState(player)
+	if not player then
+		return
+	end
+
+	local invitedFriends = activeInvitedFriendsByInviterUserId[player.UserId]
+	local activeCount = 0
+
+	if invitedFriends then
+		for invitedUserId in pairs(invitedFriends) do
+			if Players:GetPlayerByUserId(invitedUserId) then
+				activeCount += 1
+			else
+				invitedFriends[invitedUserId] = nil
+			end
+		end
+
+		if next(invitedFriends) == nil then
+			activeInvitedFriendsByInviterUserId[player.UserId] = nil
+		end
+	end
+
+	player:SetAttribute("InviteFriendBonusCount", activeCount)
+	player:SetAttribute("InviteFriendBonusActive", activeCount > 0)
+	updateCoinMultiplier(player)
+end
+
+local function registerInvitedFriend(inviter, invitedPlayer)
+	if not inviter or not invitedPlayer or inviter == invitedPlayer then
+		return
+	end
+
+	local inviterUserId = inviter.UserId
+	local invitedUserId = invitedPlayer.UserId
+	local previousInviterUserId = inviterUserIdByInvitedFriendUserId[invitedUserId]
+
+	if previousInviterUserId and previousInviterUserId ~= inviterUserId then
+		local previousInvitedFriends = activeInvitedFriendsByInviterUserId[previousInviterUserId]
+		if previousInvitedFriends then
+			previousInvitedFriends[invitedUserId] = nil
+		end
+
+		local previousInviter = Players:GetPlayerByUserId(previousInviterUserId)
+		if previousInviter then
+			refreshInviteFriendBonusState(previousInviter)
+		end
+	end
+
+	inviterUserIdByInvitedFriendUserId[invitedUserId] = inviterUserId
+	activeInvitedFriendsByInviterUserId[inviterUserId] = activeInvitedFriendsByInviterUserId[inviterUserId] or {}
+	activeInvitedFriendsByInviterUserId[inviterUserId][invitedUserId] = true
+
+	invitedPlayer:SetAttribute("ReferredByPlayerId", inviterUserId)
+	refreshInviteFriendBonusState(inviter)
+end
+
+local function unregisterInvitedFriend(invitedUserId)
+	local inviterUserId = inviterUserIdByInvitedFriendUserId[invitedUserId]
+	if not inviterUserId then
+		return
+	end
+
+	inviterUserIdByInvitedFriendUserId[invitedUserId] = nil
+
+	local invitedFriends = activeInvitedFriendsByInviterUserId[inviterUserId]
+	if invitedFriends then
+		invitedFriends[invitedUserId] = nil
+	end
+
+	local inviter = Players:GetPlayerByUserId(inviterUserId)
+	if inviter then
+		refreshInviteFriendBonusState(inviter)
+	end
+end
+
+local function clearInviterState(inviterUserId)
+	local invitedFriends = activeInvitedFriendsByInviterUserId[inviterUserId]
+	if not invitedFriends then
+		return
+	end
+
+	activeInvitedFriendsByInviterUserId[inviterUserId] = nil
+
+	for invitedUserId in pairs(invitedFriends) do
+		if inviterUserIdByInvitedFriendUserId[invitedUserId] == inviterUserId then
+			inviterUserIdByInvitedFriendUserId[invitedUserId] = nil
+		end
+
+		local invitedPlayer = Players:GetPlayerByUserId(invitedUserId)
+		if invitedPlayer and invitedPlayer:GetAttribute("ReferredByPlayerId") == inviterUserId then
+			invitedPlayer:SetAttribute("ReferredByPlayerId", 0)
+		end
+	end
+end
+
+local function registerInviteFriendFromJoinData(player)
+	local joinData = player:GetJoinData()
+	if type(joinData) ~= "table" then
+		return
+	end
+
+	local inviterUserId = tonumber(joinData.ReferredByPlayerId)
+	if not inviterUserId or inviterUserId <= 0 or inviterUserId == player.UserId then
+		return
+	end
+
+	local inviter = Players:GetPlayerByUserId(inviterUserId)
+	if not inviter then
+		return
+	end
+
+	registerInvitedFriend(inviter, player)
 end
 
 -- 2. Funkcja PlayerAdded (Ładowanie Danych)
@@ -247,11 +411,18 @@ Players.PlayerAdded:Connect(function(player)
 	rebirths.Parent = leaderstats
 	
 	leaderstats.Parent = player
+	player:SetAttribute("CoinMultiplier", 1)
+	player:SetAttribute("CoinEarningsMultiplier", 1)
+	player:SetAttribute("InviteFriendBonusActive", false)
+	player:SetAttribute("InviteFriendBonusCount", 0)
+	player:SetAttribute("ReferredByPlayerId", 0)
 	
 	-- Nasłuchiwanie zmian w Rebirths
 	rebirths:GetPropertyChangedSignal("Value"):Connect(function()
 		updateCoinMultiplier(player)
 	end)
+
+	registerInviteFriendFromJoinData(player)
 	player:GetAttributeChangedSignal("HasVIP"):Connect(function()
 		updateCoinMultiplier(player)
 	end)
@@ -461,6 +632,8 @@ end)
 
 -- 3. Funkcja PlayerRemoving (Zapisywanie Danych)
 Players.PlayerRemoving:Connect(function(player)
+	unregisterInvitedFriend(player.UserId)
+	clearInviterState(player.UserId)
 	saveData(player)
 	lastQuestAutosaveVersionByUserId[player.UserId] = nil
 end)
@@ -574,32 +747,8 @@ end)
 MarketplaceService.PromptProductPurchaseFinished:Connect(function(userId, productId, wasPurchased)
 	if wasPurchased and productId == GameConfig.StarterPack.ProductID then
 		local player = Players:GetPlayerByUserId(userId)
-		if player and player:GetAttribute("HasBoughtStarterPack") ~= true then
-			-- a) Zmień atrybut HasBoughtStarterPack na true
-			player:SetAttribute("HasBoughtStarterPack", true)
-			
-			-- b) Dodaj graczowi 1000 monet
-			local stats = player:FindFirstChild("leaderstats")
-			if stats and stats:FindFirstChild("Coins") then
-				stats.Coins.Value += GameConfig.StarterPack.CoinsReward
-			end
-			
-			-- c) Zwiększ atrybut FreeFartTrolls
-			local currentFreeTrolls = player:GetAttribute("FreeFartTrolls") or 0
-			player:SetAttribute("FreeFartTrolls", currentFreeTrolls + GameConfig.StarterPack.FreeFartTrolls)
-			
-			-- d) Otwórz skrzynkę "Secret"
-			local BrainrotEvents = ReplicatedStorage:WaitForChild("BrainrotEvents")
-			local OpenCaseEvent = BrainrotEvents:FindFirstChild("OpenSpecificCase")
-			if OpenCaseEvent then
-				OpenCaseEvent:Fire(player, GameConfig.StarterPack.CrateReward)
-			end
-			
-			-- e) Zapisz dane
-			task.spawn(function()
-				requestImmediateProfileSave(player)
-			end)
-			print("[StarterPack] Przyznano nagrody dla gracza " .. player.Name)
+		if player then
+			grantStarterPackRewards(player)
 		end
 	end
 end)

@@ -363,7 +363,7 @@ local function spawnPhysicalCoins(count)
 				debounce = true
 				local stats = p:FindFirstChild("leaderstats")
 				if stats and stats:FindFirstChild("Coins") then
-					local amountToAdd = math.ceil(COIN_REWARD * (p:GetAttribute("CoinMultiplier") or 1))
+					local amountToAdd = math.ceil(COIN_REWARD * (p:GetAttribute("CoinEarningsMultiplier") or p:GetAttribute("CoinMultiplier") or 1))
 					stats.Coins.Value += amountToAdd
 					
 				end
@@ -447,6 +447,20 @@ local AddRobuxToPoolEvent = BrainrotEvents:FindFirstChild("AddRobuxToPool") or I
 AddRobuxToPoolEvent.Name = "AddRobuxToPool"
 AddRobuxToPoolEvent.Event:Connect(addToGlobalRobuxPool)
 
+local function grantStarterPackRewards(player)
+	local grantFunction = BrainrotEvents:FindFirstChild("GrantStarterPackRewards")
+	if grantFunction and grantFunction:IsA("BindableFunction") then
+		local success, result = pcall(function()
+			return grantFunction:Invoke(player)
+		end)
+		if success then
+			return result == true or player:GetAttribute("HasBoughtStarterPack") == true
+		end
+		warn("[StarterPack] Nie udało się przyznać nagród: " .. tostring(result))
+	end
+
+	return player:GetAttribute("HasBoughtStarterPack") == true
+end
 
 
 -- Funkcja pomocnicza do tworzenia/pobierania folderu kolekcji
@@ -493,6 +507,15 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
 		end
 		warn("[COINRAIN ERROR] Nie udało się pobrać ceny produktu: " .. tostring(productId))
 		return 0
+	end
+
+	if receiptInfo.ProductId == GameConfig.StarterPack.ProductID then
+		local price = getProductPrice(receiptInfo.ProductId)
+		if grantStarterPackRewards(player) then
+			addToGlobalRobuxPool(player, price)
+			return Enum.ProductPurchaseDecision.PurchaseGranted
+		end
+		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
 
 	-- SPRAWDZENIE A: CZY TO JEST TROLL?
@@ -746,13 +769,6 @@ RebirthEvent.OnServerEvent:Connect(function(player)
 
 	-- Sprawdza, czy liczba elementów w folderze BrainrotCollection gracza wynosi GameConfig.TotalBrainrots.
 	if collection and #collection:GetChildren() >= GameConfig.TotalBrainrots then
-		local rebirthReturnCFrame = nil
-
-		-- Zapisujemy pozycję gracza
-		if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-			rebirthReturnCFrame = player.Character.HumanoidRootPart.CFrame
-		end
-
 		-- Wysyłanie efektu do klienta
 		RebirthEffect:FireClient(player)
 
@@ -778,10 +794,8 @@ RebirthEvent.OnServerEvent:Connect(function(player)
 				end
 			end
 
-			-- Odświeżenie postaci (bez zabijania)
-			if rebirthReturnCFrame then
-				SpawnSystemServerEvent:Fire("SetRespawnOverride", player, { cframe = rebirthReturnCFrame })
-			end
+			-- Po rebirth gracz ma wrócić na główny spawn, a nie zostać w miejscu kliknięcia.
+			SpawnSystemServerEvent:Fire("ReturnToMainSpawn", player)
 			player:LoadCharacter()
 		end)
 	end
@@ -793,7 +807,7 @@ game.Players.PlayerAdded:Connect(function(player)
 		local humanoid = character:WaitForChild("Humanoid")
 		local hrp = character:WaitForChild("HumanoidRootPart")
 
-		-- Teleportacja powrotna jeśli to był Rebirth
+		-- Respawn i teleport po rebirth obsługuje SpawnSystem.
 
 		-- Pobieranie Rebirths
 		local stats = player:WaitForChild("leaderstats")
@@ -875,7 +889,7 @@ game.Players.PlayerAdded:Connect(function(player)
 				local textLabel = Instance.new("TextLabel")
 				textLabel.Size = UDim2.fromScale(1, 1)
 				textLabel.BackgroundTransparency = 1
-				textLabel.Text = "PRESTIŻ " .. rebirths.Value
+				textLabel.Text = "PRESTIGE " .. rebirths.Value
 				textLabel.TextColor3 = Color3.new(1, 1, 1) -- Bazowy biały pod gradient
 				textLabel.Font = Enum.Font.FredokaOne
 				textLabel.TextScaled = true

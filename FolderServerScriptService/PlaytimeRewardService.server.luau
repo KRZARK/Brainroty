@@ -289,12 +289,12 @@ claimEvent.OnServerInvoke = function(player, rewardIndex)
 	local baseReward = rewardData.Reward
 	
 	-- 1. Mnożnik za Rebirth i inne (Pobierany z atrybutu)
-	local multiplier = player:GetAttribute("CoinMultiplier") or 1
+	local multiplier = player:GetAttribute("CoinEarningsMultiplier") or player:GetAttribute("CoinMultiplier") or 1
 	
 	-- 2. Bonus za Znajomego (+20%)
 	-- CoinMultiplier already includes VIP and Rebirth bonuses.
 
-	local finalReward = math.floor(baseReward * (player:GetAttribute("CoinMultiplier") or 1))
+	local finalReward = math.floor(baseReward * multiplier)
 	
 	-- Przyznanie nagrody
 	local grantSucceeded, grantedCoins = CoinGrantHelper.grantCoins(player, finalReward, "PlaytimeReward:" .. tostring(rewardIndex))

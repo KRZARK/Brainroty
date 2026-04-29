@@ -66,12 +66,13 @@ HudTileStyle.bindResponsivePanelScale(mainFrame, {
 	baseSize = UDim2.fromOffset(780, 500),
 	uiScale = uiScale,
 	desktopScale = 1.2,
-	mobileMaxScale = 1,
-	landscapeWidthRatio = 0.94,
-	landscapeHeightRatio = 0.88,
-	portraitWidthRatio = 0.94,
-	portraitHeightRatio = 0.7,
-	mobileMinScale = 0.54,
+	mobileMaxScale = 1.04,
+	landscapeWidthRatio = 0.95,
+	landscapeHeightRatio = 0.93,
+	portraitWidthRatio = 0.95,
+	portraitHeightRatio = 0.72,
+	landscapeMinScale = 0.46,
+	portraitMinScale = 0.56,
 })
 
 local mainStroke = Instance.new("UIStroke", mainFrame)
@@ -93,7 +94,7 @@ title.Name = "Title"
 title.Size = UDim2.new(1, 0, 0, 65)
 title.Position = UDim2.new(0, 0, 0, 5)
 title.BackgroundTransparency = 1
-title.Text = "ODRODZENIE"
+title.Text = "REBIRTH"
 title.TextColor3 = Color3.new(1, 1, 1)
 title.Font = Enum.Font.FredokaOne
 title.TextSize = 38
@@ -160,7 +161,7 @@ leftHeader.Name = "LeftHeader"
 leftHeader.Size = UDim2.new(0.42, 0, 0, 35)
 leftHeader.Position = UDim2.new(0.04, 0, 0.14, 0)
 leftHeader.BackgroundTransparency = 1
-leftHeader.Text = "OBECNIE (PRESTIŻ 0)"
+leftHeader.Text = "CURRENT (PRESTIGE 0)"
 leftHeader.TextColor3 = Color3.fromRGB(0, 255, 255)
 leftHeader.Font = Enum.Font.FredokaOne
 leftHeader.TextSize = 32
@@ -174,7 +175,7 @@ rightHeader.Name = "RightHeader"
 rightHeader.Size = UDim2.new(0.42, 0, 0, 35)
 rightHeader.Position = UDim2.new(0.54, 0, 0.14, 0)
 rightHeader.BackgroundTransparency = 1
-rightHeader.Text = "PO ODRODZENIU (PRESTIŻ 1)"
+rightHeader.Text = "AFTER REBIRTH (PRESTIGE 1)"
 rightHeader.TextColor3 = Color3.fromRGB(255, 0, 255)
 rightHeader.Font = Enum.Font.FredokaOne
 rightHeader.TextSize = 32
@@ -275,7 +276,7 @@ Instance.new("UICorner", warnBar).CornerRadius = UDim.new(0, 8)
 local warnText = Instance.new("TextLabel")
 warnText.Size = UDim2.fromScale(1, 1)
 warnText.BackgroundTransparency = 1
-warnText.Text = "TWOJE MONETY I KOLEKCJA ZOSTANĄ ZRESETOWANE!"
+warnText.Text = "YOUR COINS AND COLLECTION WILL BE RESET!"
 warnText.TextColor3 = Color3.fromRGB(60, 0, 0)
 warnText.Font = Enum.Font.FredokaOne
 warnText.TextSize = 22
@@ -305,7 +306,7 @@ confirmBtn.Size = UDim2.new(0.45, 0, 0, 70)
 confirmBtn.Position = UDim2.new(0.5, 0, 0.9, 0)
 confirmBtn.AnchorPoint = Vector2.new(0.5, 0)
 confirmBtn.BackgroundColor3 = Color3.fromRGB(0, 160, 0)
-confirmBtn.Text = "POTWIERDZAM\nREBIRTH"
+confirmBtn.Text = "CONFIRM\nREBIRTH"
 confirmBtn.TextColor3 = Color3.new(1, 1, 1)
 confirmBtn.Font = Enum.Font.FredokaOne
 confirmBtn.TextSize = 28
@@ -323,41 +324,41 @@ local function getRebirthStats(level)
         Speed = "x1.0",
         Coins = "x1.0",
         Pets = GameConfig.GetPetUnlocksLabelForRebirthLevel(level),
-        Aura = "Brak",
+        Aura = "None",
     }
 
     if level == 1 then
         stats.Speed = "x1.25"
         stats.Coins = "x1.25"
-        stats.Aura = "Zielona"
+        stats.Aura = "Green"
     elseif level == 2 then
         stats.Speed = "x1.5"
         stats.Coins = "x1.5"
-        stats.Aura = "Złota"
+        stats.Aura = "Golden"
     elseif level >= 3 then
         stats.Speed = "x2.0"
         stats.Coins = "x2.0"
-        stats.Aura = "Czerwona"
+        stats.Aura = "Red"
     end
 
     if level == 4 then
-        stats.Aura = "Tęczowa"
+        stats.Aura = "Rainbow"
     end
 
     if level >= 5 then
         stats.Pets = GameConfig.GetPetUnlocksLabelForRebirthLevel(5)
-        stats.Aura = "Tęczowa MAX"
+        stats.Aura = "Rainbow MAX"
     end
 
     return stats
 end
 
 local function getAuraColorRGB(auraName)
-    if auraName == "Brak" then return Color3.fromRGB(40, 40, 40) end -- Ciemnoszary, prawie czarny
-    if auraName == "Zielona" then return Color3.fromRGB(0, 255, 0) end
-    if auraName == "Złota" then return Color3.fromRGB(255, 215, 0) end
-    if auraName == "Czerwona" then return Color3.fromRGB(255, 0, 0) end
-    if string.find(auraName, "Tęczowa") then return Color3.fromRGB(255, 0, 255) end
+    if auraName == "None" then return Color3.fromRGB(40, 40, 40) end -- Ciemnoszary, prawie czarny
+    if auraName == "Green" then return Color3.fromRGB(0, 255, 0) end
+    if auraName == "Golden" then return Color3.fromRGB(255, 215, 0) end
+    if auraName == "Red" then return Color3.fromRGB(255, 0, 0) end
+    if string.find(auraName, "Rainbow") then return Color3.fromRGB(255, 0, 255) end
     return Color3.fromRGB(255, 255, 255)
 end
 
@@ -398,10 +399,10 @@ local function updateDisplay()
     local curColorStr = colorToRGBString(curAuraColor)
     local nxtColorStr = colorToRGBString(nxtAuraColor)
 
-    leftHeader.Text = "OBECNIE (PRESTIŻ " .. currentLevel .. ")"
+    leftHeader.Text = "CURRENT (PRESTIGE " .. currentLevel .. ")"
     applyVisualStyle(leftHeader, currentLevel >= 4, curAuraColor)
     
-    rightHeader.Text = "PO ODRODZENIU (PRESTIŻ " .. (currentLevel + 1) .. ")"
+    rightHeader.Text = "AFTER REBIRTH (PRESTIGE " .. (currentLevel + 1) .. ")"
     applyVisualStyle(rightHeader, (currentLevel + 1) >= 4, nxtAuraColor)
 
     -- Funkcja pomocnicza do ustawiania statystyk z białym napisem i kolorową ikoną/wartością
@@ -414,8 +415,8 @@ local function updateDisplay()
         applyVisualStyle(ico, isRb, color)
     end
 
-    setStat(spdLN, spdLV, spdLI, "SZYBKOŚĆ", cur.Speed, curAuraColor, currentLevel >= 4)
-    setStat(coinLN, coinLV, coinLI, "MNOŻNIK MONET", cur.Coins, curAuraColor, currentLevel >= 4)
+    setStat(spdLN, spdLV, spdLI, "SPEED", cur.Speed, curAuraColor, currentLevel >= 4)
+    setStat(coinLN, coinLV, coinLI, "COIN MULTIPLIER", cur.Coins, curAuraColor, currentLevel >= 4)
     setStat(petLN, petLV, petLI, "BRAINROT PETS", cur.Pets, curAuraColor, currentLevel >= 4)
     setStat(auraLN, auraLV, auraLI, "TRAIL", cur.Aura, curAuraColor, currentLevel >= 4)
 
@@ -424,15 +425,15 @@ local function updateDisplay()
     local petVal = nxt.Pets .. (nxt.Pets == cur.Pets and " (MAX)" or "")
     local auraVal = nxt.Aura .. (nxt.Aura == cur.Aura and " (MAX)" or "")
 
-    setStat(spdRN, spdRV, spdRI, "SZYBKOŚĆ", spdVal, nxtAuraColor, (currentLevel + 1) >= 4)
-    setStat(coinRN, coinRV, coinRI, "MNOŻNIK MONET", coinVal, nxtAuraColor, (currentLevel + 1) >= 4)
+    setStat(spdRN, spdRV, spdRI, "SPEED", spdVal, nxtAuraColor, (currentLevel + 1) >= 4)
+    setStat(coinRN, coinRV, coinRI, "COIN MULTIPLIER", coinVal, nxtAuraColor, (currentLevel + 1) >= 4)
     setStat(petRN, petRV, petRI, "BRAINROT PETS", petVal, nxtAuraColor, (currentLevel + 1) >= 4)
     setStat(auraRN, auraRV, auraRI, "TRAIL", auraVal, nxtAuraColor, (currentLevel + 1) >= 4)
 
     if count >= TARGET then
         canRebirth = true
         confirmBtn.BackgroundColor3 = Color3.fromRGB(0, 160, 0)
-        confirmBtn.Text = "POTWIERDZAM\nREBIRTH"
+        confirmBtn.Text = "CONFIRM\nREBIRTH"
         btnStroke.Color = Color3.fromRGB(0, 80, 0)
         
         local g = confirmBtn:FindFirstChild("MetallicGrad")
@@ -440,7 +441,7 @@ local function updateDisplay()
     else
         canRebirth = false
         confirmBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0) -- Nieco ciemniejsza czerwień pod metalik
-        confirmBtn.Text = "Brainroty: " .. count .. " / " .. TARGET .. "\n(Brakuje " .. (TARGET - count) .. ")"
+        confirmBtn.Text = "Brainrots: " .. count .. " / " .. TARGET .. "\n(Missing " .. (TARGET - count) .. ")"
         btnStroke.Color = Color3.new(0, 0, 0)
         
         -- Efekt metaliczny na napisie

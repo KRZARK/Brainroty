@@ -53,6 +53,8 @@ HudTileStyle.apply(openBtn, iconLabel, textLabel, {
 	side = "left",
 	slotIndex = 2,
 	zIndex = 50,
+	minTextSize = 8,
+	maxTextSize = 12,
 })
 
 local mobileTimerBadge = Instance.new("TextLabel")
@@ -163,7 +165,7 @@ timerLabel.Size = UDim2.new(1, 0, 0, 30)
 timerLabel.Position = UDim2.new(0, 0, 0, 55)
 timerLabel.BackgroundTransparency = 1
 timerLabel.Font = Enum.Font.GothamBold
-timerLabel.Text = "Koniec za: 23:59:59"
+timerLabel.Text = "Ends in: 23:59:59"
 timerLabel.TextColor3 = Color3.fromRGB(255, 70, 70)
 timerLabel.TextSize = 22
 timerLabel.Parent = mainFrame
@@ -236,8 +238,8 @@ local function createFeatureTile(iconName, topText, bottomText, order, iconSize)
 	botLbl.Parent = tile
 end
 
-createFeatureTile("Coin2D", "1000", "Monet", 1, 90)
-createFeatureTile("Fart", "3x", "Darmowy Fart Troll", 2, 255)
+createFeatureTile("Coin2D", "1000", "Coins", 1, 90)
+createFeatureTile("Fart", "3x", "Free Fart Troll", 2, 255)
 createFeatureTile("Chest", "100%", "Secret Brainrot", 3, 255)
 
 -- Purchase Button
@@ -266,7 +268,7 @@ buyBtnText.TextStrokeColor3 = Color3.fromRGB(0, 100, 0)
 buyBtnText.TextStrokeTransparency = 0
 buyBtnText.AutomaticSize = Enum.AutomaticSize.XY
 buyBtnText.LayoutOrder = 1
-buyBtnText.Text = "WCZYTYWANIE..."
+buyBtnText.Text = "LOADING..."
 buyBtnText.Parent = buyBtn
 
 local robuxIcon = Instance.new("ImageLabel")
@@ -282,10 +284,10 @@ task.spawn(function()
 		return MarketplaceService:GetProductInfo(GameConfig.StarterPack.ProductID, Enum.InfoType.Product)
 	end)
 	if success and info and info.PriceInRobux then
-		buyBtnText.Text = "KUP ZA " .. info.PriceInRobux
+		buyBtnText.Text = "BUY FOR " .. info.PriceInRobux
 		robuxIcon.Visible = true
 	else
-		buyBtnText.Text = "KUP ZA " .. tonumber(GameConfig.StarterPack.Price)
+		buyBtnText.Text = "BUY FOR " .. tonumber(GameConfig.StarterPack.Price)
 		robuxIcon.Visible = true
 	end
 end)
@@ -345,13 +347,19 @@ starterPackAnimationValue:GetPropertyChangedSignal("Value"):Connect(function()
 end)
 
 local function updateStarterPackLayout()
-	local scale = HudTileStyle.getResponsivePanelScale(500, 450, {
+	local scale, _, _, isLandscapeMobile = HudTileStyle.getResponsivePanelScale(500, 450, {
 		landscapeWidthRatio = 0.86,
 		landscapeHeightRatio = 0.9,
+		landscapeContentWidthRatio = 1.24,
+		landscapeContentHeightRatio = 1.6,
 		portraitWidthRatio = 0.94,
 		portraitHeightRatio = 0.8,
-		mobileMinScale = 0.62,
+		landscapeMinScale = 0.48,
+		portraitMinScale = 0.62,
 	})
+	if isLandscapeMobile then
+		scale *= 0.9
+	end
 	starterPackLayoutScale = scale
 	applyStarterPackScale()
 end
@@ -438,7 +446,7 @@ task.spawn(function()
 				local s = timeLeft % 60
 				
 				local timeString = string.format("%02d:%02d:%02d", h, m, s)
-				timerLabel.Text = "Koniec za: " .. timeString
+				timerLabel.Text = "Ends in: " .. timeString
 				if HudTileStyle.getLayoutMetrics().IsMobile then
 					textLabel.Text = "STARTERPACK"
 					mobileTimerBadge.Text = timeString

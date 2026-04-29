@@ -109,11 +109,12 @@ panelStroke.Transparency = 0.06
 
 HudTileStyle.bindResponsivePanelScale(questPanel, {
 	baseSize = UDim2.fromOffset(520, 560),
-	landscapeWidthRatio = 0.84,
-	landscapeHeightRatio = 0.88,
+	landscapeWidthRatio = 0.86,
+	landscapeHeightRatio = 0.92,
 	portraitWidthRatio = 0.92,
 	portraitHeightRatio = 0.84,
-	mobileMinScale = 0.54,
+	landscapeMinScale = 0.44,
+	portraitMinScale = 0.54,
 })
 
 local panelGradient = Instance.new("UIGradient", questPanel)
@@ -327,13 +328,29 @@ local function refreshQuests()
 	
 	local questsFolder = player:WaitForChild("DailyQuestsFolder", 5)
 	if not questsFolder then return end
+	local questMetrics = HudTileStyle.getLayoutMetrics()
+	local compactLandscapeRows = questMetrics.IsLandscapeMobile
+	local mobileRows = questMetrics.IsMobile
+	local rightReserve = compactLandscapeRows and 194 or (mobileRows and 184 or 178)
+	local rowHeight = compactLandscapeRows and 128 or (mobileRows and 118 or 108)
+	local descHeight = compactLandscapeRows and 48 or (mobileRows and 42 or 38)
+	local descTextSize = compactLandscapeRows and 23 or (mobileRows and 20 or 18)
+	local rewardWidth = compactLandscapeRows and 148 or (mobileRows and 136 or 132)
+	local rewardTextSize = compactLandscapeRows and 24 or (mobileRows and 22 or 20)
+	local barHeight = compactLandscapeRows and 34 or (mobileRows and 32 or 30)
+	local barY = compactLandscapeRows and 78 or (mobileRows and 68 or 64)
+	local progressTextSize = compactLandscapeRows and 18 or (mobileRows and 17 or 15)
+	local claimWidth = compactLandscapeRows and 138 or (mobileRows and 130 or 128)
+	local claimHeight = compactLandscapeRows and 50 or (mobileRows and 48 or 46)
+	local claimY = compactLandscapeRows and 60 or (mobileRows and 54 or 54)
+	local claimTextSize = compactLandscapeRows and 21 or (mobileRows and 20 or 18)
 	
 	for _, qVal in ipairs(questsFolder:GetChildren()) do
 		local config = getQuestConfig(qVal.Name)
 		if not config then continue end
 		
 		local qFrame = Instance.new("Frame")
-		qFrame.Size = UDim2.new(1, -4, 0, 108)
+		qFrame.Size = UDim2.new(1, -4, 0, rowHeight)
 		qFrame.BackgroundColor3 = Color3.fromRGB(22, 28, 48)
 		qFrame.BackgroundTransparency = 0.06
 		qFrame.BorderSizePixel = 0
@@ -358,34 +375,35 @@ local function refreshQuests()
 		Instance.new("UICorner", rowPattern).CornerRadius = UDim.new(0, 20)
 		
 		local desc = Instance.new("TextLabel")
-		desc.Size = UDim2.new(1, -178, 0, 38)
+		desc.Size = UDim2.new(1, -rightReserve, 0, descHeight)
 		desc.Position = UDim2.new(0, 20, 0, 12)
 		desc.BackgroundTransparency = 1
 		desc.Text = string.format(config.Desc, config.Req)
 		desc.TextColor3 = Color3.new(1, 1, 1)
 		desc.Font = Enum.Font.GothamBold
-		desc.TextSize = 18
+		desc.TextSize = descTextSize
 		desc.TextWrapped = true
 		desc.TextXAlignment = Enum.TextXAlignment.Left
+		desc.TextYAlignment = Enum.TextYAlignment.Top
 		desc.ZIndex = 53
 		desc.Parent = qFrame
 		
 		local rewardLbl = Instance.new("TextLabel")
-		rewardLbl.Size = UDim2.new(0, 132, 0, 30)
+		rewardLbl.Size = UDim2.new(0, rewardWidth, 0, 30)
 		rewardLbl.Position = UDim2.new(1, -18, 0, 12)
 		rewardLbl.AnchorPoint = Vector2.new(1, 0)
 		rewardLbl.BackgroundTransparency = 1
 		rewardLbl.Text = "+" .. config.Reward .. " 💰"
 		rewardLbl.TextColor3 = Color3.fromRGB(255, 215, 0)
 		rewardLbl.Font = Enum.Font.FredokaOne
-		rewardLbl.TextSize = 20
+		rewardLbl.TextSize = rewardTextSize
 		rewardLbl.TextXAlignment = Enum.TextXAlignment.Right
 		rewardLbl.ZIndex = 53
 		rewardLbl.Parent = qFrame
 		
 		local barBg = Instance.new("Frame")
-		barBg.Size = UDim2.new(1, -178, 0, 30)
-		barBg.Position = UDim2.new(0, 20, 0, 64)
+		barBg.Size = UDim2.new(1, -rightReserve, 0, barHeight)
+		barBg.Position = UDim2.new(0, 20, 0, barY)
 		barBg.BackgroundColor3 = Color3.fromRGB(16, 21, 38)
 		barBg.ZIndex = 53
 		barBg.Parent = qFrame
@@ -408,7 +426,7 @@ local function refreshQuests()
 		progressTxt.Text = math.floor(qVal.Value) .. " / " .. config.Req
 		progressTxt.TextColor3 = Color3.new(1, 1, 1)
 		progressTxt.Font = Enum.Font.GothamBold
-		progressTxt.TextSize = 15
+		progressTxt.TextSize = progressTextSize
 		progressTxt.ZIndex = 55
 		progressTxt.Parent = barBg
 		local progressStroke = Instance.new("UIStroke", progressTxt)
@@ -416,14 +434,14 @@ local function refreshQuests()
 		progressStroke.Color = Color3.new(0, 0, 0)
 		
 		local claimBtn = Instance.new("TextButton")
-		claimBtn.Size = UDim2.new(0, 128, 0, 46)
-		claimBtn.Position = UDim2.new(1, -18, 0, 54)
+		claimBtn.Size = UDim2.new(0, claimWidth, 0, claimHeight)
+		claimBtn.Position = UDim2.new(1, -18, 0, claimY)
 		claimBtn.AnchorPoint = Vector2.new(1, 0)
 		claimBtn.BackgroundColor3 = Color3.fromRGB(90, 96, 104)
 		claimBtn.Text = "CLAIM"
 		claimBtn.TextColor3 = Color3.new(1, 1, 1)
 		claimBtn.Font = Enum.Font.GothamBold
-		claimBtn.TextSize = 18
+		claimBtn.TextSize = claimTextSize
 		claimBtn.AutoButtonColor = false
 		claimBtn.ZIndex = 54
 		claimBtn.Parent = qFrame

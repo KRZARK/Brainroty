@@ -319,9 +319,9 @@ promptLabel.BackgroundTransparency = 1
 promptLabel.TextScaled = true
 promptLabel.Font = Enum.Font.FredokaOne
 promptLabel.TextColor3 = Color3.new(1, 1, 1)
-promptLabel.Text = "Czy chcesz kupić podpowiedź do Brainrota za 50 monet?"
+promptLabel.Text = "Do you want to buy a Brainrot hint for 50 coins?"
 promptLabel.ZIndex = 91
-promptLabel.Text = "Czy chcesz kupic podpowiedz do Brainrota?"
+promptLabel.Text = "Do you want to buy a Brainrot hint?"
 promptLabel.Parent = promptFrame
 
 local promptTextStroke = Instance.new("UIStroke", promptLabel)
@@ -340,7 +340,7 @@ confirmBtn.BackgroundColor3 = Color3.fromRGB(56, 182, 92)
 confirmBtn.Font = Enum.Font.FredokaOne
 confirmBtn.TextScaled = true
 confirmBtn.TextColor3 = Color3.new(1, 1, 1)
-confirmBtn.Text = "KUP"
+confirmBtn.Text = "BUY"
 confirmBtn.ZIndex = 91
 confirmBtn.Parent = promptFrame
 Instance.new("UICorner", confirmBtn).CornerRadius = UDim.new(0, 16)
@@ -366,7 +366,7 @@ cancelBtn.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
 cancelBtn.Font = Enum.Font.FredokaOne
 cancelBtn.TextScaled = true
 cancelBtn.TextColor3 = Color3.new(1, 1, 1)
-cancelBtn.Text = "ANULUJ"
+cancelBtn.Text = "CANCEL"
 cancelBtn.ZIndex = 91
 cancelBtn.Parent = promptFrame
 Instance.new("UICorner", cancelBtn).CornerRadius = UDim.new(0, 16)
@@ -440,17 +440,68 @@ task.spawn(function()
 	end
 end)
 
+local function getCoinsPopupMetrics()
+	local metrics = HudTileStyle.getLayoutMetrics()
+	local frameWidth = math.max(coinsFrame.AbsoluteSize.X, 1)
+	local frameHeight = math.max(coinsFrame.AbsoluteSize.Y, 1)
+
+	if metrics.IsLandscapeMobile then
+		local width = math.clamp(math.floor(frameWidth * 0.60), 56, 78)
+		local height = math.clamp(math.floor(frameHeight * 0.64), 16, 20)
+		return {
+			size = UDim2.fromOffset(width, height),
+			anchorPoint = Vector2.new(0.5, 0),
+			position = UDim2.new(0.5, 0, 1, 2),
+			targetPosition = UDim2.new(0.5, 0, 0.78, 8),
+			textSize = 16,
+			strokeThickness = 1.6,
+			duration = 1.8,
+			strokeFadeDelay = 0.8,
+			zIndex = 12,
+		}
+	elseif metrics.IsMobile then
+		local width = math.clamp(math.floor(frameWidth * 0.66), 70, 94)
+		local height = math.clamp(math.floor(frameHeight * 0.72), 20, 26)
+		return {
+			size = UDim2.fromOffset(width, height),
+			anchorPoint = Vector2.new(0.5, 0),
+			position = UDim2.new(0.5, 0, 1, 4),
+			targetPosition = UDim2.new(0.5, 0, 0.72, 8),
+			textSize = 18,
+			strokeThickness = 1.8,
+			duration = 2,
+			strokeFadeDelay = 0.9,
+			zIndex = 12,
+		}
+	end
+
+	return {
+		size = UDim2.new(0, 80, 0, 25),
+		anchorPoint = Vector2.new(0, 0),
+		position = UDim2.new(0, -50, 0.5, 0),
+		targetPosition = UDim2.new(0, -50, -0.5, 0),
+		textSize = 24,
+		strokeThickness = 2,
+		duration = 3,
+		strokeFadeDelay = 1,
+		zIndex = 1,
+	}
+end
+
 -- === FUNKCJA ANIMACJI PLUSIKA (POPRAWIONA) ===
 local function showCoinPopup(amount)
 	local popup = Instance.new("TextLabel")
+	local popupMetrics = getCoinsPopupMetrics()
 	popup.Name = "CoinPopup"
-	popup.Size = UDim2.new(0, 80, 0, 25)
+	popup.Size = popupMetrics.size
+	popup.AnchorPoint = popupMetrics.anchorPoint
 
 	-- Startuje po LEWEJ stronie kafelka (by nic nie zasłaniać - precyzyjne!)
-	popup.Position = UDim2.new(0, -50, 0.5, 0)
+	popup.Position = popupMetrics.position
 	popup.BackgroundTransparency = 1
 	popup.Font = Enum.Font.FredokaOne
-	popup.TextSize = 24
+	popup.TextSize = popupMetrics.textSize
+	popup.ZIndex = popupMetrics.zIndex
 
 	-- KOLOR IDENTYCZNY JAK LICZNIK
 	popup.TextColor3 = Color3.fromRGB(255, 215, 0) -- Złoty
@@ -460,17 +511,17 @@ local function showCoinPopup(amount)
 
 	-- DODAJEMY OBRYS (żeby był widoczny na każdym tle)
 	local popupStroke = Instance.new("UIStroke")
-	popupStroke.Thickness = 2
+	popupStroke.Thickness = popupMetrics.strokeThickness
 	popupStroke.Color = Color3.new(0,0,0) -- Czarny obrys
 	popupStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
 	popupStroke.Parent = popup
 
 	-- === WOLNA ANIMACJA (3 SEKUNDY) ===
 	local targetPos = UDim2.new(0, -50, -0.5, 0) -- Leci prosto w górę z nowej pozycji
-	local tweenInfo = TweenInfo.new(3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+	local tweenInfo = TweenInfo.new(popupMetrics.duration, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
 
 	local tween = TweenService:Create(popup, tweenInfo, {
-		Position = targetPos,
+		Position = popupMetrics.targetPosition,
 		TextTransparency = 1 -- Znikanie tekstu
 	})
 
@@ -579,16 +630,16 @@ revealBtn.Activated:Connect(function()
 	local price = GameConfig.Rarities[rarity] and GameConfig.Rarities[rarity].Price or 100
 	
 	if activeHighlight then
-		promptLabel.Text = "Obecnie podążasz już śladem Brainrota (" .. rarity:upper() .. ")!"
-		confirmBtn.Text = "SZUKAJ!"
+		promptLabel.Text = "You are already tracking a Brainrot (" .. rarity:upper() .. ")!"
+		confirmBtn.Text = "FIND!"
 		confirmBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255) -- Niebieski kolor
 	elseif hasSavedHintForRarity(rarity) then
-		promptLabel.Text = "Masz juz podpowiedz do Brainrota (" .. rarity:upper() .. "). Chcesz jej uzyc?"
-		confirmBtn.Text = "SZUKAJ!"
+		promptLabel.Text = "You already have a hint for Brainrot (" .. rarity:upper() .. "). Use it?"
+		confirmBtn.Text = "FIND!"
 		confirmBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
 	else
-		promptLabel.Text = "Czy chcesz kupić podpowiedź do Brainrota ("..rarity:upper()..") za " .. price .. " monet?"
-		confirmBtn.Text = "KUP"
+		promptLabel.Text = "Do you want to buy a hint for Brainrot ("..rarity:upper()..") for " .. price .. " coins?"
+		confirmBtn.Text = "BUY"
 		confirmBtn.BackgroundColor3 = Color3.fromRGB(56, 182, 92) -- Zielony (oryginalny)
 	end
 	

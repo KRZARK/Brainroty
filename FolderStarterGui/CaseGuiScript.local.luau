@@ -62,7 +62,7 @@ if oldToggle then oldToggle:Destroy() end
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "CaseShopUI"
-screenGui.DisplayOrder = 10 -- Ta sama warstwa co reszta bocznych kafelków
+screenGui.DisplayOrder = 520 -- Menu sklepu ma być nad bocznymi ikonkami, gdy nachodzą na siebie
 screenGui.ResetOnSpawn = false
 screenGui.Parent = playerGui
 
@@ -141,7 +141,7 @@ closeButton.TextColor3 = Color3.new(1, 1, 1)
 closeButton.Font = Enum.Font.SourceSansBold
 closeButton.TextSize = 45
 closeButton.Visible = false
-closeButton.ZIndex = 110
+closeButton.ZIndex = 130
 Instance.new("UICorner", closeButton).CornerRadius = UDim.new(1, 0) 
 
 -- 2.1 ZAKŁADKI (TABS) - Zastępują stary tytuł
@@ -197,54 +197,82 @@ local floatingElements = {}
 
 local function addPriceLabel(parent, id, infoType, yPositionScale)
 	local container = Instance.new("Frame", parent)
-	container.Size = UDim2.new(0.85, 0, 0.22, 0) -- Przywrócono pierwotną wielkość (z 0.3)
+	container.Name = "PriceContainer"
+	container:SetAttribute("PriceYScale", yPositionScale)
+	container.Size = UDim2.new(0.85, 0, 0.22, 0)
 	container.Position = UDim2.new(0.075, 0, yPositionScale, 0)
-	container.BackgroundColor3 = Color3.fromRGB(50, 200, 50) -- Ładna zieleń pod cenę
+	container.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
 	container.BackgroundTransparency = 0.15
 	container.ZIndex = 110
-	
 	Instance.new("UICorner", container).CornerRadius = UDim.new(0, 10)
-	Instance.new("UIStroke", container).Thickness = 1.5 -- Subtelna obwódka kafelka
-	
-	local layout = Instance.new("UIListLayout", container)
-	layout.FillDirection = Enum.FillDirection.Horizontal
-	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	layout.VerticalAlignment = Enum.VerticalAlignment.Center
-	layout.Padding = UDim.new(0, 4) -- Przerwa między ikonką a liczbami
-	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	local containerStroke = Instance.new("UIStroke", container)
+	containerStroke.Thickness = 1.5
 
 	local icon = Instance.new("ImageLabel", container)
-	icon.Size = UDim2.fromOffset(25, 25) -- Nieco mniejsza ikonka by nie kolidować
+	icon.Name = "PriceIcon"
+	icon.AnchorPoint = Vector2.new(0.5, 0.5)
+	icon.Position = UDim2.fromScale(0.22, 0.5)
+	icon.Size = UDim2.fromOffset(25, 25)
 	icon.BackgroundTransparency = 1
 	icon.Image = "rbxasset://textures/ui/common/robux_small.png"
 	icon.ZIndex = 110
-	icon.LayoutOrder = 1
 
-	-- Ramka pomocnicza dla tekstu (umożliwia niezależne przesuwanie go w dół)
-	local textWrapper = Instance.new("Frame", container)
-	textWrapper.Size = UDim2.fromOffset(0, 0)
-	textWrapper.AutomaticSize = Enum.AutomaticSize.XY -- Pełne automatyczne dopasowanie
-	textWrapper.BackgroundTransparency = 1
-	textWrapper.ZIndex = 110
-	textWrapper.LayoutOrder = 2
-	
-	local textPadding = Instance.new("UIPadding", textWrapper)
-	textPadding.PaddingTop = UDim.new(0, 5) -- Mniejsze obniżenie (z 10 na 5) żeby nie wystawało na dole
-
-	local textLabel = Instance.new("TextLabel", textWrapper)
-	textLabel.Size = UDim2.fromOffset(0, 0)
-	textLabel.AutomaticSize = Enum.AutomaticSize.XY -- Tekst sam mówi jaką ma szerokość
+	local textLabel = Instance.new("TextLabel", container)
+	textLabel.Name = "PriceText"
+	textLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+	textLabel.Position = UDim2.fromScale(0.62, 0.54)
+	textLabel.Size = UDim2.fromScale(0.5, 0.72)
 	textLabel.BackgroundTransparency = 1
 	textLabel.Text = "..."
 	textLabel.Font = Enum.Font.LuckiestGuy
-	textLabel.TextSize = 32 -- Nieco mniejszy tekst żeby nie "wybuchał"
+	textLabel.TextScaled = true
+	textLabel.TextSize = 32
 	textLabel.TextColor3 = Color3.new(0, 0, 0)
 	textLabel.ZIndex = 110
-	
+	local textConstraint = Instance.new("UITextSizeConstraint", textLabel)
+	textConstraint.MinTextSize = 12
+	textConstraint.MaxTextSize = 32
 	local stroke = Instance.new("UIStroke", textLabel)
 	stroke.Color = Color3.new(1, 1, 1)
 	stroke.Thickness = 2
-	
+
+	local function applyPriceLayout()
+		local metrics = HudTileStyle.getLayoutMetrics()
+		if metrics.IsLandscapeMobile then
+			container.Size = UDim2.new(0.78, 0, 0.17, 0)
+			container.Position = UDim2.new(0.11, 0, yPositionScale, 0)
+			icon.Position = UDim2.fromScale(0.2, 0.5)
+			icon.Size = UDim2.fromOffset(18, 18)
+			textLabel.Position = UDim2.fromScale(0.62, 0.54)
+			textLabel.Size = UDim2.fromScale(0.54, 0.68)
+			textConstraint.MinTextSize = 9
+			textConstraint.MaxTextSize = 18
+			stroke.Thickness = 1.5
+		elseif metrics.IsMobile then
+			container.Size = UDim2.new(0.8, 0, 0.19, 0)
+			container.Position = UDim2.new(0.1, 0, yPositionScale, 0)
+			icon.Position = UDim2.fromScale(0.2, 0.5)
+			icon.Size = UDim2.fromOffset(20, 20)
+			textLabel.Position = UDim2.fromScale(0.62, 0.54)
+			textLabel.Size = UDim2.fromScale(0.54, 0.7)
+			textConstraint.MinTextSize = 10
+			textConstraint.MaxTextSize = 22
+			stroke.Thickness = 1.75
+		else
+			container.Size = UDim2.new(0.85, 0, 0.22, 0)
+			container.Position = UDim2.new(0.075, 0, yPositionScale, 0)
+			icon.Position = UDim2.fromScale(0.22, 0.5)
+			icon.Size = UDim2.fromOffset(25, 25)
+			textLabel.Position = UDim2.fromScale(0.62, 0.54)
+			textLabel.Size = UDim2.fromScale(0.5, 0.72)
+			textConstraint.MinTextSize = 12
+			textConstraint.MaxTextSize = 32
+			stroke.Thickness = 2
+		end
+	end
+
+	applyPriceLayout()
+
 	-- NOWE: Pobieranie ceny z serwerów Robloxa
 	task.spawn(function()
 		if id == 0 or not id then return end
@@ -400,10 +428,14 @@ vipPerks.AnchorPoint = Vector2.new(0.5, 0)
 vipPerks.BackgroundTransparency = 1
 vipPerks.Text = "(x2 Coins, +Speed, +Jump, VIP Tag,\nSilver Trail, Troll Shield)"
 vipPerks.Font = Enum.Font.FredokaOne
+vipPerks.TextScaled = true
 vipPerks.TextSize = 22
 vipPerks.TextWrapped = true
 vipPerks.TextColor3 = Color3.fromRGB(255, 249, 228)
 vipPerks.ZIndex = 109
+local vipPerksConstraint = Instance.new("UITextSizeConstraint", vipPerks)
+vipPerksConstraint.MinTextSize = 12
+vipPerksConstraint.MaxTextSize = 22
 local vipPerksStroke = Instance.new("UIStroke", vipPerks)
 vipPerksStroke.Thickness = 2
 vipPerksStroke.Color = Color3.fromRGB(82, 49, 8)
@@ -432,13 +464,18 @@ speedGrad.Color = ColorSequence.new({
 speedGrad.Rotation = 90
 
 local speedLabel = Instance.new("TextLabel", SpeedBtn)
+speedLabel.Name = "SpeedLabel"
 speedLabel.Size = UDim2.fromScale(1, 1)
 speedLabel.BackgroundTransparency = 1
 speedLabel.Text = "\n\n2x SPEED\n"
 speedLabel.Font = Enum.Font.LuckiestGuy
+speedLabel.TextScaled = true
 speedLabel.TextSize = 30
 speedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 speedLabel.ZIndex = 110 
+local speedConstraint = Instance.new("UITextSizeConstraint", speedLabel)
+speedConstraint.MinTextSize = 12
+speedConstraint.MaxTextSize = 28
 Instance.new("UIStroke", speedLabel).Thickness = 2
 addPriceLabel(SpeedBtn, GameConfig.GamePasses.SpeedBoost, Enum.InfoType.GamePass, 0.8)
 
@@ -491,13 +528,18 @@ jumpGrad.Color = ColorSequence.new({
 jumpGrad.Rotation = 90
 
 local jumpLabel = Instance.new("TextLabel", JumpBtn)
+jumpLabel.Name = "JumpLabel"
 jumpLabel.Size = UDim2.fromScale(1, 1)
 jumpLabel.BackgroundTransparency = 1
 jumpLabel.Text = "\n\n2x JUMP\n"
 jumpLabel.Font = Enum.Font.LuckiestGuy
+jumpLabel.TextScaled = true
 jumpLabel.TextSize = 30
 jumpLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 jumpLabel.ZIndex = 110 
+local jumpConstraint = Instance.new("UITextSizeConstraint", jumpLabel)
+jumpConstraint.MinTextSize = 12
+jumpConstraint.MaxTextSize = 28
 Instance.new("UIStroke", jumpLabel).Thickness = 2
 addPriceLabel(JumpBtn, GameConfig.GamePasses.JumpBoost, Enum.InfoType.GamePass, 0.8)
 
@@ -628,14 +670,21 @@ for i, packKey in ipairs(packsOrder) do
 	table.insert(floatingElements, {obj = icon, isCoin = true})
 	
 	local amountLabel = Instance.new("TextLabel", btn)
-	amountLabel.Size = UDim2.new(1, 0, 0.3, 0)
-	amountLabel.Position = UDim2.new(0, 0, 0.55, 0)
+	amountLabel.Name = "CoinAmountLabel"
+	amountLabel.Size = UDim2.new(1, -10, 0.26, 0)
+	amountLabel.Position = UDim2.new(0.5, 0, 0.58, 0)
+	amountLabel.AnchorPoint = Vector2.new(0.5, 0)
 	amountLabel.BackgroundTransparency = 1
 	amountLabel.Text = packData.Amount .. " COINS"
 	amountLabel.Font = Enum.Font.LuckiestGuy
-	amountLabel.TextSize = 25
+	amountLabel.TextScaled = true
+	amountLabel.TextSize = 22
+	amountLabel.TextWrapped = true
 	amountLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	amountLabel.ZIndex = 103
+	local amountConstraint = Instance.new("UITextSizeConstraint", amountLabel)
+	amountConstraint.MinTextSize = 10
+	amountConstraint.MaxTextSize = 24
 	Instance.new("UIStroke", amountLabel).Thickness = 2
 	
 	addPriceLabel(btn, packData.ID, Enum.InfoType.Product, 0.78)
@@ -647,16 +696,21 @@ end
 
 
 local subTitle = Instance.new("TextLabel", BrainrotPage)
+subTitle.Name = "ShopSubtitle"
 subTitle.Size = UDim2.new(0.9, 0, 0, 140) 
 subTitle.Position = UDim2.new(0.5, 0, 0, -10) -- Podciągnięte lekko w górę wewnątrz strony
 subTitle.AnchorPoint = Vector2.new(0.5, 0)
 subTitle.BackgroundTransparency = 1
 subTitle.Text = "MAXIMUM BRAINROTS AHEAD! SKIP THE SEARCH AND ROLL FOR THE ONES YOU'RE MISSING!"
 subTitle.Font = Enum.Font.LuckiestGuy
+subTitle.TextScaled = true
 subTitle.TextSize = 50
 subTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
 subTitle.TextWrapped = true
 subTitle.ZIndex = 106
+local subTitleConstraint = Instance.new("UITextSizeConstraint", subTitle)
+subTitleConstraint.MinTextSize = 14
+subTitleConstraint.MaxTextSize = 50
 Instance.new("UIStroke", subTitle).Thickness = 4
 
 local subTitleGradient = Instance.new("UIGradient", subTitle)
@@ -694,38 +748,142 @@ local function applyShopLayout()
 	local metrics = HudTileStyle.getLayoutMetrics()
 	local viewport = metrics.Viewport
 	if metrics.IsLandscapeMobile then
-		shopContainer.Size = UDim2.fromScale(0.9, 0.98)
-		shopScale.Scale = math.clamp(math.min(viewport.X / 840, viewport.Y / 470), 0.72, 0.82)
-		closeButton.Size = UDim2.fromOffset(54, 54)
-		closeButton.Position = UDim2.new(1, -8, 0, 8)
-		closeButton.TextSize = 32
-		TabBrainrot.TextScaled = true
-		TabBoosts.TextScaled = true
-		UpgradesTitle.TextScaled = true
-		CoinsTitle.TextScaled = true
+		shopContainer.Size = UDim2.fromOffset(1120, 620)
+		shopContainer.Position = UDim2.fromScale(0.5, 0.478)
+		shopScale.Scale = math.clamp(math.min((viewport.X * 0.946) / 1120, (viewport.Y * 0.848) / 620), 0.46, 0.78)
+		closeButton.Size = UDim2.fromOffset(80, 80)
+		closeButton.Position = UDim2.new(1, -18, 0, 14)
+		closeButton.TextSize = 45
+		TabBrainrot.Size = UDim2.new(0.44, -8, 0, 80)
+		TabBrainrot.Position = UDim2.new(0, 12, 0, 14)
+		TabBoosts.Size = UDim2.new(0.41, -8, 0, 80)
+		TabBoosts.Position = UDim2.new(0.45, 8, 0, 14)
+		TabBrainrot.TextScaled = false
+		TabBoosts.TextScaled = false
+		TabBrainrot.TextSize = 55
+		TabBoosts.TextSize = 55
+		UpgradesTitle.TextScaled = false
+		CoinsTitle.TextScaled = false
+		UpgradesTitle.TextSize = 40
+		CoinsTitle.TextSize = 40
 		subTitle.TextScaled = true
+		subTitle.TextSize = 50
 	elseif metrics.IsMobile then
-		shopContainer.Size = UDim2.fromScale(0.92, 0.92)
-		shopScale.Scale = math.clamp(math.min(viewport.X / 820, viewport.Y / 620), 0.7, 0.86)
-		closeButton.Size = UDim2.fromOffset(60, 60)
-		closeButton.Position = UDim2.new(1, -9, 0, 9)
-		closeButton.TextSize = 34
-		TabBrainrot.TextScaled = true
-		TabBoosts.TextScaled = true
-		UpgradesTitle.TextScaled = true
-		CoinsTitle.TextScaled = true
+		shopContainer.Size = UDim2.fromOffset(1100, 790)
+		shopContainer.Position = UDim2.fromScale(0.5, 0.49)
+		shopScale.Scale = math.clamp(math.min((viewport.X * 0.95) / 1100, (viewport.Y * 0.875) / 790), 0.52, 0.82)
+		closeButton.Size = UDim2.fromOffset(80, 80)
+		closeButton.Position = UDim2.new(1, -18, 0, 14)
+		closeButton.TextSize = 45
+		TabBrainrot.Size = UDim2.new(0.43, -8, 0, 80)
+		TabBrainrot.Position = UDim2.new(0, 12, 0, 14)
+		TabBoosts.Size = UDim2.new(0.4, -8, 0, 80)
+		TabBoosts.Position = UDim2.new(0.44, 8, 0, 14)
+		TabBrainrot.TextScaled = false
+		TabBoosts.TextScaled = false
+		TabBrainrot.TextSize = 55
+		TabBoosts.TextSize = 55
+		UpgradesTitle.TextScaled = false
+		CoinsTitle.TextScaled = false
+		UpgradesTitle.TextSize = 40
+		CoinsTitle.TextSize = 40
 		subTitle.TextScaled = true
+		subTitle.TextSize = 50
 	else
 		shopContainer.Size = UDim2.fromScale(0.8, 0.8)
+		shopContainer.Position = UDim2.fromScale(0.5, 0.5)
 		shopScale.Scale = 1
 		closeButton.Size = UDim2.fromOffset(80, 80)
 		closeButton.Position = UDim2.new(1, -12, 0, 12)
 		closeButton.TextSize = 45
+		TabBrainrot.Size = UDim2.new(0.45, -10, 0, 80)
+		TabBrainrot.Position = UDim2.new(0, 5, 0, 15)
+		TabBoosts.Size = UDim2.new(0.41, -10, 0, 80)
+		TabBoosts.Position = UDim2.new(0.46, 5, 0, 15)
 		TabBrainrot.TextScaled = false
 		TabBoosts.TextScaled = false
+		TabBrainrot.TextSize = 55
+		TabBoosts.TextSize = 55
 		UpgradesTitle.TextScaled = false
 		CoinsTitle.TextScaled = false
+		UpgradesTitle.TextSize = 40
+		CoinsTitle.TextSize = 40
 		subTitle.TextScaled = false
+		subTitle.TextSize = 50
+	end
+
+	for _, descendant in ipairs(shopContainer:GetDescendants()) do
+		if descendant:IsA("Frame") and descendant.Name == "PriceContainer" then
+			local yScale = descendant:GetAttribute("PriceYScale") or 0.78
+			descendant.Size = UDim2.new(0.85, 0, 0.22, 0)
+			descendant.Position = UDim2.new(0.075, 0, yScale, 0)
+		elseif descendant:IsA("ImageLabel") and descendant.Name == "PriceIcon" then
+			descendant.Size = UDim2.fromOffset(25, 25)
+		elseif descendant:IsA("TextLabel") and descendant.Name == "PriceText" then
+			local constraint = descendant:FindFirstChildOfClass("UITextSizeConstraint")
+			if constraint then
+				constraint.MinTextSize = metrics.IsLandscapeMobile and 10 or 12
+				constraint.MaxTextSize = metrics.IsLandscapeMobile and 24 or 32
+			end
+		elseif descendant:IsA("TextLabel") and descendant.Name == "CoinAmountLabel" then
+			local constraint = descendant:FindFirstChildOfClass("UITextSizeConstraint")
+			if constraint then
+				constraint.MinTextSize = 10
+				constraint.MaxTextSize = metrics.IsLandscapeMobile and 18 or 24
+			end
+		elseif descendant:IsA("TextLabel") and descendant.Name == "CaseNameLabel" then
+			local constraint = descendant:FindFirstChildOfClass("UITextSizeConstraint")
+			if constraint then
+				constraint.MinTextSize = 10
+				constraint.MaxTextSize = metrics.IsLandscapeMobile and 20 or 26
+			end
+		elseif descendant:IsA("TextLabel") and descendant.Name == "CaseChanceLabel" then
+			if metrics.IsLandscapeMobile then
+				descendant.AnchorPoint = Vector2.new(0.5, 1)
+				descendant.Size = UDim2.new(1, 10, 0, 24)
+				descendant.Position = UDim2.new(0.5, 0, 1, -2)
+				descendant.TextYAlignment = Enum.TextYAlignment.Center
+			elseif metrics.IsMobile then
+				descendant.AnchorPoint = Vector2.new(0.5, 1)
+				descendant.Size = UDim2.new(1, 6, 0, 26)
+				descendant.Position = UDim2.new(0.5, 0, 1, -2)
+				descendant.TextYAlignment = Enum.TextYAlignment.Center
+			else
+				descendant.AnchorPoint = Vector2.new(0, 0)
+				descendant.Size = UDim2.new(1, 0, 0.2, 0)
+				descendant.Position = UDim2.fromScale(0, 0.8)
+				descendant.TextYAlignment = Enum.TextYAlignment.Center
+			end
+			local constraint = descendant:FindFirstChildOfClass("UITextSizeConstraint")
+			if constraint then
+				constraint.MinTextSize = metrics.IsLandscapeMobile and 8 or 9
+				constraint.MaxTextSize = metrics.IsLandscapeMobile and 13 or (metrics.IsMobile and 16 or 18)
+			end
+		elseif descendant:IsA("TextLabel") and descendant.Name == "ShopSubtitle" then
+			local constraint = descendant:FindFirstChildOfClass("UITextSizeConstraint")
+			if constraint then
+				constraint.MinTextSize = 14
+				constraint.MaxTextSize = metrics.IsLandscapeMobile and 34 or 50
+			end
+		elseif descendant:IsA("TextLabel") and (descendant.Name == "SpeedLabel" or descendant.Name == "JumpLabel") then
+			local constraint = descendant:FindFirstChildOfClass("UITextSizeConstraint")
+			if constraint then
+				constraint.MinTextSize = 12
+				constraint.MaxTextSize = metrics.IsLandscapeMobile and 22 or 28
+			end
+		elseif descendant:IsA("TextLabel") and descendant.Name == "VipPerks" then
+			local constraint = descendant:FindFirstChildOfClass("UITextSizeConstraint")
+			if constraint then
+				constraint.MinTextSize = 12
+				constraint.MaxTextSize = metrics.IsLandscapeMobile and 16 or 22
+			end
+		elseif descendant:IsA("TextLabel") and descendant.Name == "VipTitle" then
+			local constraint = descendant:FindFirstChildOfClass("UITextSizeConstraint")
+			if constraint then
+				constraint.MinTextSize = metrics.IsLandscapeMobile and 20 or 28
+				constraint.MaxTextSize = metrics.IsLandscapeMobile and 30 or 40
+			end
+		end
 	end
 
 end
@@ -791,8 +949,10 @@ local function refreshShop()
 		uiStroke.Color = data.Color
 
 		local nameLabel = Instance.new("TextLabel", caseBtn)
-		nameLabel.Size = UDim2.new(1, 0, 0.28, 0) -- Powiększone z 0.22 (teraz 1.5x zamiast 2x)
-		nameLabel.Position = UDim2.fromScale(0, 0)
+		nameLabel.Name = "CaseNameLabel"
+		nameLabel.Size = UDim2.new(1, -10, 0.24, 0)
+		nameLabel.Position = UDim2.new(0.5, 0, 0, 0)
+		nameLabel.AnchorPoint = Vector2.new(0.5, 0)
 		nameLabel.Text = (#missing == 0 and "ALL COLLECTED!") or (data.Name)
 		if #missing == 0 then
 			caseBtn.BackgroundColor3 = Color3.fromRGB(109, 34, 51)
@@ -800,10 +960,14 @@ local function refreshShop()
 		end
 		nameLabel.TextColor3 = data.Color
 		nameLabel.Font = Enum.Font.SourceSansBold
-		nameLabel.TextSize = 32 -- Subtelniejsza czcionka
+		nameLabel.TextSize = 26
 		nameLabel.TextScaled = true
+		nameLabel.TextWrapped = true
 		nameLabel.BackgroundTransparency = 1
 		nameLabel.ZIndex = 104
+		local caseNameConstraint = Instance.new("UITextSizeConstraint", nameLabel)
+		caseNameConstraint.MinTextSize = 10
+		caseNameConstraint.MaxTextSize = 26
 
 		if data.Name == "BRAINROT GOD" then table.insert(rainbowLabels, {Label = nameLabel, Stroke = uiStroke}) end
 		if data.Name == "SECRET" then table.insert(secretLabels, {Label = nameLabel, Stroke = uiStroke}) end
@@ -867,13 +1031,17 @@ local function refreshShop()
 
 
 					local pl = Instance.new("TextLabel", itemFrame)
-					pl.Size = UDim2.new(1, 0, 0.25, 0)
-					pl.Position = UDim2.fromScale(0, 0.78)
+					pl.Name = "CaseChanceLabel"
+					pl.Size = UDim2.new(1, 0, 0.2, 0)
+					pl.Position = UDim2.fromScale(0, 0.8)
 					pl.Text = prob.."%"
 					pl.TextColor3 = Color3.new(1,1,1)
 					pl.TextScaled = true
 					pl.BackgroundTransparency = 1
 					pl.ZIndex = 107
+					local chanceConstraint = Instance.new("UITextSizeConstraint", pl)
+					chanceConstraint.MinTextSize = 9
+					chanceConstraint.MaxTextSize = 18
 					Instance.new("UIStroke", pl).Thickness = 2 -- Mocniejszy obrys
 				end
 			end
@@ -954,6 +1122,8 @@ local function toggleShop()
 			if name ~= "CaseShop" then closeFunc() end
 		end
 		refreshShop() 
+		applyShopLayout()
+		task.defer(applyShopLayout)
 	end
 	shopContainer.Visible = isVisible
 	closeButton.Visible = isVisible

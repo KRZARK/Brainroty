@@ -53,10 +53,12 @@ local BrainrotyFolder = Workspace:WaitForChild("Brainroty")
 local GreenStudsTexture = HudTileStyle.getImage(ReplicatedStorage, "GreenStuds", "")
 local CLIENT_COLLECT_DISTANCE = GameConfig.ClientCollectDistance or 6
 local currentBrainrotCollected = 0
-local currentBrainrotTotal = 0
+local currentBrainrotTotal = GameConfig.TotalBrainrots or 0
 local currentCoinRainPool = 0
 local currentCoinRainMax = GameConfig.CoinRainTriggerAmount or 1000
 local useCompactTopStatusText = false
+local showMobileCoinRainSuffix = true
+local useWrappedMobileCoinRainText = false
 
 local function formatBrainrotProgressText(collected, total)
 	local prefix = useCompactTopStatusText and "BRAINROT: " or "BRAINROT PROGRESS: "
@@ -64,8 +66,13 @@ local function formatBrainrotProgressText(collected, total)
 end
 
 local function formatCoinRainProgressText(currentPool, maxPool)
+	if useWrappedMobileCoinRainText then
+		return "COIN RAIN\nPROGRESS: " .. tostring(currentPool) .. "/" .. tostring(maxPool) .. " " .. utf8.char(0xE002)
+	end
+
 	local prefix = useCompactTopStatusText and "COIN RAIN: " or "COIN RAIN PROGRESS: "
-	return prefix .. tostring(currentPool) .. " / " .. tostring(maxPool) .. " " .. utf8.char(0xE002)
+	local suffix = showMobileCoinRainSuffix and (" " .. utf8.char(0xE002)) or ""
+	return prefix .. tostring(currentPool) .. " / " .. tostring(maxPool) .. suffix
 end
 
 local CollectSound = SoundService:WaitForChild("CollectSound")
@@ -89,7 +96,7 @@ if oldToggle then oldToggle:Destroy() end
 local screenGui = Instance.new("ScreenGui")
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.Name = "BrainrotIndexUI"
-screenGui.DisplayOrder = 10
+screenGui.DisplayOrder = 540
 screenGui.IgnoreGuiInset = true -- Pozwala na precyzyjne sterowanie szczytem ekranu
 screenGui.ResetOnSpawn = false
 screenGui.Parent = playerGui
@@ -146,7 +153,7 @@ stripes.Parent = topProgressFill
 local topProgressLabel = Instance.new("TextLabel")
 topProgressLabel.Size = UDim2.fromScale(1, 1)
 topProgressLabel.BackgroundTransparency = 1
-topProgressLabel.Text = formatBrainrotProgressText(0, 0)
+topProgressLabel.Text = formatBrainrotProgressText(0, currentBrainrotTotal)
 topProgressLabel.TextColor3 = Color3.new(1, 1, 1)
 topProgressLabel.Font = Enum.Font.SourceSansBold
 topProgressLabel.TextSize = 26
@@ -257,6 +264,26 @@ setupNotifyLabel(notifyLine2Shadow, 80, 164, 85, false)
 setupNotifyLabel(notifyLine2, 80, 160, 85, false)
 setupNotifyLabel(notifyLine3, 75, 225, 65, false)
 
+local notifyLine1Constraint = Instance.new("UITextSizeConstraint")
+notifyLine1Constraint.MinTextSize = 14
+notifyLine1Constraint.MaxTextSize = 40
+notifyLine1Constraint.Parent = notifyLine1
+
+local notifyLine2Constraint = Instance.new("UITextSizeConstraint")
+notifyLine2Constraint.MinTextSize = 18
+notifyLine2Constraint.MaxTextSize = 85
+notifyLine2Constraint.Parent = notifyLine2
+
+local notifyLine2ShadowConstraint = Instance.new("UITextSizeConstraint")
+notifyLine2ShadowConstraint.MinTextSize = 18
+notifyLine2ShadowConstraint.MaxTextSize = 85
+notifyLine2ShadowConstraint.Parent = notifyLine2Shadow
+
+local notifyLine3Constraint = Instance.new("UITextSizeConstraint")
+notifyLine3Constraint.MinTextSize = 16
+notifyLine3Constraint.MaxTextSize = 65
+notifyLine3Constraint.Parent = notifyLine3
+
 notifyLine2Shadow.TextColor3 = Color3.new(0, 0, 0)
 notifyLine2Shadow.TextStrokeTransparency = 1
 notifyLine2Shadow.ZIndex = notifyLine2.ZIndex - 1
@@ -270,6 +297,192 @@ notifyViewport.ZIndex = 160
 notifyViewport.BackgroundTransparency = 1
 notifyViewport.ImageTransparency = 1 
 notifyViewport.Parent = notifyFrame
+
+local function applyCollectionNotifyLayout()
+	local metrics = HudTileStyle.getLayoutMetrics()
+	local viewport = metrics.Viewport or Vector2.new(1280, 720)
+	local isMobile = metrics.IsMobile
+	local isLandscapeMobile = metrics.IsLandscapeMobile
+
+	if isLandscapeMobile then
+		local centerX = math.floor(viewport.X * 0.5 + 0.5)
+		local baseY = math.floor(metrics.TopSafe + 8 + 0.5)
+		local titleWidth = math.clamp(math.floor(viewport.X * 0.62 + 0.5), 210, 340)
+		local nameWidth = math.clamp(math.floor(viewport.X * 0.86 + 0.5), 300, 520)
+		local rarityWidth = math.clamp(math.floor(viewport.X * 0.54 + 0.5), 180, 300)
+		local viewportSize = math.clamp(math.floor(viewport.Y * 0.58 + 0.5), 180, 220)
+
+		notifyLine1.AnchorPoint = Vector2.new(0.5, 0)
+		notifyLine1.Position = UDim2.fromOffset(centerX, baseY)
+		notifyLine1.Size = UDim2.fromOffset(titleWidth, 24)
+		notifyLine1.TextScaled = true
+		notifyLine1.TextWrapped = false
+		notifyLine1.TextXAlignment = Enum.TextXAlignment.Center
+		notifyLine1.TextSize = 24
+		notifyLine1Constraint.MinTextSize = 12
+		notifyLine1Constraint.MaxTextSize = 24
+
+		notifyLine2Shadow.AnchorPoint = Vector2.new(0.5, 0)
+		notifyLine2Shadow.Position = UDim2.fromOffset(centerX, baseY + 31)
+		notifyLine2Shadow.Size = UDim2.fromOffset(nameWidth, 56)
+		notifyLine2Shadow.TextScaled = true
+		notifyLine2Shadow.TextWrapped = true
+		notifyLine2Shadow.TextXAlignment = Enum.TextXAlignment.Center
+		notifyLine2Shadow.TextYAlignment = Enum.TextYAlignment.Center
+		notifyLine2Shadow.TextSize = 42
+		notifyLine2ShadowConstraint.MinTextSize = 18
+		notifyLine2ShadowConstraint.MaxTextSize = 42
+
+		notifyLine2.AnchorPoint = Vector2.new(0.5, 0)
+		notifyLine2.Position = UDim2.fromOffset(centerX, baseY + 28)
+		notifyLine2.Size = UDim2.fromOffset(nameWidth, 56)
+		notifyLine2.TextScaled = true
+		notifyLine2.TextWrapped = true
+		notifyLine2.TextXAlignment = Enum.TextXAlignment.Center
+		notifyLine2.TextYAlignment = Enum.TextYAlignment.Center
+		notifyLine2.TextSize = 42
+		notifyLine2Constraint.MinTextSize = 18
+		notifyLine2Constraint.MaxTextSize = 42
+
+		notifyLine3.AnchorPoint = Vector2.new(0.5, 0)
+		notifyLine3.Position = UDim2.fromOffset(centerX, baseY + 90)
+		notifyLine3.Size = UDim2.fromOffset(rarityWidth, 28)
+		notifyLine3.TextScaled = true
+		notifyLine3.TextWrapped = false
+		notifyLine3.TextXAlignment = Enum.TextXAlignment.Center
+		notifyLine3.TextSize = 28
+		notifyLine3Constraint.MinTextSize = 14
+		notifyLine3Constraint.MaxTextSize = 28
+
+		notifyViewport.Size = UDim2.fromOffset(viewportSize, viewportSize)
+		notifyViewport.Position = UDim2.fromOffset(centerX, math.floor(viewport.Y * 0.67 + 0.5))
+	elseif isMobile then
+		local centerX = math.floor(viewport.X * 0.5 + 0.5)
+		local baseY = math.floor(metrics.TopSafe + 16 + 0.5)
+		local titleWidth = math.clamp(math.floor(viewport.X * 0.76 + 0.5), 220, 380)
+		local nameWidth = math.clamp(math.floor(viewport.X * 0.90 + 0.5), 280, 500)
+		local rarityWidth = math.clamp(math.floor(viewport.X * 0.64 + 0.5), 180, 320)
+		local viewportSize = math.clamp(math.floor(viewport.X * 0.70 + 0.5), 200, 280)
+
+		notifyLine1.AnchorPoint = Vector2.new(0.5, 0)
+		notifyLine1.Position = UDim2.fromOffset(centerX, baseY)
+		notifyLine1.Size = UDim2.fromOffset(titleWidth, 30)
+		notifyLine1.TextScaled = true
+		notifyLine1.TextWrapped = false
+		notifyLine1.TextXAlignment = Enum.TextXAlignment.Center
+		notifyLine1.TextSize = 30
+		notifyLine1Constraint.MinTextSize = 14
+		notifyLine1Constraint.MaxTextSize = 30
+
+		notifyLine2Shadow.AnchorPoint = Vector2.new(0.5, 0)
+		notifyLine2Shadow.Position = UDim2.fromOffset(centerX, baseY + 39)
+		notifyLine2Shadow.Size = UDim2.fromOffset(nameWidth, 72)
+		notifyLine2Shadow.TextScaled = true
+		notifyLine2Shadow.TextWrapped = true
+		notifyLine2Shadow.TextXAlignment = Enum.TextXAlignment.Center
+		notifyLine2Shadow.TextYAlignment = Enum.TextYAlignment.Center
+		notifyLine2Shadow.TextSize = 48
+		notifyLine2ShadowConstraint.MinTextSize = 20
+		notifyLine2ShadowConstraint.MaxTextSize = 48
+
+		notifyLine2.AnchorPoint = Vector2.new(0.5, 0)
+		notifyLine2.Position = UDim2.fromOffset(centerX, baseY + 34)
+		notifyLine2.Size = UDim2.fromOffset(nameWidth, 72)
+		notifyLine2.TextScaled = true
+		notifyLine2.TextWrapped = true
+		notifyLine2.TextXAlignment = Enum.TextXAlignment.Center
+		notifyLine2.TextYAlignment = Enum.TextYAlignment.Center
+		notifyLine2.TextSize = 48
+		notifyLine2Constraint.MinTextSize = 20
+		notifyLine2Constraint.MaxTextSize = 48
+
+		notifyLine3.AnchorPoint = Vector2.new(0.5, 0)
+		notifyLine3.Position = UDim2.fromOffset(centerX, baseY + 114)
+		notifyLine3.Size = UDim2.fromOffset(rarityWidth, 34)
+		notifyLine3.TextScaled = true
+		notifyLine3.TextWrapped = false
+		notifyLine3.TextXAlignment = Enum.TextXAlignment.Center
+		notifyLine3.TextSize = 32
+		notifyLine3Constraint.MinTextSize = 16
+		notifyLine3Constraint.MaxTextSize = 32
+
+		notifyViewport.Size = UDim2.fromOffset(viewportSize, viewportSize)
+		notifyViewport.Position = UDim2.fromOffset(centerX, math.floor(viewport.Y * 0.7 + 0.5))
+	else
+		notifyLine1.AnchorPoint = Vector2.new(0, 0)
+		notifyLine1.Position = UDim2.new(0, 0, 0, 110)
+		notifyLine1.Size = UDim2.new(1, 0, 0, 40)
+		notifyLine1.TextScaled = false
+		notifyLine1.TextWrapped = false
+		notifyLine1.TextXAlignment = Enum.TextXAlignment.Center
+		notifyLine1.TextSize = 40
+		notifyLine1Constraint.MinTextSize = 14
+		notifyLine1Constraint.MaxTextSize = 40
+
+		notifyLine2Shadow.AnchorPoint = Vector2.new(0, 0)
+		notifyLine2Shadow.Position = UDim2.new(0, 0, 0, 164)
+		notifyLine2Shadow.Size = UDim2.new(1, 0, 0, 80)
+		notifyLine2Shadow.TextScaled = false
+		notifyLine2Shadow.TextWrapped = false
+		notifyLine2Shadow.TextXAlignment = Enum.TextXAlignment.Center
+		notifyLine2Shadow.TextYAlignment = Enum.TextYAlignment.Center
+		notifyLine2Shadow.TextSize = 85
+		notifyLine2ShadowConstraint.MinTextSize = 18
+		notifyLine2ShadowConstraint.MaxTextSize = 85
+
+		notifyLine2.AnchorPoint = Vector2.new(0, 0)
+		notifyLine2.Position = UDim2.new(0, 0, 0, 160)
+		notifyLine2.Size = UDim2.new(1, 0, 0, 80)
+		notifyLine2.TextScaled = false
+		notifyLine2.TextWrapped = false
+		notifyLine2.TextXAlignment = Enum.TextXAlignment.Center
+		notifyLine2.TextYAlignment = Enum.TextYAlignment.Center
+		notifyLine2.TextSize = 85
+		notifyLine2Constraint.MinTextSize = 18
+		notifyLine2Constraint.MaxTextSize = 85
+
+		notifyLine3.AnchorPoint = Vector2.new(0, 0)
+		notifyLine3.Position = UDim2.new(0, 0, 0, 225)
+		notifyLine3.Size = UDim2.new(1, 0, 0, 75)
+		notifyLine3.TextScaled = false
+		notifyLine3.TextWrapped = false
+		notifyLine3.TextXAlignment = Enum.TextXAlignment.Center
+		notifyLine3.TextSize = 65
+		notifyLine3Constraint.MinTextSize = 16
+		notifyLine3Constraint.MaxTextSize = 65
+
+		notifyViewport.Size = UDim2.new(0, 750, 0, 750)
+		notifyViewport.Position = UDim2.new(0.5, 0, 0.45, 100)
+	end
+end
+
+local function getCollectionNotifyViewportOptions()
+	local metrics = HudTileStyle.getLayoutMetrics()
+	if metrics.IsLandscapeMobile then
+		return {distanceMultiplier = 1.18}
+	elseif metrics.IsMobile then
+		return {distanceMultiplier = 1.12}
+	end
+	return nil
+end
+
+local function bindCollectionNotifyLayout()
+	local function bindCamera(camera)
+		if not camera then
+			return
+		end
+		camera:GetPropertyChangedSignal("ViewportSize"):Connect(applyCollectionNotifyLayout)
+	end
+
+	bindCamera(Workspace.CurrentCamera)
+	Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+		bindCamera(Workspace.CurrentCamera)
+		task.defer(applyCollectionNotifyLayout)
+	end)
+end
+
+applyCollectionNotifyLayout()
+bindCollectionNotifyLayout()
 
 local globalAnnouncementOverlay = Instance.new("Frame")
 globalAnnouncementOverlay.Name = "GlobalAnnouncementOverlay"
@@ -710,6 +923,328 @@ rebirthSubText.ZIndex = 278
 rebirthSubText.Parent = rebirthReadyCard
 rebirthSubText.TextXAlignment = Enum.TextXAlignment.Left
 
+local function getGlobalAnnouncementLayout()
+	local metrics = HudTileStyle.getLayoutMetrics()
+	local viewport = metrics.Viewport or Vector2.new(1280, 720)
+	local layout = {
+		glowPosition = UDim2.fromScale(0.5, 0.12),
+		glowSize = UDim2.fromOffset(1200, 420),
+		topBeamPosition = UDim2.fromScale(0.5, 0.03),
+		bottomBeamPosition = UDim2.fromScale(0.5, 0.25),
+		beamSize = UDim2.new(0.76, 0, 0, 6),
+		cardStartSize = UDim2.fromOffset(900, 190),
+		cardStartPosition = UDim2.fromScale(0.5, 0.12),
+		cardShownSize = UDim2.fromOffset(980, 220),
+		cardShownPosition = UDim2.fromScale(0.5, 0.14),
+		cardExitSize = UDim2.fromOffset(930, 200),
+		cardExitPosition = UDim2.fromScale(0.5, 0.11),
+		viewportPosition = UDim2.fromScale(0.12, 0.5),
+		viewportStartSize = UDim2.fromOffset(110, 110),
+		viewportShownSize = UDim2.fromOffset(120, 120),
+		badgePosition = UDim2.fromScale(0.23, 0.12),
+		badgeSize = UDim2.fromOffset(220, 34),
+		badgeTextSize = 18,
+		titlePosition = UDim2.fromScale(0.23, 0.3),
+		titleSize = UDim2.fromOffset(660, 60),
+		titleTextSize = 34,
+		titleWrapped = false,
+		titleYAlignment = Enum.TextYAlignment.Center,
+		rarityPosition = UDim2.fromScale(0.23, 0.58),
+		raritySize = UDim2.fromOffset(360, 32),
+		rarityTextSize = 20,
+		subTextPosition = UDim2.fromScale(0.23, 0.72),
+		subTextSize = UDim2.fromOffset(520, 40),
+		subTextTextSize = 20,
+		subTextWrapped = true,
+		subTextYAlignment = Enum.TextYAlignment.Center,
+	}
+
+	if metrics.IsLandscapeMobile then
+		local cardWidth = math.clamp(math.floor(metrics.ContentWidth * 0.95 + 0.5), 332, 388)
+		local cardHeight = math.clamp(math.floor(viewport.Y * 0.40 + 0.5), 140, 160)
+		local cardTop = math.max(18, metrics.TopSafe - math.floor(cardHeight * 0.08 + 0.5))
+		local cardCenterX = math.floor((metrics.ContentLeft + metrics.ContentRight) * 0.5 + 0.5)
+		local cardCenterY = math.floor(cardTop + cardHeight * 0.5 + 0.5)
+		local beamWidth = math.clamp((cardWidth + 80) / viewport.X, 0.54, 0.76)
+		local beamCenterX = math.floor(viewport.X * 0.5 + 0.5)
+		local beamTopY = math.max(10, cardTop - 16)
+		local beamBottomY = math.min(viewport.Y - 12, cardTop + cardHeight + 16)
+		local viewportShown = math.clamp(math.floor(cardHeight * 0.56 + 0.5), 80, 90)
+		local viewportStart = math.max(72, viewportShown - 8)
+		local viewportCenterX = math.floor(cardWidth * 0.15 + 0.5)
+		local viewportCenterY = math.floor(cardHeight * 0.5 + 0.5)
+		local textLeft = viewportCenterX + math.floor(viewportShown * 0.5 + 18 + 0.5)
+		local textWidth = math.max(150, cardWidth - textLeft - 18)
+
+		layout.glowPosition = UDim2.fromOffset(cardCenterX, cardCenterY)
+		layout.glowSize = UDim2.fromOffset(cardWidth + 180, cardHeight + 150)
+		layout.topBeamPosition = UDim2.fromOffset(beamCenterX, beamTopY)
+		layout.bottomBeamPosition = UDim2.fromOffset(beamCenterX, beamBottomY)
+		layout.beamSize = UDim2.new(beamWidth, 0, 0, 5)
+		layout.cardStartSize = UDim2.fromOffset(cardWidth - 26, cardHeight - 12)
+		layout.cardStartPosition = UDim2.fromOffset(cardCenterX, cardCenterY - 8)
+		layout.cardShownSize = UDim2.fromOffset(cardWidth, cardHeight)
+		layout.cardShownPosition = UDim2.fromOffset(cardCenterX, cardCenterY)
+		layout.cardExitSize = UDim2.fromOffset(cardWidth - 12, cardHeight - 8)
+		layout.cardExitPosition = UDim2.fromOffset(cardCenterX, cardCenterY - 6)
+		layout.viewportPosition = UDim2.fromOffset(viewportCenterX, viewportCenterY)
+		layout.viewportStartSize = UDim2.fromOffset(viewportStart, viewportStart)
+		layout.viewportShownSize = UDim2.fromOffset(viewportShown, viewportShown)
+		layout.badgePosition = UDim2.fromOffset(textLeft, 14)
+		layout.badgeSize = UDim2.fromOffset(math.min(textWidth, 168), 26)
+		layout.badgeTextSize = 14
+		layout.titlePosition = UDim2.fromOffset(textLeft, 40)
+		layout.titleSize = UDim2.fromOffset(textWidth, 52)
+		layout.titleTextSize = 21
+		layout.titleWrapped = true
+		layout.rarityPosition = UDim2.fromOffset(textLeft, 94)
+		layout.raritySize = UDim2.fromOffset(math.min(textWidth, 210), 22)
+		layout.rarityTextSize = 16
+		layout.subTextPosition = UDim2.fromOffset(textLeft, 114)
+		layout.subTextSize = UDim2.fromOffset(textWidth, 24)
+		layout.subTextTextSize = 14
+	elseif metrics.IsMobile then
+		local cardWidth = math.clamp(math.floor(viewport.X * 0.9 + 0.5), 330, 460)
+		local cardHeight = math.clamp(math.floor(viewport.Y * 0.22 + 0.5), 176, 210)
+		local cardTop = math.max(30, metrics.TopSafe + 16)
+		local cardCenterX = math.floor(viewport.X * 0.5 + 0.5)
+		local cardCenterY = math.floor(cardTop + cardHeight * 0.5 + 0.5)
+		local beamWidth = math.clamp((cardWidth + 110) / viewport.X, 0.6, 0.9)
+		local viewportShown = math.clamp(math.floor(cardHeight * 0.54 + 0.5), 88, 110)
+		local viewportStart = math.max(80, viewportShown - 10)
+		local viewportCenterX = math.floor(cardWidth * 0.16 + 0.5)
+		local viewportCenterY = math.floor(cardHeight * 0.5 + 0.5)
+		local textLeft = viewportCenterX + math.floor(viewportShown * 0.5 + 22 + 0.5)
+		local textWidth = math.max(170, cardWidth - textLeft - 24)
+
+		layout.glowPosition = UDim2.fromOffset(cardCenterX, cardCenterY)
+		layout.glowSize = UDim2.fromOffset(cardWidth + 240, cardHeight + 180)
+		layout.topBeamPosition = UDim2.fromOffset(cardCenterX, math.max(12, cardTop - 18))
+		layout.bottomBeamPosition = UDim2.fromOffset(cardCenterX, math.min(viewport.Y - 16, cardTop + cardHeight + 18))
+		layout.beamSize = UDim2.new(beamWidth, 0, 0, 6)
+		layout.cardStartSize = UDim2.fromOffset(cardWidth - 32, cardHeight - 14)
+		layout.cardStartPosition = UDim2.fromOffset(cardCenterX, cardCenterY - 10)
+		layout.cardShownSize = UDim2.fromOffset(cardWidth, cardHeight)
+		layout.cardShownPosition = UDim2.fromOffset(cardCenterX, cardCenterY)
+		layout.cardExitSize = UDim2.fromOffset(cardWidth - 14, cardHeight - 8)
+		layout.cardExitPosition = UDim2.fromOffset(cardCenterX, cardCenterY - 8)
+		layout.viewportPosition = UDim2.fromOffset(viewportCenterX, viewportCenterY)
+		layout.viewportStartSize = UDim2.fromOffset(viewportStart, viewportStart)
+		layout.viewportShownSize = UDim2.fromOffset(viewportShown, viewportShown)
+		layout.badgePosition = UDim2.fromOffset(textLeft, 18)
+		layout.badgeSize = UDim2.fromOffset(math.min(textWidth, 194), 30)
+		layout.badgeTextSize = 16
+		layout.titlePosition = UDim2.fromOffset(textLeft, 52)
+		layout.titleSize = UDim2.fromOffset(textWidth, 66)
+		layout.titleTextSize = 24
+		layout.titleWrapped = true
+		layout.rarityPosition = UDim2.fromOffset(textLeft, 120)
+		layout.raritySize = UDim2.fromOffset(math.min(textWidth, 240), 26)
+		layout.rarityTextSize = 18
+		layout.subTextPosition = UDim2.fromOffset(textLeft, 148)
+		layout.subTextSize = UDim2.fromOffset(textWidth, 30)
+		layout.subTextTextSize = 15
+	end
+
+	return layout
+end
+
+local function applyGlobalAnnouncementLayout(layout)
+	overlayGlow.Position = layout.glowPosition
+	overlayGlow.Size = layout.glowSize
+	topBeam.Position = layout.topBeamPosition
+	topBeam.Size = layout.beamSize
+	bottomBeam.Position = layout.bottomBeamPosition
+	bottomBeam.Size = layout.beamSize
+	globalAnnouncementCard.Position = layout.cardShownPosition
+	globalAnnouncementCard.Size = layout.cardShownSize
+	globalAnnouncementViewportHolder.Position = layout.viewportPosition
+	globalAnnouncementViewportHolder.Size = layout.viewportShownSize
+	globalBadge.Position = layout.badgePosition
+	globalBadge.Size = layout.badgeSize
+	globalBadge.TextSize = layout.badgeTextSize
+	globalTitle.Position = layout.titlePosition
+	globalTitle.Size = layout.titleSize
+	globalTitle.TextSize = layout.titleTextSize
+	globalTitle.TextWrapped = layout.titleWrapped
+	globalTitle.TextYAlignment = layout.titleYAlignment
+	globalFinder.Position = layout.titlePosition
+	globalFinder.Size = layout.titleSize
+	globalFinder.TextSize = layout.titleTextSize
+	globalFinder.TextWrapped = layout.titleWrapped
+	globalFinder.TextYAlignment = layout.titleYAlignment
+	globalRarity.Position = layout.rarityPosition
+	globalRarity.Size = layout.raritySize
+	globalRarity.TextSize = layout.rarityTextSize
+	globalSubText.Position = layout.subTextPosition
+	globalSubText.Size = layout.subTextSize
+	globalSubText.TextSize = layout.subTextTextSize
+	globalSubText.TextWrapped = layout.subTextWrapped
+	globalSubText.TextYAlignment = layout.subTextYAlignment
+end
+
+local function getRebirthReadyLayout()
+	local metrics = HudTileStyle.getLayoutMetrics()
+	local viewport = metrics.Viewport or Vector2.new(1280, 720)
+	local layout = {
+		glowPosition = UDim2.fromScale(0.5, 0.33),
+		glowSize = UDim2.fromOffset(1220, 440),
+		topBeamPosition = UDim2.fromScale(0.5, 0.17),
+		bottomBeamPosition = UDim2.fromScale(0.5, 0.49),
+		beamSize = UDim2.new(0.76, 0, 0, 6),
+		cardStartSize = UDim2.fromOffset(900, 190),
+		cardStartPosition = UDim2.fromScale(0.5, 0.31),
+		cardShownSize = UDim2.fromOffset(980, 220),
+		cardShownPosition = UDim2.fromScale(0.5, 0.33),
+		cardExitSize = UDim2.fromOffset(930, 200),
+		cardExitPosition = UDim2.fromScale(0.5, 0.3),
+		viewportPosition = UDim2.fromScale(0.12, 0.5),
+		viewportStartSize = UDim2.fromOffset(110, 110),
+		viewportShownSize = UDim2.fromOffset(120, 120),
+		iconStartSize = UDim2.fromScale(0.5, 0.5),
+		iconShownSize = UDim2.fromScale(0.58, 0.58),
+		badgePosition = UDim2.fromScale(0.23, 0.12),
+		badgeSize = UDim2.fromOffset(250, 34),
+		badgeTextSize = 18,
+		titlePosition = UDim2.fromScale(0.23, 0.27),
+		titleSize = UDim2.fromOffset(650, 72),
+		titleTextSize = 29,
+		titleWrapped = true,
+		titleYAlignment = Enum.TextYAlignment.Top,
+		rarityPosition = UDim2.fromScale(0.23, 0.62),
+		raritySize = UDim2.fromOffset(360, 30),
+		rarityTextSize = 20,
+		subTextPosition = UDim2.fromScale(0.23, 0.75),
+		subTextSize = UDim2.fromOffset(590, 42),
+		subTextTextSize = 19,
+		subTextWrapped = true,
+		subTextYAlignment = Enum.TextYAlignment.Center,
+		shineStartPosition = UDim2.fromScale(-0.2, 0.5),
+		shineEndPosition = UDim2.fromScale(1.15, 0.5),
+	}
+
+	if metrics.IsLandscapeMobile then
+		local cardWidth = math.clamp(math.floor(metrics.ContentWidth * 0.99 + 0.5), 344, 394)
+		local cardHeight = math.clamp(math.floor(viewport.Y * 0.43 + 0.5), 160, 176)
+		local cardTop = math.max(48, metrics.TopSafe + math.floor(viewport.Y * 0.10 + 0.5))
+		local cardCenterX = math.floor((metrics.ContentLeft + metrics.ContentRight) * 0.5 + 0.5)
+		local cardCenterY = math.floor(cardTop + cardHeight * 0.5 + 0.5)
+		local beamWidth = math.clamp((cardWidth + 90) / viewport.X, 0.56, 0.78)
+		local beamCenterX = math.floor(viewport.X * 0.5 + 0.5)
+		local viewportShown = math.clamp(math.floor(cardHeight * 0.55 + 0.5), 84, 92)
+		local viewportStart = math.max(74, viewportShown - 8)
+		local viewportCenterX = math.floor(cardWidth * 0.145 + 0.5)
+		local viewportCenterY = math.floor(cardHeight * 0.5 + 0.5)
+		local textLeft = viewportCenterX + math.floor(viewportShown * 0.5 + 16 + 0.5)
+		local textWidth = math.max(164, cardWidth - textLeft - 14)
+
+		layout.glowPosition = UDim2.fromOffset(cardCenterX, cardCenterY)
+		layout.glowSize = UDim2.fromOffset(cardWidth + 190, cardHeight + 160)
+		layout.topBeamPosition = UDim2.fromOffset(beamCenterX, math.max(16, cardTop - 18))
+		layout.bottomBeamPosition = UDim2.fromOffset(beamCenterX, math.min(viewport.Y - 14, cardTop + cardHeight + 18))
+		layout.beamSize = UDim2.new(beamWidth, 0, 0, 5)
+		layout.cardStartSize = UDim2.fromOffset(cardWidth - 28, cardHeight - 12)
+		layout.cardStartPosition = UDim2.fromOffset(cardCenterX, cardCenterY - 9)
+		layout.cardShownSize = UDim2.fromOffset(cardWidth, cardHeight)
+		layout.cardShownPosition = UDim2.fromOffset(cardCenterX, cardCenterY)
+		layout.cardExitSize = UDim2.fromOffset(cardWidth - 12, cardHeight - 8)
+		layout.cardExitPosition = UDim2.fromOffset(cardCenterX, cardCenterY - 7)
+		layout.viewportPosition = UDim2.fromOffset(viewportCenterX, viewportCenterY)
+		layout.viewportStartSize = UDim2.fromOffset(viewportStart, viewportStart)
+		layout.viewportShownSize = UDim2.fromOffset(viewportShown, viewportShown)
+		layout.badgePosition = UDim2.fromOffset(textLeft, 14)
+		layout.badgeSize = UDim2.fromOffset(math.min(textWidth, 168), 26)
+		layout.badgeTextSize = 14
+		layout.titlePosition = UDim2.fromOffset(textLeft, 38)
+		layout.titleSize = UDim2.fromOffset(textWidth, 58)
+		layout.titleTextSize = 19
+		layout.titleYAlignment = Enum.TextYAlignment.Center
+		layout.rarityPosition = UDim2.fromOffset(textLeft, 99)
+		layout.raritySize = UDim2.fromOffset(math.min(textWidth, 210), 22)
+		layout.rarityTextSize = 16
+		layout.subTextPosition = UDim2.fromOffset(textLeft, 118)
+		layout.subTextSize = UDim2.fromOffset(textWidth, 36)
+		layout.subTextTextSize = 12
+		layout.subTextYAlignment = Enum.TextYAlignment.Top
+	elseif metrics.IsMobile then
+		local cardWidth = math.clamp(math.floor(viewport.X * 0.9 + 0.5), 336, 470)
+		local cardHeight = math.clamp(math.floor(viewport.Y * 0.24 + 0.5), 190, 232)
+		local cardTop = math.max(44, metrics.TopSafe + 72)
+		local cardCenterX = math.floor(viewport.X * 0.5 + 0.5)
+		local cardCenterY = math.floor(cardTop + cardHeight * 0.5 + 0.5)
+		local beamWidth = math.clamp((cardWidth + 120) / viewport.X, 0.62, 0.92)
+		local viewportShown = math.clamp(math.floor(cardHeight * 0.56 + 0.5), 92, 112)
+		local viewportStart = math.max(84, viewportShown - 10)
+		local viewportCenterX = math.floor(cardWidth * 0.16 + 0.5)
+		local viewportCenterY = math.floor(cardHeight * 0.5 + 0.5)
+		local textLeft = viewportCenterX + math.floor(viewportShown * 0.5 + 22 + 0.5)
+		local textWidth = math.max(172, cardWidth - textLeft - 24)
+
+		layout.glowPosition = UDim2.fromOffset(cardCenterX, cardCenterY)
+		layout.glowSize = UDim2.fromOffset(cardWidth + 250, cardHeight + 190)
+		layout.topBeamPosition = UDim2.fromOffset(cardCenterX, math.max(18, cardTop - 20))
+		layout.bottomBeamPosition = UDim2.fromOffset(cardCenterX, math.min(viewport.Y - 18, cardTop + cardHeight + 20))
+		layout.beamSize = UDim2.new(beamWidth, 0, 0, 6)
+		layout.cardStartSize = UDim2.fromOffset(cardWidth - 34, cardHeight - 14)
+		layout.cardStartPosition = UDim2.fromOffset(cardCenterX, cardCenterY - 10)
+		layout.cardShownSize = UDim2.fromOffset(cardWidth, cardHeight)
+		layout.cardShownPosition = UDim2.fromOffset(cardCenterX, cardCenterY)
+		layout.cardExitSize = UDim2.fromOffset(cardWidth - 16, cardHeight - 8)
+		layout.cardExitPosition = UDim2.fromOffset(cardCenterX, cardCenterY - 8)
+		layout.viewportPosition = UDim2.fromOffset(viewportCenterX, viewportCenterY)
+		layout.viewportStartSize = UDim2.fromOffset(viewportStart, viewportStart)
+		layout.viewportShownSize = UDim2.fromOffset(viewportShown, viewportShown)
+		layout.badgePosition = UDim2.fromOffset(textLeft, 18)
+		layout.badgeSize = UDim2.fromOffset(math.min(textWidth, 190), 30)
+		layout.badgeTextSize = 16
+		layout.titlePosition = UDim2.fromOffset(textLeft, 50)
+		layout.titleSize = UDim2.fromOffset(textWidth, 74)
+		layout.titleTextSize = 22
+		layout.titleYAlignment = Enum.TextYAlignment.Top
+		layout.rarityPosition = UDim2.fromOffset(textLeft, 128)
+		layout.raritySize = UDim2.fromOffset(math.min(textWidth, 240), 26)
+		layout.rarityTextSize = 18
+		layout.subTextPosition = UDim2.fromOffset(textLeft, 156)
+		layout.subTextSize = UDim2.fromOffset(textWidth, 34)
+		layout.subTextTextSize = 15
+	end
+
+	return layout
+end
+
+local function applyRebirthReadyLayout(layout)
+	rebirthOverlayGlow.Position = layout.glowPosition
+	rebirthOverlayGlow.Size = layout.glowSize
+	rebirthTopBeam.Position = layout.topBeamPosition
+	rebirthTopBeam.Size = layout.beamSize
+	rebirthBottomBeam.Position = layout.bottomBeamPosition
+	rebirthBottomBeam.Size = layout.beamSize
+	rebirthReadyCard.Position = layout.cardShownPosition
+	rebirthReadyCard.Size = layout.cardShownSize
+	rebirthViewportHolder.Position = layout.viewportPosition
+	rebirthViewportHolder.Size = layout.viewportShownSize
+	rebirthAnnouncementIcon.Size = layout.iconShownSize
+	rebirthBadge.Position = layout.badgePosition
+	rebirthBadge.Size = layout.badgeSize
+	rebirthBadge.TextSize = layout.badgeTextSize
+	rebirthTitle.Position = layout.titlePosition
+	rebirthTitle.Size = layout.titleSize
+	rebirthTitle.TextSize = layout.titleTextSize
+	rebirthTitle.TextWrapped = layout.titleWrapped
+	rebirthTitle.TextYAlignment = layout.titleYAlignment
+	rebirthReadyRarity.Position = layout.rarityPosition
+	rebirthReadyRarity.Size = layout.raritySize
+	rebirthReadyRarity.TextSize = layout.rarityTextSize
+	rebirthSubText.Position = layout.subTextPosition
+	rebirthSubText.Size = layout.subTextSize
+	rebirthSubText.TextSize = layout.subTextTextSize
+	rebirthSubText.TextWrapped = layout.subTextWrapped
+	rebirthSubText.TextYAlignment = layout.subTextYAlignment
+end
+
+applyGlobalAnnouncementLayout(getGlobalAnnouncementLayout())
+applyRebirthReadyLayout(getRebirthReadyLayout())
+
 task.spawn(function()
 	local rebirthIconAsset = ReplicatedStorage:WaitForChild("RebirthIcon", 5)
 	if rebirthIconAsset then
@@ -734,7 +1269,8 @@ local function getAnnouncementDisplayName(brainrotName, rarity)
 end
 
 
-local function createViewport(model, parent, isCollected)
+local function createViewport(model, parent, isCollected, options)
+	options = options or {}
 	local viewport = parent:IsA("ViewportFrame") and parent or Instance.new("ViewportFrame")
 	viewport.ZIndex = 52 -- Zawsze o 1 wyżej niż ramka-rodzic
 	if not parent:IsA("ViewportFrame") then
@@ -767,8 +1303,8 @@ local function createViewport(model, parent, isCollected)
 		local horizontalHalfFov = math.atan(math.tan(verticalHalfFov) * aspect)
 		local fitHalfFov = math.min(verticalHalfFov, horizontalHalfFov)
 		local radius = math.max(size.Magnitude * 0.5, 0.1)
-		local distance = (radius / math.sin(fitHalfFov)) * 1.08
-		local lookDirection = isNotify and Vector3.new(0, 0, 1) or Vector3.new(1, 0.48, 1).Unit
+		local distance = (radius / math.sin(fitHalfFov)) * (options.distanceMultiplier or 1.08)
+		local lookDirection = options.lookDirection or (isNotify and Vector3.new(0, 0, 1) or Vector3.new(1, 0.48, 1).Unit)
 		local cameraPosition = cf.Position + (lookDirection * distance)
 		camera.CFrame = CFrame.lookAt(cameraPosition, cf.Position)
 	end
@@ -800,6 +1336,9 @@ local function isRebirthReadyTarget(brainrotName, rarity)
 end
 
 local function hideRebirthReadyEffectImmediately()
+	local layout = getRebirthReadyLayout()
+	applyRebirthReadyLayout(layout)
+
 	rebirthReadyOverlay.BackgroundTransparency = 1
 	rebirthOverlayGlow.ImageTransparency = 1
 	rebirthTopBeam.BackgroundTransparency = 1
@@ -815,11 +1354,11 @@ local function hideRebirthReadyEffectImmediately()
 	rebirthViewportGlow.ImageTransparency = 1
 	rebirthViewportHalo.BackgroundTransparency = 1
 	rebirthAnnouncementIcon.ImageTransparency = 1
-	rebirthReadyCard.Size = UDim2.fromOffset(900, 190)
-	rebirthReadyCard.Position = UDim2.fromScale(0.5, 0.31)
-	rebirthViewportHolder.Size = UDim2.fromOffset(110, 110)
-	rebirthAnnouncementIcon.Size = UDim2.fromScale(0.5, 0.5)
-	rebirthShine.Position = UDim2.fromScale(-0.2, 0.5)
+	rebirthReadyCard.Size = layout.cardStartSize
+	rebirthReadyCard.Position = layout.cardStartPosition
+	rebirthViewportHolder.Size = layout.viewportStartSize
+	rebirthAnnouncementIcon.Size = layout.iconStartSize
+	rebirthShine.Position = layout.shineStartPosition
 	rebirthShine.BackgroundTransparency = 1
 	rebirthReadyCard.Visible = false
 	rebirthReadyOverlay.Visible = false
@@ -837,6 +1376,9 @@ local function showRebirthReadyEffect(requestId)
 	if rebirthReadyRequestId ~= requestId or isRebirthReadyShowing then
 		return
 	end
+
+	local layout = getRebirthReadyLayout()
+	applyRebirthReadyLayout(layout)
 
 	isRebirthReadyShowing = true
 	rebirthReadyOverlay.Visible = true
@@ -858,11 +1400,11 @@ local function showRebirthReadyEffect(requestId)
 	rebirthViewportGlow.ImageTransparency = 1
 	rebirthViewportHalo.BackgroundTransparency = 1
 	rebirthAnnouncementIcon.ImageTransparency = 1
-	rebirthReadyCard.Size = UDim2.fromOffset(900, 190)
-	rebirthReadyCard.Position = UDim2.fromScale(0.5, 0.31)
-	rebirthViewportHolder.Size = UDim2.fromOffset(110, 110)
-	rebirthAnnouncementIcon.Size = UDim2.fromScale(0.5, 0.5)
-	rebirthShine.Position = UDim2.fromScale(-0.2, 0.5)
+	rebirthReadyCard.Size = layout.cardStartSize
+	rebirthReadyCard.Position = layout.cardStartPosition
+	rebirthViewportHolder.Size = layout.viewportStartSize
+	rebirthAnnouncementIcon.Size = layout.iconStartSize
+	rebirthShine.Position = layout.shineStartPosition
 	rebirthShine.BackgroundTransparency = 1
 
 	TweenService:Create(rebirthReadyOverlay, TweenInfo.new(0.3), {BackgroundTransparency = 0.28}):Play()
@@ -871,8 +1413,8 @@ local function showRebirthReadyEffect(requestId)
 	TweenService:Create(rebirthBottomBeam, TweenInfo.new(0.35), {BackgroundTransparency = 0.08}):Play()
 	TweenService:Create(rebirthReadyCard, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 		BackgroundTransparency = 0.08,
-		Size = UDim2.fromOffset(980, 220),
-		Position = UDim2.fromScale(0.5, 0.33),
+		Size = layout.cardShownSize,
+		Position = layout.cardShownPosition,
 	}):Play()
 	TweenService:Create(rebirthCardStroke, TweenInfo.new(0.35), {Transparency = 0.04}):Play()
 	TweenService:Create(rebirthBadge, TweenInfo.new(0.35), {BackgroundTransparency = 0.02, TextTransparency = 0}):Play()
@@ -880,16 +1422,16 @@ local function showRebirthReadyEffect(requestId)
 	TweenService:Create(rebirthReadyRarity, TweenInfo.new(0.35), {TextTransparency = 0}):Play()
 	TweenService:Create(rebirthSubText, TweenInfo.new(0.35), {TextTransparency = 0}):Play()
 	TweenService:Create(rebirthViewportHolder, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-		Size = UDim2.fromOffset(120, 120)
+		Size = layout.viewportShownSize
 	}):Play()
 	TweenService:Create(rebirthViewportGlow, TweenInfo.new(0.35), {ImageTransparency = 0.32}):Play()
 	TweenService:Create(rebirthViewportHalo, TweenInfo.new(0.35), {BackgroundTransparency = 0.32}):Play()
 	TweenService:Create(rebirthAnnouncementIcon, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 		ImageTransparency = 0,
-		Size = UDim2.fromScale(0.58, 0.58)
+		Size = layout.iconShownSize
 	}):Play()
 	TweenService:Create(rebirthShine, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-		Position = UDim2.fromScale(1.15, 0.5),
+		Position = layout.shineEndPosition,
 		BackgroundTransparency = 0.45,
 	}):Play()
 
@@ -909,8 +1451,8 @@ local function showRebirthReadyEffect(requestId)
 		TweenService:Create(rebirthBottomBeam, TweenInfo.new(0.35), {BackgroundTransparency = 1}):Play()
 		TweenService:Create(rebirthReadyCard, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 			BackgroundTransparency = 1,
-			Size = UDim2.fromOffset(930, 200),
-			Position = UDim2.fromScale(0.5, 0.3),
+			Size = layout.cardExitSize,
+			Position = layout.cardExitPosition,
 		}):Play()
 		TweenService:Create(rebirthCardStroke, TweenInfo.new(0.35), {Transparency = 1}):Play()
 		TweenService:Create(rebirthBadge, TweenInfo.new(0.25), {BackgroundTransparency = 1, TextTransparency = 1}):Play()
@@ -1024,7 +1566,8 @@ local function showCollectionEffect(name, rarity)
 
 	local modelTemplate = BrainrotStorage:FindFirstChild(name)
 	if modelTemplate then
-		createViewport(modelTemplate, notifyViewport, true)
+		applyCollectionNotifyLayout()
+		createViewport(modelTemplate, notifyViewport, true, getCollectionNotifyViewportOptions())
 	end
 
 	notifyLine1.Text = "YOU FOUND"
@@ -1069,6 +1612,9 @@ local function showCollectionEffect(name, rarity)
 end
 
 local function showGlobalDiscoveryEffect(finderName, brainrotName, rarity)
+	local layout = getGlobalAnnouncementLayout()
+	applyGlobalAnnouncementLayout(layout)
+
 	isGlobalAnnouncementShowing = true
 	globalAnnouncementOverlay.Visible = true
 	globalAnnouncementCard.Visible = true
@@ -1093,10 +1639,10 @@ local function showGlobalDiscoveryEffect(finderName, brainrotName, rarity)
 	globalFinder.TextTransparency = 1
 	globalSubText.TextTransparency = 1
 	globalAnnouncementViewport.ImageTransparency = 1
-	globalAnnouncementCard.Size = UDim2.fromOffset(900, 190)
-	globalAnnouncementCard.Position = UDim2.fromScale(0.5, 0.12)
-	globalAnnouncementViewportHolder.Size = UDim2.fromOffset(110, 110)
-	globalShine.Position = UDim2.fromScale(-0.2, 0.5)
+	globalAnnouncementCard.Size = layout.cardStartSize
+	globalAnnouncementCard.Position = layout.cardStartPosition
+	globalAnnouncementViewportHolder.Size = layout.viewportStartSize
+	globalShine.Position = layout.shineStartPosition or UDim2.fromScale(-0.2, 0.5)
 	globalShine.BackgroundTransparency = 1
 
 	local modelTemplate = BrainrotStorage:FindFirstChild(brainrotName or "")
@@ -1110,8 +1656,8 @@ local function showGlobalDiscoveryEffect(finderName, brainrotName, rarity)
 	TweenService:Create(bottomBeam, TweenInfo.new(0.35), {BackgroundTransparency = 0.12}):Play()
 	TweenService:Create(globalAnnouncementCard, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 		BackgroundTransparency = 0.12,
-		Size = UDim2.fromOffset(980, 220),
-		Position = UDim2.fromScale(0.5, 0.14),
+		Size = layout.cardShownSize,
+		Position = layout.cardShownPosition,
 	}):Play()
 	TweenService:Create(globalCardStroke, TweenInfo.new(0.35), {Transparency = 0.05}):Play()
 	TweenService:Create(globalBadge, TweenInfo.new(0.35), {BackgroundTransparency = 0.02, TextTransparency = 0}):Play()
@@ -1120,10 +1666,10 @@ local function showGlobalDiscoveryEffect(finderName, brainrotName, rarity)
 	TweenService:Create(globalSubText, TweenInfo.new(0.35), {TextTransparency = 0}):Play()
 	TweenService:Create(globalAnnouncementViewport, TweenInfo.new(0.35), {ImageTransparency = 0}):Play()
 	TweenService:Create(globalAnnouncementViewportHolder, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-		Size = UDim2.fromOffset(120, 120)
+		Size = layout.viewportShownSize
 	}):Play()
 	TweenService:Create(globalShine, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-		Position = UDim2.fromScale(1.15, 0.5),
+		Position = layout.shineEndPosition or UDim2.fromScale(1.15, 0.5),
 		BackgroundTransparency = 0.55,
 	}):Play()
 
@@ -1140,8 +1686,8 @@ local function showGlobalDiscoveryEffect(finderName, brainrotName, rarity)
 	TweenService:Create(bottomBeam, TweenInfo.new(0.35), {BackgroundTransparency = 1}):Play()
 	TweenService:Create(globalAnnouncementCard, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 		BackgroundTransparency = 1,
-		Size = UDim2.fromOffset(930, 200),
-		Position = UDim2.fromScale(0.5, 0.11),
+		Size = layout.cardExitSize,
+		Position = layout.cardExitPosition,
 	}):Play()
 	TweenService:Create(globalCardStroke, TweenInfo.new(0.35), {Transparency = 1}):Play()
 	TweenService:Create(globalBadge, TweenInfo.new(0.25), {BackgroundTransparency = 1, TextTransparency = 1}):Play()
@@ -1257,6 +1803,11 @@ indexModal.Parent = indexBackdrop
 local modalCorner = Instance.new("UICorner")
 modalCorner.CornerRadius = UDim.new(0, 28)
 modalCorner.Parent = indexModal
+
+local indexModalScale = Instance.new("UIScale")
+indexModalScale.Name = "IndexModalScale"
+indexModalScale.Scale = 1
+indexModalScale.Parent = indexModal
 
 local modalStroke = Instance.new("UIStroke")
 modalStroke.Thickness = 3
@@ -1386,7 +1937,7 @@ local progressLabel = Instance.new("TextLabel")
 progressLabel.Name = "ProgressLabel"
 progressLabel.Size = UDim2.fromScale(1, 1)
 progressLabel.BackgroundTransparency = 1
-progressLabel.Text = "COLLECTED: 0 / 0"
+progressLabel.Text = "COLLECTED: 0 / " .. currentBrainrotTotal
 progressLabel.TextColor3 = Color3.new(1, 1, 1)
 progressLabel.Font = Enum.Font.FredokaOne
 progressLabel.TextStrokeTransparency = 1
@@ -1419,44 +1970,141 @@ layout.SortOrder = Enum.SortOrder.Name
 layout.Parent = indexFrame
 
 local function applyIndexModalLayout()
-	local viewport = Workspace.CurrentCamera and Workspace.CurrentCamera.ViewportSize or Vector2.new(1280, 720)
-	local isMobile = HudTileStyle.isMobileLayout()
-	local modalWidthScale = isMobile and 0.92 or 0.72
-	local modalHeightScale = isMobile and 0.80 or 0.82
-	local headerHeight = isMobile and 124 or 140
-	local sidePadding = isMobile and 16 or 22
-	local bodyGap = isMobile and 10 or 14
-	local modalWidthPx = math.floor(viewport.X * modalWidthScale + 0.5)
-	local frameWidth = modalWidthPx - (sidePadding * 2)
-	local columns = isMobile and 2 or (frameWidth >= 780 and 3 or 2)
-	local cellPadding = isMobile and 10 or 18
-	local cellWidth = math.floor((frameWidth - (cellPadding * (columns - 1))) / columns)
-	cellWidth = math.clamp(cellWidth, isMobile and 146 or 210, isMobile and 188 or 300)
-	local cellHeight = math.floor(cellWidth * (isMobile and 1.24 or 1.16) + 0.5)
+	local metrics = HudTileStyle.getLayoutMetrics()
+	local viewport = metrics.Viewport or Vector2.new(1280, 720)
+	local isMobile = metrics.IsMobile
+	local isLandscapeMobile = metrics.IsLandscapeMobile
+	local modalWidthPx
+	local modalHeightPx
+	local headerHeight
+	local sidePadding
+	local bodyGap
+	local columns
+	local cellPadding
+	local cellWidth
+	local cellHeight
+	local modalScale = 1
+	local titleY
+	local titleHeight
+	local titleTextSize
+	local helperY
+	local helperHeight
+	local helperTextSize
+	local closeY
+	local closeSize
+	local closeTextSize
+	local progressY
+	local progressHeight
+	local progressTextSize
 
-	indexModal.Size = UDim2.fromScale(modalWidthScale, modalHeightScale)
+	if isLandscapeMobile then
+		modalWidthPx = 1040
+		modalHeightPx = 650
+		headerHeight = 132
+		sidePadding = 20
+		bodyGap = 12
+		cellPadding = 16
+		columns = 4
+		cellWidth = math.floor((modalWidthPx - (sidePadding * 2) - (cellPadding * (columns - 1))) / columns)
+		cellWidth = math.clamp(cellWidth, 214, 292)
+		cellHeight = math.floor(cellWidth * 1.15 + 0.5)
+		modalScale = math.clamp(math.min((viewport.X * 0.93) / modalWidthPx, (viewport.Y * 0.88) / modalHeightPx), 0.48, 0.82)
+		titleY = 16
+		titleHeight = 38
+		titleTextSize = 38
+		helperY = 54
+		helperHeight = 20
+		helperTextSize = 15
+		closeY = 16
+		closeSize = 46
+		closeTextSize = 26
+		progressY = 84
+		progressHeight = 30
+		progressTextSize = 15
+	elseif isMobile then
+		modalWidthPx = 1020
+		modalHeightPx = 760
+		headerHeight = 132
+		sidePadding = 20
+		bodyGap = 12
+		cellPadding = 16
+		local frameWidth = modalWidthPx - (sidePadding * 2)
+		columns = frameWidth >= 680 and 3 or 2
+		cellWidth = math.floor((frameWidth - (cellPadding * (columns - 1))) / columns)
+		cellWidth = math.clamp(cellWidth, 180, 260)
+		cellHeight = math.floor(cellWidth * 1.14 + 0.5)
+		modalScale = math.clamp(math.min((viewport.X * 0.94) / modalWidthPx, (viewport.Y * 0.86) / modalHeightPx), 0.5, 0.84)
+		titleY = 16
+		titleHeight = 38
+		titleTextSize = 38
+		helperY = 52
+		helperHeight = 20
+		helperTextSize = 15
+		closeY = 16
+		closeSize = 46
+		closeTextSize = 26
+		progressY = 82
+		progressHeight = 32
+		progressTextSize = 15
+	else
+		local modalWidthScale = 0.72
+		local modalHeightScale = 0.82
+		modalWidthPx = math.floor(viewport.X * modalWidthScale + 0.5)
+		modalHeightPx = math.floor(viewport.Y * modalHeightScale + 0.5)
+		headerHeight = 140
+		sidePadding = 22
+		bodyGap = 14
+		cellPadding = 18
+		local frameWidth = modalWidthPx - (sidePadding * 2)
+		columns = frameWidth >= 920 and 4 or (frameWidth >= 700 and 3 or 2)
+		cellWidth = math.floor((frameWidth - (cellPadding * (columns - 1))) / columns)
+		cellWidth = math.clamp(cellWidth, 210, 300)
+		cellHeight = math.floor(cellWidth * 1.16 + 0.5)
+		titleY = 18
+		titleHeight = 42
+		titleTextSize = 42
+		helperY = 60
+		helperHeight = 22
+		helperTextSize = 17
+		closeY = 18
+		closeSize = 48
+		closeTextSize = 28
+		progressY = 90
+		progressHeight = 34
+		progressTextSize = 16
+	end
+
+	indexModalScale.Scale = modalScale
+	indexModal.Position = UDim2.fromOffset(math.floor(viewport.X * 0.5 + 0.5), math.floor(viewport.Y * (isLandscapeMobile and 0.5 or 0.5) + 0.5))
+	indexModal.Size = UDim2.fromOffset(modalWidthPx, modalHeightPx)
+	modalCorner.CornerRadius = UDim.new(0, isMobile and 26 or 28)
+	modalBgCorner.CornerRadius = modalCorner.CornerRadius
+	modalStroke.Thickness = isLandscapeMobile and 2 or 3
 	modalHeader.Size = UDim2.new(1, 0, 0, headerHeight)
 	indexFrame.Position = UDim2.new(0, sidePadding, 0, headerHeight + bodyGap)
 	indexFrame.Size = UDim2.new(1, -(sidePadding * 2), 1, -(headerHeight + bodyGap + sidePadding))
+	indexFrame.ScrollBarThickness = isLandscapeMobile and 10 or (isMobile and 12 or 18)
 	layout.FillDirectionMaxCells = columns
 	layout.CellPadding = UDim2.fromOffset(cellPadding, cellPadding)
 	layout.CellSize = UDim2.fromOffset(cellWidth, cellHeight)
 
-	titleLabel.Position = UDim2.fromOffset(sidePadding, isMobile and 14 or 18)
-	titleLabel.Size = UDim2.new(1, -(sidePadding * 2) - (isMobile and 58 or 72), 0, isMobile and 34 or 42)
-	titleLabel.TextSize = isMobile and 30 or 42
+	titleLabel.Position = UDim2.fromOffset(sidePadding, titleY)
+	titleLabel.Size = UDim2.new(1, -(sidePadding * 2) - 72, 0, titleHeight)
+	titleLabel.TextSize = titleTextSize
+	titleLabel.TextXAlignment = isLandscapeMobile and Enum.TextXAlignment.Center or Enum.TextXAlignment.Left
 
-	helperLabel.Position = UDim2.fromOffset(sidePadding, isMobile and 46 or 60)
-	helperLabel.Size = UDim2.new(1, -(sidePadding * 2) - (isMobile and 58 or 72), 0, isMobile and 18 or 22)
-	helperLabel.TextSize = isMobile and 13 or 17
+	helperLabel.Position = UDim2.fromOffset(sidePadding, helperY)
+	helperLabel.Size = UDim2.new(1, -(sidePadding * 2) - 72, 0, helperHeight)
+	helperLabel.TextSize = helperTextSize
+	helperLabel.TextXAlignment = isLandscapeMobile and Enum.TextXAlignment.Center or Enum.TextXAlignment.Left
 
-	closeButton.Position = UDim2.new(1, -sidePadding, 0, isMobile and 14 or 18)
-	closeButton.Size = UDim2.fromOffset(isMobile and 42 or 48, isMobile and 42 or 48)
-	closeButton.TextSize = isMobile and 24 or 28
+	closeButton.Position = UDim2.new(1, -sidePadding, 0, closeY)
+	closeButton.Size = UDim2.fromOffset(closeSize, closeSize)
+	closeButton.TextSize = closeTextSize
 
-	progressContainer.Position = UDim2.new(0, sidePadding, 0, isMobile and 76 or 90)
-	progressContainer.Size = UDim2.new(1, -(sidePadding * 2), 0, isMobile and 28 or 34)
-	progressLabel.TextSize = isMobile and 13 or 16
+	progressContainer.Position = UDim2.new(0, sidePadding, 0, progressY)
+	progressContainer.Size = UDim2.new(1, -(sidePadding * 2), 0, progressHeight)
+	progressLabel.TextSize = progressTextSize
 end
 
 applyIndexModalLayout()
@@ -1576,6 +2224,8 @@ end
 
 local function refreshIndex(preserveScrollPosition)
 	local savedCanvasPosition = preserveScrollPosition and indexFrame.CanvasPosition or Vector2.zero
+	local indexMetrics = HudTileStyle.getLayoutMetrics()
+	local compactLandscapeCards = indexMetrics.IsLandscapeMobile
 	-- Zamiast czyścić całą tabelę, usuwamy z niej tylko te modele, które NIE są powiadomieniami
 	for viewport, data in pairs(spinningModels) do
 		if not data.IsNotify then
@@ -1613,11 +2263,11 @@ local function refreshIndex(preserveScrollPosition)
 		itemFrame.ZIndex = 51
 		itemFrame.Parent = indexFrame
 		local itemCorner = Instance.new("UICorner")
-		itemCorner.CornerRadius = UDim.new(0, 18)
+		itemCorner.CornerRadius = UDim.new(0, compactLandscapeCards and 16 or 18)
 		itemCorner.Parent = itemFrame
 		local itemStroke = Instance.new("UIStroke")
 		itemStroke.Name = "ItemStroke"
-		itemStroke.Thickness = 2
+		itemStroke.Thickness = compactLandscapeCards and 1.6 or 2
 		itemStroke.Color = accentColor
 		itemStroke.Transparency = isCollected and 0.08 or 0.18
 		itemStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
@@ -1630,11 +2280,11 @@ local function refreshIndex(preserveScrollPosition)
 		itemBg.ImageColor3 = tileColor
 		itemBg.ImageTransparency = isCollected and 0.78 or 0.84
 		itemBg.ScaleType = Enum.ScaleType.Tile
-		itemBg.TileSize = UDim2.fromOffset(92, 92)
+		itemBg.TileSize = UDim2.fromOffset(compactLandscapeCards and 80 or 92, compactLandscapeCards and 80 or 92)
 		itemBg.ZIndex = 51
 		itemBg.Parent = itemFrame
 		local itemBgCorner = Instance.new("UICorner")
-		itemBgCorner.CornerRadius = UDim.new(0, 18)
+		itemBgCorner.CornerRadius = UDim.new(0, compactLandscapeCards and 16 or 18)
 		itemBgCorner.Parent = itemBg
 		local itemGradient = Instance.new("UIGradient")
 		itemGradient.Name = "ItemGradient"
@@ -1647,15 +2297,15 @@ local function refreshIndex(preserveScrollPosition)
 
 		local previewHolder = Instance.new("Frame")
 		previewHolder.Name = "PreviewHolder"
-		previewHolder.Size = UDim2.new(1, -18, 0.52, 0)
-		previewHolder.Position = UDim2.new(0.5, 0, 0, 12)
+		previewHolder.Size = UDim2.new(1, compactLandscapeCards and -8 or -18, compactLandscapeCards and 0.48 or 0.52, 0)
+		previewHolder.Position = UDim2.new(0.5, 0, 0, compactLandscapeCards and 6 or 12)
 		previewHolder.AnchorPoint = Vector2.new(0.5, 0)
 		previewHolder.BackgroundColor3 = Color3.fromRGB(88, 96, 92)
 		previewHolder.BorderSizePixel = 0
 		previewHolder.ZIndex = 53
 		previewHolder.Parent = itemFrame
 		local previewCorner = Instance.new("UICorner")
-		previewCorner.CornerRadius = UDim.new(0, 14)
+		previewCorner.CornerRadius = UDim.new(0, compactLandscapeCards and 12 or 14)
 		previewCorner.Parent = previewHolder
 		local previewBg = Instance.new("ImageLabel")
 		previewBg.Name = "PreviewBg"
@@ -1665,29 +2315,31 @@ local function refreshIndex(preserveScrollPosition)
 		previewBg.ImageColor3 = Color3.fromRGB(122, 146, 126)
 		previewBg.ImageTransparency = 0.92
 		previewBg.ScaleType = Enum.ScaleType.Tile
-		previewBg.TileSize = UDim2.fromOffset(96, 96)
+		previewBg.TileSize = UDim2.fromOffset(compactLandscapeCards and 78 or 96, compactLandscapeCards and 78 or 96)
 		previewBg.ZIndex = 53
 		previewBg.Parent = previewHolder
 		local previewBgCorner = Instance.new("UICorner")
-		previewBgCorner.CornerRadius = UDim.new(0, 14)
+		previewBgCorner.CornerRadius = UDim.new(0, compactLandscapeCards and 12 or 14)
 		previewBgCorner.Parent = previewBg
 		local previewStroke = Instance.new("UIStroke")
 		previewStroke.Name = "PreviewStroke"
-		previewStroke.Thickness = 1.5
+		previewStroke.Thickness = compactLandscapeCards and 1.2 or 1.5
 		previewStroke.Color = accentColor
 		previewStroke.Transparency = 0.3
 		previewStroke.Parent = previewHolder
 
-		local previewViewport = createViewport(wzorzec, previewHolder, isCollected)
+		local previewViewport = createViewport(wzorzec, previewHolder, isCollected, compactLandscapeCards and {
+			distanceMultiplier = 0.64,
+		} or nil)
 		previewViewport.Name = "PreviewViewport"
-		previewViewport.Size = UDim2.new(1, -2, 1, -2)
+		previewViewport.Size = UDim2.new(1, compactLandscapeCards and 0 or -2, 1, compactLandscapeCards and 0 or -2)
 		previewViewport.Position = UDim2.new(0.5, 0, 0.5, 0)
 		previewViewport.AnchorPoint = Vector2.new(0.5, 0.5)
 		previewViewport.ZIndex = 54
 
 		local infoContainer = Instance.new("Frame")
 		infoContainer.Name = "InfoContainer"
-		infoContainer.Size = UDim2.new(1, -20, 0, 94)
+		infoContainer.Size = UDim2.new(1, compactLandscapeCards and -18 or -20, 0, compactLandscapeCards and 126 or 94)
 		infoContainer.Position = UDim2.new(0.5, 0, 1, -12)
 		infoContainer.AnchorPoint = Vector2.new(0.5, 1)
 		infoContainer.BackgroundTransparency = 1
@@ -1696,8 +2348,8 @@ local function refreshIndex(preserveScrollPosition)
 
 		local rarityLabel = Instance.new("TextLabel")
 		rarityLabel.Name = "RarityLabel"
-		rarityLabel.Position = UDim2.new(0, 0, 0, 0)
-		rarityLabel.Size = UDim2.new(1, 0, 0, 18)
+		rarityLabel.Position = UDim2.new(0, 0, 0, compactLandscapeCards and 2 or 0)
+		rarityLabel.Size = UDim2.new(1, 0, 0, compactLandscapeCards and 20 or 18)
 		rarityLabel.BackgroundTransparency = 1
 		rarityLabel.Text = string.upper(rarity)
 		rarityLabel.TextColor3 = accentColor
@@ -1706,29 +2358,29 @@ local function refreshIndex(preserveScrollPosition)
 		rarityLabel.ZIndex = 56
 		rarityLabel.Parent = infoContainer
 		local rarityConstraint = Instance.new("UITextSizeConstraint")
-		rarityConstraint.MinTextSize = 14
-		rarityConstraint.MaxTextSize = 20
+		rarityConstraint.MinTextSize = compactLandscapeCards and 9 or 14
+		rarityConstraint.MaxTextSize = compactLandscapeCards and 14 or 20
 		rarityConstraint.Parent = rarityLabel
 
 		local nameLabel = Instance.new("TextLabel")
 		nameLabel.Name = "NameLabel"
-		nameLabel.Position = UDim2.new(0, 0, 0, 20)
-		nameLabel.Size = UDim2.new(1, 0, 0, 40)
+		nameLabel.Position = UDim2.new(0, 0, 0, compactLandscapeCards and 24 or 20)
+		nameLabel.Size = UDim2.new(1, -2, 0, compactLandscapeCards and 52 or 40)
 		nameLabel.BackgroundTransparency = 1
 		nameLabel.Text = isCollected and wzorzec.Name or "???"
 		nameLabel.TextColor3 = Color3.new(1, 1, 1)
 		nameLabel.Font = Enum.Font.LuckiestGuy
 		nameLabel.TextScaled = true
 		nameLabel.TextWrapped = true
-		nameLabel.TextYAlignment = Enum.TextYAlignment.Center
+		nameLabel.TextYAlignment = compactLandscapeCards and Enum.TextYAlignment.Top or Enum.TextYAlignment.Center
 		nameLabel.ZIndex = 56
 		nameLabel.Parent = infoContainer
 		local nameConstraint = Instance.new("UITextSizeConstraint")
-		nameConstraint.MinTextSize = 18
-		nameConstraint.MaxTextSize = 28
+		nameConstraint.MinTextSize = compactLandscapeCards and 9 or 18
+		nameConstraint.MaxTextSize = compactLandscapeCards and 15 or 28
 		nameConstraint.Parent = nameLabel
 		local nameStroke = Instance.new("UIStroke")
-		nameStroke.Thickness = 2.5
+		nameStroke.Thickness = compactLandscapeCards and 2 or 2.5
 		nameStroke.Color = Color3.new(0, 0, 0)
 		nameStroke.Parent = nameLabel
 
@@ -1736,7 +2388,7 @@ local function refreshIndex(preserveScrollPosition)
 			local lockedEquipText = reqLevel <= 0 and "EQUIP" or ("REBIRTH " .. reqLevel .. " REQUIRED")
 			local equipBtn = Instance.new("TextButton")
 			equipBtn.Name = "EquipButton"
-			equipBtn.Size = UDim2.new(1, 0, 0, 34)
+			equipBtn.Size = UDim2.new(1, 0, 0, compactLandscapeCards and 24 or 34)
 			equipBtn.Position = UDim2.new(0.5, 0, 1, 0)
 			equipBtn.AnchorPoint = Vector2.new(0.5, 1)
 			equipBtn.BackgroundColor3 = isEquipped and Color3.fromRGB(53, 156, 96) or (canEquipPet and Color3.fromRGB(57, 117, 194) or Color3.fromRGB(96, 101, 111))
@@ -1751,15 +2403,15 @@ local function refreshIndex(preserveScrollPosition)
 			equipBtn.ZIndex = 57
 			equipBtn.Parent = infoContainer
 			local equipConstraint = Instance.new("UITextSizeConstraint")
-			equipConstraint.MinTextSize = 13
-			equipConstraint.MaxTextSize = 22
+			equipConstraint.MinTextSize = compactLandscapeCards and 10 or 13
+			equipConstraint.MaxTextSize = compactLandscapeCards and 15 or 22
 			equipConstraint.Parent = equipBtn
 			local equipCorner = Instance.new("UICorner")
-			equipCorner.CornerRadius = UDim.new(0, 10)
+			equipCorner.CornerRadius = UDim.new(0, compactLandscapeCards and 8 or 10)
 			equipCorner.Parent = equipBtn
 			local equipStroke = Instance.new("UIStroke")
 			equipStroke.Name = "StatusStroke"
-			equipStroke.Thickness = 2
+			equipStroke.Thickness = compactLandscapeCards and 1.5 or 2
 			equipStroke.Color = Color3.new(0, 0, 0)
 			equipStroke.Transparency = 0.02
 			equipStroke.Parent = equipBtn
@@ -1788,7 +2440,7 @@ local function refreshIndex(preserveScrollPosition)
 		else
 			local missingLabel = Instance.new("TextLabel")
 			missingLabel.Name = "MissingLabel"
-			missingLabel.Size = UDim2.new(1, 0, 0, 30)
+			missingLabel.Size = UDim2.new(1, 0, 0, compactLandscapeCards and 24 or 30)
 			missingLabel.Position = UDim2.new(0.5, 0, 1, 0)
 			missingLabel.AnchorPoint = Vector2.new(0.5, 1)
 			missingLabel.BackgroundColor3 = Color3.fromRGB(18, 21, 27)
@@ -1802,15 +2454,15 @@ local function refreshIndex(preserveScrollPosition)
 			missingLabel.ZIndex = 57
 			missingLabel.Parent = infoContainer
 			local missingConstraint = Instance.new("UITextSizeConstraint")
-			missingConstraint.MinTextSize = 16
-			missingConstraint.MaxTextSize = 24
+			missingConstraint.MinTextSize = compactLandscapeCards and 10 or 16
+			missingConstraint.MaxTextSize = compactLandscapeCards and 15 or 24
 			missingConstraint.Parent = missingLabel
 			local missingCorner = Instance.new("UICorner")
-			missingCorner.CornerRadius = UDim.new(0, 10)
+			missingCorner.CornerRadius = UDim.new(0, compactLandscapeCards and 8 or 10)
 			missingCorner.Parent = missingLabel
 			local missingStroke = Instance.new("UIStroke")
 			missingStroke.Name = "StatusStroke"
-			missingStroke.Thickness = 2
+			missingStroke.Thickness = compactLandscapeCards and 1.5 or 2
 			missingStroke.Color = Color3.new(0, 0, 0)
 			missingStroke.Transparency = 0.02
 			missingStroke.Parent = missingLabel
@@ -2225,6 +2877,8 @@ robuxLabel.TextColor3 = Color3.new(1, 1, 1)
 robuxLabel.Font = Enum.Font.SourceSansBold
 robuxLabel.TextSize = 20
 robuxLabel.TextScaled = true
+robuxLabel.TextWrapped = false
+robuxLabel.TextYAlignment = Enum.TextYAlignment.Center
 robuxLabel.ZIndex = 5
 
 local robuxTextConstraint = Instance.new("UITextSizeConstraint")
@@ -2255,15 +2909,15 @@ local function applyTopStatusLayout()
 	local compactLayout
 
 	if isLandscapeMobile then
-		sidePadding = math.clamp(viewport.X * 0.014, 8, 14)
+		sidePadding = math.clamp(viewport.X * 0.012, 6, 12)
 		gapBetweenBars = math.clamp(viewport.X * 0.006, 6, 10)
-		coinsHudWidth = math.clamp(viewport.X * 0.20, 128, 144)
-		coinsHudRightPadding = math.clamp(viewport.X * 0.012, 8, 14)
-		gapToCoinsHud = math.clamp(viewport.X * 0.010, 8, 12)
-		desiredBrainrotWidth = math.clamp(viewport.X * 0.31, 170, 206)
-		desiredCoinWidth = math.clamp(viewport.X * 0.155, 92, 108)
-		brainrotHeight = 26
-		coinHeight = 22
+		coinsHudWidth = math.clamp(viewport.X * 0.19, 122, 138)
+		coinsHudRightPadding = math.clamp(viewport.X * 0.010, 7, 12)
+		gapToCoinsHud = math.clamp(viewport.X * 0.012, 10, 14)
+		desiredBrainrotWidth = math.clamp(viewport.X * 0.32, 190, 206)
+		desiredCoinWidth = math.clamp(viewport.X * 0.185, 108, 122)
+		brainrotHeight = 28
+		coinHeight = 30
 		rowTop = math.max(math.floor(insetTopLeft.Y * 0.10 + 0.5), 10)
 		compactLayout = true
 	elseif isMobile then
@@ -2272,21 +2926,21 @@ local function applyTopStatusLayout()
 		coinsHudWidth = math.clamp(viewport.X * 0.34, 150, 188)
 		coinsHudRightPadding = math.clamp(viewport.X * 0.015, 10, 16)
 		gapToCoinsHud = math.clamp(viewport.X * 0.010, 8, 14)
-		desiredBrainrotWidth = math.clamp(viewport.X * 0.52, 220, 320)
-		desiredCoinWidth = math.clamp(viewport.X * 0.26, 120, 180)
+		desiredBrainrotWidth = math.clamp(viewport.X * 0.56, 236, 340)
+		desiredCoinWidth = math.clamp(viewport.X * 0.27, 124, 176)
 		brainrotHeight = 38
-		coinHeight = 32
+		coinHeight = 36
 		rowTop = math.max(math.floor(insetTopLeft.Y * 0.16 + 0.5), 20)
 		compactLayout = true
 	else
 		sidePadding = math.clamp(viewport.X * 0.02, 12, 24)
 		gapBetweenBars = math.clamp(viewport.X * 0.0085, 8, 18)
-		coinsHudWidth = math.clamp(viewport.X * 0.104, 170, 200)
-		coinsHudRightPadding = math.clamp(viewport.X * 0.0105, 12, 20)
-		gapToCoinsHud = math.clamp(viewport.X * 0.0105, 10, 26)
-		desiredBrainrotWidth = math.clamp(viewport.X * 0.30, 300, 560)
-		desiredCoinWidth = math.clamp(viewport.X * 0.175, 180, 340)
-		compactLayout = viewport.X < 980
+		coinsHudWidth = 210
+		coinsHudRightPadding = 20
+		gapToCoinsHud = math.clamp(viewport.X * 0.015, 26, 36)
+		desiredBrainrotWidth = math.clamp(viewport.X * 0.285, 300, 540)
+		desiredCoinWidth = math.clamp(viewport.X * 0.145, 170, 280)
+		compactLayout = viewport.X < 1180
 		brainrotHeight = compactLayout and 40 or 46
 		coinHeight = compactLayout and 34 or 36
 		rowTop = math.max(math.floor(insetTopLeft.Y * 0.18 + 0.5), compactLayout and 24 or 28)
@@ -2306,22 +2960,25 @@ local function applyTopStatusLayout()
 	end
 	local coinLeft = math.floor(viewport.X - coinsHudWidth - coinsHudRightPadding - gapToCoinsHud - coinWidth + 0.5)
 	local elephantSize = math.clamp(
-		math.floor(brainrotWidth * (isLandscapeMobile and 0.20 or (compactLayout and 0.30 or 0.24)) + 0.5),
-		isLandscapeMobile and 34 or (compactLayout and 50 or 72),
-		isLandscapeMobile and 42 or (compactLayout and 72 or 88)
+		math.floor(brainrotWidth * (isLandscapeMobile and 0.17 or (compactLayout and 0.30 or 0.24)) + 0.5),
+		isLandscapeMobile and 30 or (compactLayout and 50 or 72),
+		isLandscapeMobile and 38 or (compactLayout and 72 or 88)
 	)
-	local elephantInset = math.floor(elephantSize * (isLandscapeMobile and 0.24 or 0.42) + 0.5)
+	local elephantInset = math.floor(elephantSize * (isLandscapeMobile and 0.18 or 0.42) + 0.5)
 	local brainrotCenteredLeft = math.floor(((viewport.X - brainrotWidth) * 0.5) + 0.5)
-	local brainrotVisualOverhang = isLandscapeMobile and math.floor(elephantSize * 0.30 + 0.5) or 0
+	local brainrotVisualOverhang = isLandscapeMobile and math.floor(elephantSize * 0.22 + 0.5) or 0
+	local leftHudClearance = isLandscapeMobile and math.clamp(math.floor(viewport.X * 0.235 + 0.5), 148, 160) or sidePadding
 	local brainrotLeft = brainrotCenteredLeft
 	if isLandscapeMobile then
 		local maxBrainrotLeft = coinLeft - appliedGap - brainrotWidth - brainrotVisualOverhang
-		brainrotLeft = math.max(sidePadding, math.min(brainrotCenteredLeft, maxBrainrotLeft))
+		brainrotLeft = math.max(leftHudClearance, math.min(brainrotCenteredLeft, maxBrainrotLeft))
 	else
 		brainrotLeft = math.max(sidePadding, brainrotCenteredLeft)
 	end
 
-	useCompactTopStatusText = compactLayout or isMobile
+	useCompactTopStatusText = compactLayout and not isMobile
+	useWrappedMobileCoinRainText = isMobile
+	showMobileCoinRainSuffix = not isMobile
 	topProgressContainer.AnchorPoint = Vector2.new(0, 0)
 	topProgressContainer.Position = UDim2.fromOffset(brainrotLeft, rowTop)
 	topProgressContainer.Size = UDim2.fromOffset(brainrotWidth, brainrotHeight)
@@ -2329,23 +2986,24 @@ local function applyTopStatusLayout()
 	robuxContainer.AnchorPoint = Vector2.new(0, 0)
 	robuxContainer.Position = UDim2.fromOffset(coinLeft, rowTop)
 	robuxContainer.Size = UDim2.fromOffset(coinWidth, coinHeight)
+	robuxLabel.TextWrapped = isMobile
 
 	topStroke.Thickness = isLandscapeMobile and 1.8 or (compactLayout and 2 or 3)
 	robuxStroke.Thickness = isLandscapeMobile and 1.4 or 2
 	stripes.TileSize = UDim2.new(0, isLandscapeMobile and 26 or (compactLayout and 42 or 60), 1, 0)
 
-	topProgressLabel.Position = UDim2.fromOffset(isLandscapeMobile and 8 or (compactLayout and 10 or 14), 0)
-	topProgressLabel.Size = UDim2.new(1, -(elephantSize + (isLandscapeMobile and 8 or (compactLayout and 12 or 20))), 1, 0)
-	topProgressTextConstraint.MinTextSize = isLandscapeMobile and 7 or 10
-	topProgressTextConstraint.MaxTextSize = isLandscapeMobile and 11 or (compactLayout and 18 or 22)
+	topProgressLabel.Position = UDim2.fromOffset(isLandscapeMobile and 6 or (compactLayout and 10 or 14), 0)
+	topProgressLabel.Size = UDim2.new(1, -(elephantSize + (isLandscapeMobile and 6 or (compactLayout and 12 or 20))), 1, 0)
+	topProgressTextConstraint.MinTextSize = isLandscapeMobile and 7 or (isMobile and 9 or 10)
+	topProgressTextConstraint.MaxTextSize = isLandscapeMobile and 11 or (isMobile and 13 or (compactLayout and 18 or 22))
 
 	elephantFrame.Size = UDim2.fromOffset(elephantSize, elephantSize)
 	elephantFrame.Position = UDim2.new(1, -elephantInset, 0.5, 0)
 	elephantBg.Size = UDim2.fromScale(isLandscapeMobile and 0.80 or 0.88, isLandscapeMobile and 0.80 or 0.88)
 	bgStroke.Thickness = isLandscapeMobile and 2 or (compactLayout and 3 or 4)
 
-	robuxTextConstraint.MinTextSize = isLandscapeMobile and 6 or 10
-	robuxTextConstraint.MaxTextSize = isLandscapeMobile and 9 or (compactLayout and 15 or 18)
+	robuxTextConstraint.MinTextSize = isLandscapeMobile and 6 or (isMobile and 8 or 10)
+	robuxTextConstraint.MaxTextSize = isLandscapeMobile and 9 or (isMobile and 11 or (compactLayout and 15 or 18))
 	topProgressLabel.Text = formatBrainrotProgressText(currentBrainrotCollected, currentBrainrotTotal)
 	robuxLabel.Text = formatCoinRainProgressText(currentCoinRainPool, currentCoinRainMax)
 end

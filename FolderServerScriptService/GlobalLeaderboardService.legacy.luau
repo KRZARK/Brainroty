@@ -18,7 +18,7 @@ local CoinsCollectedStore = DataStoreService:GetOrderedDataStore("Leaderboard_Co
 local LeaderboardConfigs = {
 	{
 		id = "robux",
-		title = "TOP ROBUXOW",
+		title = "TOP ROBUX",
 		valueHeader = "ROBUX",
 		modelName = "Tablica_Robux",
 		store = RobuxSpentStore,
@@ -31,8 +31,8 @@ local LeaderboardConfigs = {
 	},
 	{
 		id = "rebirths",
-		title = "TOP REBIRTHOW",
-		valueHeader = "REBIRTHY",
+		title = "TOP REBIRTHS",
+		valueHeader = "REBIRTHS",
 		modelName = TEMPLATE_MODEL_NAME,
 		store = RebirthsStore,
 		getLiveValue = function(player)
@@ -47,8 +47,8 @@ local LeaderboardConfigs = {
 	},
 	{
 		id = "coins",
-		title = "TOP MONET",
-		valueHeader = "MONETY",
+		title = "TOP COINS",
+		valueHeader = "COINS",
 		modelName = "Tablica_Monety",
 		store = CoinsCollectedStore,
 		getLiveValue = function(player)
